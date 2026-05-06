@@ -1,6 +1,12 @@
 # IDE
 .idea/
+.vscode/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# forlder
+personal_docs/
+
+

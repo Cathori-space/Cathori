@@ -9,4 +9,9 @@ Thumbs.db
 # forlder
 personal_docs/
 
+# agent
+.agents/
+claude.md
+antigravity.md
+
 

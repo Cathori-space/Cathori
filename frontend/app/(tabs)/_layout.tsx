@@ -1,33 +1,74 @@
+import { Feather } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/src/constants/colors';
+
+// 탭 화면 타입 정의
+type TabBarIconProps = { color: string; size: number };
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: {
+          // 하단 네비게이션 바 스타일 — pencil.dev 시안 기반
+          backgroundColor: Colors.navBarBg,
+          borderTopWidth: 0,
+          elevation: 0,
+          // Android only: 소프트웨어 네비게이션 바 대응
+          paddingBottom: 8,
+          height: 72,
+        },
+        tabBarActiveTintColor: Colors.navActive,
+        tabBarInactiveTintColor: Colors.navInactive,
+        tabBarLabelStyle: {
+          fontFamily: 'Pretendard',
+          fontSize: 11,
+          fontWeight: '500',
+          letterSpacing: 0.275,
+          marginTop: 3,
+        },
+      }}
+    >
+      {/* 홈 탭 */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'HOME',
+          tabBarIcon: ({ color, size }: TabBarIconProps) => (
+            <Feather name="home" size={size} color={color} />
+          ),
         }}
       />
+      {/* 검색 탭 */}
       <Tabs.Screen
-        name="explore"
+        name="search"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'SEARCH',
+          tabBarIcon: ({ color, size }: TabBarIconProps) => (
+            <Feather name="search" size={size} color={color} />
+          ),
+        }}
+      />
+      {/* 꿀팁 탭 — Task 4에서 구현 */}
+      <Tabs.Screen
+        name="tips"
+        options={{
+          title: 'TIPS',
+          tabBarIcon: ({ color, size }: TabBarIconProps) => (
+            <Feather name="star" size={size} color={color} />
+          ),
+        }}
+      />
+      {/* 설정 탭 — Sprint 2에서 구현 */}
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'SETTINGS',
+          tabBarIcon: ({ color, size }: TabBarIconProps) => (
+            <Feather name="settings" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

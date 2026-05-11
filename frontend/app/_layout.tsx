@@ -17,6 +17,7 @@ const queryClient = new QueryClient({
   },
 });
 
+// 뒤로 가기 시, 탭으로 이동되도록 설정
 export const unstable_settings = {
   anchor: '(tabs)',
 };

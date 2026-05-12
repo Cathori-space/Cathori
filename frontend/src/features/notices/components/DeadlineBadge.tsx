@@ -1,6 +1,6 @@
 /**
  * DeadlineBadge — D-day 뱃지 컴포넌트
- * pencil.dev 시안: 임박(D-3 이내) → 노란 배경, 일반 → 회색 배경, 마감 → 회색+텍스트 흐림
+ * 시안: 임박(D-3 이내) → 노란 배경, 일반 → 회색 배경, 마감 → 회색+텍스트 흐림
  */
 
 import React from 'react';

@@ -1,6 +1,6 @@
 /**
  * CategoryTab — 대분류 태그 탭 컴포넌트
- * pencil.dev 시안: pill 버튼, 수평 배치, gap 8
+ * 시안: pill 버튼, 수평 배치, gap 8
  * 미선택: #EEEEEE 배경 + #44465299 텍스트
  * 선택: #00288C 배경 + #FFFFFF 텍스트
  * padding [8, 20], borderRadius 9999, fontSize 14, fontWeight 600

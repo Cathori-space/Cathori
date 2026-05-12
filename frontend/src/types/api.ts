@@ -58,10 +58,10 @@ export interface Notice {
   /** 공지 이미지 URL 목록 — ERD v2 image_urls (JSON 문자열로 저장) */
   imageUrls?: string[] | null;
 
-  // ─── API 조합 필드 (ERD 컬럼 아님, WAS에서 조합해서 내려줌) ──────
+  // ─── API 조합 필드 (tags는 추후에 ERD가 수정되더라도 api를 통해서 보내주는 걸로 유지될 예정) ──────
   /** 백엔드에서 매칭한 태그 목록 */
   tags: string[];
-  /** 즐겨찾기 여부 — 로그인 사용자 기준, WAS에서 조합 */
+  /** 즐겨찾기 여부 — 로그인 사용자 기준, erd에 추후에 추가하기로 합의함 */
   isBookmarked: boolean;
 }
 

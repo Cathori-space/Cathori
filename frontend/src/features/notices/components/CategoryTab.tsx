@@ -15,9 +15,9 @@ import type { NoticeCategory } from '@/src/types/api';
 interface CategoryTabProps {
   /** 대분류 카테고리 목록 */
   categories: NoticeCategory[];
-  /** 현재 선택된 카테고리 */
-  selectedCategory: NoticeCategory;
-  /** 카테고리 변경 콜백 */
+  /** 현재 선택된 카테고리 (null = 미선택) */
+  selectedCategory: NoticeCategory | null;
+  /** 카테고리 토글 콜백 — 같은 값 다시 탭 시 해제(null) */
   onSelect: (category: NoticeCategory) => void;
 }
 

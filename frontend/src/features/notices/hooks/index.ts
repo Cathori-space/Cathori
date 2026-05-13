@@ -1,0 +1,1 @@
+export { useNotices } from './useNotices';

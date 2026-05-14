@@ -1,98 +1,173 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * 메인 피드 화면 — app/(tabs)/index.tsx
+ *
+ * 구조:
+ * ┌─ TopAppBar (absolute) ─────────────────┐
+ * │ Cathori 로고                    알림🔔  │
+ * ├─ TodayHighlightCard ──────────────────┤
+ * │ TODAY'S HIGHLIGHT                      │
+ * │ 2026학년도 1학기 국가장학금...           │
+ * ├─ CategoryTab ──────────────────────────┤
+ * │ 일반 | 장학 | 학사 | 취창업              │
+ * ├─ TagChipList ──────────────────────────┤
+ * │ #전체 #국가장학 #교내장학 ...            │
+ * ├─ FlatList (NoticeCard) ────────────────┤
+ * │ [카드1] [카드2] [카드3] ...             │
+ * └────────────────────────────────────────┘
+ */
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useCallback } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  View,
+} from 'react-native';
+
+import { CATEGORY_TABS, TAG_LIST } from '@/src/constants/categories';
+import { Colors } from '@/src/constants/colors';
+import {
+  CategoryTab,
+  NoticeCard,
+  TagChipList,
+  TodayHighlightCard,
+  TopAppBar,
+} from '@/src/features/notices';
+import { useNotices } from '@/src/features/notices/hooks';
+import { MOCK_NOTICES } from '@/src/mocks/notices';
+import { EmptyState } from '@/src/shared/components';
+import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
+import type { Notice } from '@/src/types/api';
+
+/** FlatList getItemLayout — 고정 높이 추정값 (성능 최적화) */
+const ESTIMATED_CARD_HEIGHT = 200;
+
+/**
+ * Today's Highlight용 고정 공지 — 필터 영향 없음
+ * 추후 별도 선정 알고리즘 적용 시 이 부분만 교체
+ */
+const HIGHLIGHT_NOTICE = MOCK_NOTICES.find((n) => n.deadlineAt != null) ?? MOCK_NOTICES[0];
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  // 필터 상태 (Zustand) — 독립 동작
+  const selectedCategory = useNoticeFilterStore((s) => s.selectedCategory);
+  const selectedTag = useNoticeFilterStore((s) => s.selectedTag);
+  const toggleCategory = useNoticeFilterStore((s) => s.toggleCategory);
+  const toggleTag = useNoticeFilterStore((s) => s.toggleTag);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // 데이터 조회 (TanStack Query) — category/tag 각각 null이면 해당 필터 건너뜀
+  const { data, isLoading } = useNotices({
+    category: selectedCategory,
+    tag: selectedTag,
+  });
+
+  const notices = data?.content ?? [];
+
+  // 즐겨찾기 토글 (향후 useMutation으로 교체)
+  const handleToggleBookmark = useCallback((noticeId: string) => {
+    // TODO: 즐겨찾기 낙관적 업데이트 useMutation 연동
+    console.log('즐겨찾기 토글:', noticeId);
+  }, []);
+
+  // FlatList renderItem — 인라인 화살표 함수 방지 (Global Rules)
+  const renderNoticeCard = useCallback(
+    ({ item }: { item: Notice }) => (
+      <NoticeCard notice={item} onToggleBookmark={handleToggleBookmark} />
+    ),
+    [handleToggleBookmark],
+  );
+
+  // FlatList keyExtractor
+  const keyExtractor = useCallback((item: Notice) => item.id, []);
+
+  // FlatList getItemLayout (성능 최적화)
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: ESTIMATED_CARD_HEIGHT,
+      offset: ESTIMATED_CARD_HEIGHT * index,
+      index,
+    }),
+    [],
+  );
+
+  // 리스트 헤더 — Highlight(고정) + CategoryTab(독립) + TagChipList(독립)
+  const ListHeader = useCallback(
+    () => (
+      <View>
+        {/* Today's Highlight — 필터 무관, 고정 공지 */}
+        {HIGHLIGHT_NOTICE != null && (
+          <View style={styles.highlightSection}>
+            <TodayHighlightCard notice={HIGHLIGHT_NOTICE} />
+          </View>
+        )}
+
+        {/* 대분류 카테고리 탭 — 토글 방식 (재클릭 시 해제) */}
+        <CategoryTab
+          categories={CATEGORY_TABS}
+          selectedCategory={selectedCategory}
+          onSelect={toggleCategory}
+        />
+
+        {/* 소분류 태그 칩 — 독립 동작, 대분류와 무관 */}
+        <TagChipList
+          tags={TAG_LIST}
+          selectedTag={selectedTag}
+          onSelect={toggleTag}
+        />
+      </View>
+    ),
+    [selectedCategory, toggleCategory, selectedTag, toggleTag],
+  );
+
+  // 리스트 빈 상태
+  const ListEmpty = useCallback(
+    () =>
+      isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : (
+        <EmptyState message="조건에 맞는 공지가 없습니다." />
+      ),
+    [isLoading],
+  );
+
+  return (
+    <View style={styles.screen}>
+      {/* 상단 헤더 */}
+      <TopAppBar />
+
+      {/* 공지 리스트 */}
+      <FlatList
+        data={notices} // / 렌더링할 데이터 배열
+        renderItem={renderNoticeCard} // 각 아이템을 어떻게 그릴지 정의하는 함수 — { item } 구조분해로 데이터 하나씩 받음
+        keyExtractor={keyExtractor} // 각 아이템의 고유 키 반환 함수
+        getItemLayout={getItemLayout} // 아이템의 높이/위치를 미리 계산해 알려주는 함수
+        ListHeaderComponent={ListHeader} // 리스트 최상단에 고정으로 붙는 컴포넌트 (스크롤해도 따라오지 않음)
+        ListEmptyComponent={ListEmpty} 
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  screen: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  highlightSection: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  listContent: {
+    paddingBottom: 100,
+    gap: 16,
+    paddingHorizontal: 16,
+  },
+  loadingContainer: {
+    paddingVertical: 80,
     alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
   },
 });

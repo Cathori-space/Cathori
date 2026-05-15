@@ -6,7 +6,7 @@
  * padding [8, 20], borderRadius 9999, fontSize 14, fontWeight 600
  */
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
@@ -15,9 +15,9 @@ import type { NoticeCategory } from '@/src/types/api';
 interface CategoryTabProps {
   /** 대분류 카테고리 목록 */
   categories: NoticeCategory[];
-  /** 현재 선택된 카테고리 */
-  selectedCategory: NoticeCategory;
-  /** 카테고리 변경 콜백 */
+  /** 현재 선택된 카테고리 (null = 미선택) */
+  selectedCategory: NoticeCategory | null;
+  /** 카테고리 토글 콜백 — 같은 값 다시 탭 시 해제(null) */
   onSelect: (category: NoticeCategory) => void;
 }
 
@@ -49,7 +49,7 @@ function CategoryTabComponent({
   );
 }
 
-export const CategoryTab = React.memo(CategoryTabComponent);
+export const CategoryTab = CategoryTabComponent;
 
 // ─── 개별 탭 버튼 ────────────────────────────────────────────────────
 
@@ -60,9 +60,9 @@ interface TabButtonProps {
 }
 
 function TabButtonComponent({ label, isSelected, onPress }: TabButtonProps) {
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     onPress();
-  }, [onPress]);
+  };
 
   return (
     <TouchableOpacity // 투명도가 변하는 커스텀 버튼
@@ -78,7 +78,7 @@ function TabButtonComponent({ label, isSelected, onPress }: TabButtonProps) {
 }
 
 // 스크롤 내, 개별 탭 별로 메모이제이션 적용
-const TabButton = React.memo(TabButtonComponent);
+const TabButton = TabButtonComponent;
 
 const styles = StyleSheet.create({
   wrapper: {

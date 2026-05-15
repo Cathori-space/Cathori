@@ -103,13 +103,13 @@ export function getMockNotices(params: {
   page: number;
   size: number;
 }): PageResponse<Notice> {
-  // 카테고리 필터
+  // 카테고리 필터 (독립 동작 — undefined면 건너뜀)
   let filtered = MOCK_NOTICES;
   if (params.category) {
     filtered = filtered.filter((n) => n.category === params.category);
   }
-  // 태그 필터
-  if (params.tags && params.tags !== '#전체') {
+  // 태그 필터 (독립 동작 — undefined면 건너뜀)
+  if (params.tags) {
     const tagKeyword = params.tags.replace('#', '');
     filtered = filtered.filter((n) =>
       n.tags.some((t) => t.includes(tagKeyword)),

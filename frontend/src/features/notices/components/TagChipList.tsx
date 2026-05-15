@@ -5,17 +5,17 @@
  * 수평 스크롤 리스트에서 사용
  */
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
 
 interface TagChipListProps {
-  /** 소분류 태그 목록 (예: ['#전체', '#국가장학', ...]) */
+  /** 소분류 태그 목록 (예: ['#국가장학', '#교내장학', ...]) */
   tags: string[];
-  /** 현재 선택된 태그 */
-  selectedTag: string;
-  /** 태그 변경 콜백 */
+  /** 현재 선택된 태그 (null = 미선택) */
+  selectedTag: string | null;
+  /** 태그 토글 콜백 — 같은 값 다시 탭 시 해제(null) */
   onSelect: (tag: string) => void;
 }
 
@@ -43,7 +43,7 @@ function TagChipListComponent({ tags, selectedTag, onSelect }: TagChipListProps)
   );
 }
 
-export const TagChipList = React.memo(TagChipListComponent);
+export const TagChipList = TagChipListComponent;
 
 // ─── 개별 칩 버튼 ────────────────────────────────────────────────────
 
@@ -54,9 +54,9 @@ interface ChipButtonProps {
 }
 
 function ChipButtonComponent({ label, isSelected, onPress }: ChipButtonProps) {
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     onPress();
-  }, [onPress]);
+  };
 
   return (
     <TouchableOpacity
@@ -71,7 +71,7 @@ function ChipButtonComponent({ label, isSelected, onPress }: ChipButtonProps) {
   );
 }
 
-const ChipButton = React.memo(ChipButtonComponent);
+const ChipButton = ChipButtonComponent;
 
 const styles = StyleSheet.create({
   wrapper: {

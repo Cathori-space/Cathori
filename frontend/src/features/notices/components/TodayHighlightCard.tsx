@@ -15,7 +15,7 @@
  */
 
 import { useRouter, type Href } from 'expo-router';
-import React, { useCallback } from 'react';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
@@ -28,9 +28,9 @@ interface TodayHighlightCardProps {
 function TodayHighlightCardComponent({ notice }: TodayHighlightCardProps) {
   const router = useRouter();
 
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     router.push(`/notice/${notice.id}` as Href);
-  }, [router, notice.id]);
+  };
 
   // 마감일 포맷 (예: "마감일: 2026.04.15 (18:00까지)")
   const deadlineLabel = notice.deadlineAt

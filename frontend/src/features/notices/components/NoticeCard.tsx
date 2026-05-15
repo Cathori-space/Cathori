@@ -17,7 +17,7 @@
 
 import { Feather } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
-import React, { useCallback } from 'react';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
@@ -37,14 +37,14 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
   const router = useRouter();
 
   // 카드 탭 → 공지 상세로 이동
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     router.push(`/notice/${notice.id}` as Href);
-  }, [router, notice.id]);
+  };
 
   // 즐겨찾기 토글
-  const handleBookmarkPress = useCallback(() => {
+  const handleBookmarkPress = () => {
     onToggleBookmark?.(notice.id);
-  }, [onToggleBookmark, notice.id]);
+  };
 
   return (
     <TouchableOpacity

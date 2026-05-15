@@ -5,7 +5,7 @@
  * 수평 스크롤 리스트에서 사용
  */
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
@@ -54,9 +54,9 @@ interface ChipButtonProps {
 }
 
 function ChipButtonComponent({ label, isSelected, onPress }: ChipButtonProps) {
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     onPress();
-  }, [onPress]);
+  };
 
   return (
     <TouchableOpacity

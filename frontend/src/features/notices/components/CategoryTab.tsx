@@ -6,7 +6,7 @@
  * padding [8, 20], borderRadius 9999, fontSize 14, fontWeight 600
  */
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
@@ -60,9 +60,9 @@ interface TabButtonProps {
 }
 
 function TabButtonComponent({ label, isSelected, onPress }: TabButtonProps) {
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     onPress();
-  }, [onPress]);
+  };
 
   return (
     <TouchableOpacity // 투명도가 변하는 커스텀 버튼

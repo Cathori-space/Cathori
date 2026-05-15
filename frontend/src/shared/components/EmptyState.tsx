@@ -32,7 +32,7 @@ function EmptyStateComponent({
   );
 }
 
-export const EmptyState = React.memo(EmptyStateComponent);
+export const EmptyState = EmptyStateComponent;
 
 const styles = StyleSheet.create({
   container: {

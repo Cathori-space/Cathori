@@ -42,7 +42,7 @@ function TopAppBarComponent() {
   );
 }
 
-export const TopAppBar = React.memo(TopAppBarComponent);
+export const TopAppBar = TopAppBarComponent;
 
 const styles = StyleSheet.create({
   container: {

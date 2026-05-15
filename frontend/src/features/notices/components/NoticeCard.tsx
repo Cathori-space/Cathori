@@ -106,8 +106,7 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
   );
 }
 
-// FlatList renderItem 리렌더 방지
-export const NoticeCard = React.memo(NoticeCardComponent);
+export const NoticeCard = NoticeCardComponent;
 
 const styles = StyleSheet.create({
   container: {

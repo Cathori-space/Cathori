@@ -22,7 +22,7 @@ function CategoryBadgeComponent({ category }: CategoryBadgeProps) {
   );
 }
 
-export const CategoryBadge = React.memo(CategoryBadgeComponent);
+export const CategoryBadge = CategoryBadgeComponent;
 
 const styles = StyleSheet.create({
   container: {

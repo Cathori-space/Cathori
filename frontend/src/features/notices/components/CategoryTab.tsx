@@ -49,7 +49,7 @@ function CategoryTabComponent({
   );
 }
 
-export const CategoryTab = React.memo(CategoryTabComponent);
+export const CategoryTab = CategoryTabComponent;
 
 // ─── 개별 탭 버튼 ────────────────────────────────────────────────────
 
@@ -78,7 +78,7 @@ function TabButtonComponent({ label, isSelected, onPress }: TabButtonProps) {
 }
 
 // 스크롤 내, 개별 탭 별로 메모이제이션 적용
-const TabButton = React.memo(TabButtonComponent);
+const TabButton = TabButtonComponent;
 
 const styles = StyleSheet.create({
   wrapper: {

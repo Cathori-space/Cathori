@@ -43,8 +43,7 @@ function DeadlineBadgeComponent({ deadlineAt }: DeadlineBadgeProps) {
   );
 }
 
-// FlatList renderItem 리렌더 방지
-export const DeadlineBadge = React.memo(DeadlineBadgeComponent);
+export const DeadlineBadge = DeadlineBadgeComponent;
 
 const styles = StyleSheet.create({
   container: {

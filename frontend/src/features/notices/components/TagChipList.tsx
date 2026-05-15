@@ -43,7 +43,7 @@ function TagChipListComponent({ tags, selectedTag, onSelect }: TagChipListProps)
   );
 }
 
-export const TagChipList = React.memo(TagChipListComponent);
+export const TagChipList = TagChipListComponent;
 
 // ─── 개별 칩 버튼 ────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ function ChipButtonComponent({ label, isSelected, onPress }: ChipButtonProps) {
   );
 }
 
-const ChipButton = React.memo(ChipButtonComponent);
+const ChipButton = ChipButtonComponent;
 
 const styles = StyleSheet.create({
   wrapper: {

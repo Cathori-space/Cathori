@@ -65,7 +65,7 @@ function TodayHighlightCardComponent({ notice }: TodayHighlightCardProps) {
   );
 }
 
-export const TodayHighlightCard = React.memo(TodayHighlightCardComponent);
+export const TodayHighlightCard = TodayHighlightCardComponent;
 
 const styles = StyleSheet.create({
   container: {

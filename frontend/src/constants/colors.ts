@@ -55,8 +55,10 @@ export const Colors = {
   ddayNormalText: '#444652',
 
   // ─── AI 요약 영역 ──────────────────────────────────────
-  /** AI 요약 배경 (회색 박스) */
-  summaryBg: '#F3F3F3',
+  /** AI 요약 배경 — 시안 기준 연한 하늘색 */
+  summaryBg: '#EDF2FF',
+  /** AI 요약 배경 (회색 fallback) */
+  summaryBgGray: '#F3F3F3',
 
   // ─── 구분선 / 기타 ──────────────────────────────────────
   divider: '#E5E5E5',

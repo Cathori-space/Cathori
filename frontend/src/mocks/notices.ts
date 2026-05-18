@@ -36,7 +36,7 @@ export const MOCK_NOTICES: Notice[] = [
     aiSummary:
       '• 미국, 영국, 독일 등 12개국 24개 대학 협약 프로그램입니다.\n• 어학 성적 우수자가 우대됩니다.\n• 장학생으로 선발 시 항공료 및 현지 생활비 일부 지원됩니다.',
     aiSummaryStatus: 'DONE',
-    deadlineAt: null,
+    deadlineAt: '2026-05-30',
     tags: ['교환학생', '해외연수'],
     isBookmarked: false,
   },
@@ -129,3 +129,10 @@ export function getMockNotices(params: {
   };
 }
 
+/**
+ * 공지 상세 Mock fetcher — ID로 개별 공지 조회
+ * 실제 API 교체 시 이 함수만 수정
+ */
+export function getMockNoticeById(id: string): Notice | undefined {
+  return MOCK_NOTICES.find((n) => n.id === id);
+}

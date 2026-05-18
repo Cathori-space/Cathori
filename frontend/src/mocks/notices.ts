@@ -85,8 +85,9 @@ export const MOCK_NOTICES: Notice[] = [
     createdAt: '2026-04-01T09:05:00Z',
     viewCount: 451,
     aiSummary:
-      '• 접수 기간: 4월 30일까지\n• 팀당 3~5명 구성, 지도교수 필수\n• 우수팀에게 총장상 및 장학금 수여',
-    aiSummaryStatus: 'DONE',
+      // '• 접수 기간: 4월 30일까지\n• 팀당 3~5명 구성, 지도교수 필수\n• 우수팀에게 총장상 및 장학금 수여',
+      null,
+    aiSummaryStatus: 'FAILED',
     deadlineAt: '2026-04-30',
     tags: ['공모전', '캡스톤'],
     isBookmarked: false,

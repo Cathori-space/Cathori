@@ -1,5 +1,7 @@
 package org.cathori.backend.user.api.dto;
 
+import org.cathori.backend.tag.api.dto.TagDto;
+
 import java.util.List;
 
 public record LoginResponse(

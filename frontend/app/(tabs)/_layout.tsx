@@ -1,24 +1,33 @@
 import { Feather } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
 
 // 탭 화면 타입 정의
 type TabBarIconProps = { color: string; size: number };
 
+// 탭바 기본 높이/패딩 — 디자인 시안 기준. OS 시스템 UI 영역(insets.bottom)은 별도 가산.
+const TAB_BAR_BASE_HEIGHT = 72;
+const TAB_BAR_BASE_PADDING_BOTTOM = 8;
+
 export default function TabLayout() {
+  // OS 네비게이션 바 / 홈 인디케이터가 차지하는 하단 영역(픽셀).
+  // 갤럭시 소프트웨어 네비바, 아이폰 홈 인디케이터 등 기기별로 자동 계산됨.
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          // 하단 네비게이션 바 스타일 — pencil.dev 시안 기반
+          // 하단 네비게이션 바 스타일
           backgroundColor: Colors.navBarBg,
           borderTopWidth: 0,
           elevation: 0,
-          // Android only: 소프트웨어 네비게이션 바 대응
-          paddingBottom: 8,
-          height: 72,
+          // SafeArea inset을 가산해 OS 네비바와 겹치지 않도록 함
+          paddingBottom: TAB_BAR_BASE_PADDING_BOTTOM + insets.bottom,
+          height: TAB_BAR_BASE_HEIGHT + insets.bottom,
         },
         tabBarActiveTintColor: Colors.navActive,
         tabBarInactiveTintColor: Colors.navInactive,

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // TanStack Query 클라이언트 설정
 const queryClient = new QueryClient({
@@ -23,18 +24,23 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  // SafeAreaProvider — react-native-safe-area-context의 inset 컨텍스트를 트리에 주입.
+  // 트리 상단에 Provider가 없으면 useSafeAreaInsets() - SafeAreaView가 inset을 0으로
+  // 계산하여 갤럭시(Android)의 OS 네비바 영역을 침범한다.
   return (
-    <QueryClientProvider client={queryClient}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* 공지 상세 화면 — Task 3에서 구현 예정 */}
-        <Stack.Screen
-          name="notice/[id]"
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        />
-      </Stack>
-      {/* Android only: 상태바 스타일 */}
-      <StatusBar style="light" backgroundColor="transparent" translucent />
-    </QueryClientProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* 공지 상세 화면 */}
+          <Stack.Screen
+            name="notice/[id]"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
+        </Stack>
+        {/* Android only: 상태바 스타일 */}
+        <StatusBar style="light" backgroundColor="transparent" translucent />
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }

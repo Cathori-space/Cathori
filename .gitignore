@@ -13,6 +13,7 @@ temp/
 # agent
 .agents/
 claude.md
+CLAUDE.md
 antigravity.md
 
 

@@ -36,7 +36,7 @@ export const MOCK_NOTICES: Notice[] = [
     aiSummary:
       '• 미국, 영국, 독일 등 12개국 24개 대학 협약 프로그램입니다.\n• 어학 성적 우수자가 우대됩니다.\n• 장학생으로 선발 시 항공료 및 현지 생활비 일부 지원됩니다.',
     aiSummaryStatus: 'DONE',
-    deadlineAt: null,
+    deadlineAt: '2026-05-30',
     tags: ['교환학생', '해외연수'],
     isBookmarked: false,
   },
@@ -85,8 +85,9 @@ export const MOCK_NOTICES: Notice[] = [
     createdAt: '2026-04-01T09:05:00Z',
     viewCount: 451,
     aiSummary:
-      '• 접수 기간: 4월 30일까지\n• 팀당 3~5명 구성, 지도교수 필수\n• 우수팀에게 총장상 및 장학금 수여',
-    aiSummaryStatus: 'DONE',
+      // '• 접수 기간: 4월 30일까지\n• 팀당 3~5명 구성, 지도교수 필수\n• 우수팀에게 총장상 및 장학금 수여',
+      null,
+    aiSummaryStatus: 'FAILED',
     deadlineAt: '2026-04-30',
     tags: ['공모전', '캡스톤'],
     isBookmarked: false,
@@ -129,3 +130,10 @@ export function getMockNotices(params: {
   };
 }
 
+/**
+ * 공지 상세 Mock fetcher — ID로 개별 공지 조회
+ * 실제 API 교체 시 이 함수만 수정
+ */
+export function getMockNoticeById(id: string): Notice | undefined {
+  return MOCK_NOTICES.find((n) => n.id === id);
+}

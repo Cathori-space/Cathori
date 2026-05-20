@@ -30,8 +30,8 @@ import {
   TagChipList,
   TodayHighlightCard,
   TopAppBar,
+  useNotices,
 } from '@/src/features/notices';
-import { useNotices } from '@/src/features/notices/hooks';
 import { MOCK_NOTICES } from '@/src/mocks/notices';
 import { EmptyState } from '@/src/shared/components';
 import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';

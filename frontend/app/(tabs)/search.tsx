@@ -134,15 +134,18 @@ export default function SearchScreen() {
       {/* ─── 검색 중 ──────────────────────────────── */}
       {isSearching && isLoading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} /> {/* 로딩 컴포넌트 추가 */}
+          {/* 로딩 컴포넌트 */}
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
 
       {isSearching && isError && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>검색 중 오류가 발생했습니다</Text> {/* 에러 메시지 추가 */}
+          {/* 에러 메시지 */}
+          <Text style={styles.errorText}>검색 중 오류가 발생했습니다</Text>
           <Pressable onPress={() => refetch()} hitSlop={8}>
-            <Text style={styles.retryText}>다시 시도</Text> {/* 재시도 버튼 추가 */}
+            {/* 재시도 버튼 */}
+            <Text style={styles.retryText}>다시 시도</Text>
           </Pressable>
         </View>
       )}

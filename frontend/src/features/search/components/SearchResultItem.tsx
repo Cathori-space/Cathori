@@ -42,7 +42,8 @@ function SearchResultItemComponent({ notice, query }: SearchResultItemProps) {
       <CategoryBadge category={notice.category} />
 
       <View style={styles.middle}>
-        <Text style={styles.title} numberOfLines={1}> {/*numberOfLines={1}: 텍스트 한 줄만 남기고 크기 넘치면 점으로 표시*/}
+        {/*numberOfLines={1}: 텍스트 한 줄만 남기고 크기 넘치면 점으로 표시*/}
+        <Text style={styles.title} numberOfLines={1}>
           {renderHighlighted(notice.title, query)}
         </Text>
         <View style={styles.metaRow}>

@@ -20,7 +20,7 @@
  */
 
 import { Feather } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -71,24 +71,21 @@ export default function SearchScreen() {
   const results: Notice[] = data?.pages.flatMap((p) => p.content) ?? [];
 
   // 엔터/제출 시점에만 히스토리 추가 (디바운스 키 입력으로는 추가 안 함 — 노이즈 방지)
-  const handleSubmit = useCallback(
-    (text: string) => {
+  const handleSubmit = (text: string) => {
       const t = text.trim();
       if (t) addEntry(t);
-    },
-    [addEntry],
-  );
+  };
 
   // 히스토리 행 탭 → 입력값을 해당 키워드로 채워 검색 트리거
-  const handleSelectHistory = useCallback((keyword: string) => {
+  const handleSelectHistory = (keyword: string) => {
     setQuery(keyword);
-  }, []);
+  };
 
-  const handleEndReached = useCallback(() => {
+  const handleEndReached = () => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  };
 
   // FlatList 콜백 — 인라인 화살표 함수 방지 (Global Rules)
   // debouncedQuery를 prop으로 넘겨 매칭 부분 하이라이트에 사용

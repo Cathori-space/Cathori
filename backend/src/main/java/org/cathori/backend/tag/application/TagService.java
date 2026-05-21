@@ -8,6 +8,8 @@ import org.cathori.backend.tag.api.dto.TagDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class TagService {
 
@@ -29,6 +31,13 @@ public class TagService {
         }
         Tag saved = tagRepository.save(Tag.create(userId, tagName));
         return new TagDto(saved.getId(), saved.getName());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TagDto> getTagsByUserId(Long userId) {
+        return tagRepository.findAllByUserId(userId).stream()
+                .map(t -> new TagDto(t.getId(), t.getName()))
+                .toList();
     }
 
     @Transactional

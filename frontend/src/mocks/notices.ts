@@ -137,3 +137,46 @@ export function getMockNotices(params: {
 export function getMockNoticeById(id: string): Notice | undefined {
   return MOCK_NOTICES.find((n) => n.id === id);
 }
+
+/**
+ * 공지 검색 Mock fetcher
+ * - title / department / tags 세 필드에 대해 대소문자 무시 부분일치
+ * - 빈 쿼리는 빈 결과 반환 (호출 측 enabled 처리와 별개로 안전망)
+ * - 실제 API 교체 시 이 함수만 수정
+ */
+export function getMockSearchNotices(params: {
+  q: string;
+  page: number;
+  size: number;
+}): PageResponse<Notice> {
+  const q = params.q.trim().toLowerCase();
+
+  if (!q) {
+    return {
+      content: [],
+      page: params.page,
+      size: params.size,
+      totalElements: 0,
+      totalPages: 0,
+      hasNext: false,
+    };
+  }
+
+  const filtered = MOCK_NOTICES.filter((n) =>
+    n.title.toLowerCase().includes(q) ||
+    n.department.toLowerCase().includes(q) ||
+    n.tags.some((t) => t.toLowerCase().includes(q)),
+  );
+
+  const start = (params.page - 1) * params.size;
+  const content = filtered.slice(start, start + params.size);
+
+  return {
+    content,
+    page: params.page,
+    size: params.size,
+    totalElements: filtered.length,
+    totalPages: Math.ceil(filtered.length / params.size),
+    hasNext: start + params.size < filtered.length,
+  };
+}

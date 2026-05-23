@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.cathori.backend.notice.application.NoticeFeedPort;
 import org.cathori.backend.notice.application.NoticeFeedQuery;
 import org.cathori.backend.notice.application.NoticeRow;
+import org.cathori.backend.notice.application.NoticeSearchQuery;
+import org.cathori.backend.notice.application.NoticeSearchRow;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -175,6 +177,42 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         sql.append(" ORDER BY n.posted_at DESC, n.title ASC LIMIT ? OFFSET ?");
         params.add(q.size() + 1);
         params.add((long) q.page() * q.size());
+    }
+
+    @Override
+    public List<NoticeSearchRow> findSearch(NoticeSearchQuery q) {
+        List<Object> params = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT n.id, n.category, n.title, n.department, n.posted_at, n.deadline_at " +
+                "FROM notices n " +
+                "WHERE n.title LIKE '%' || ? || '%' " +
+                "AND (n.source_type = 'MAIN'"
+        );
+        params.add(q.keyword());
+
+        sql.append(" OR (n.source_type = 'DEPARTMENT' AND n.source_id = ?)");
+        params.add(q.major());
+
+        if (q.secondMajor() != null && !"전공심화".equals(q.secondMajor())) {
+            sql.append(" OR (n.source_type = 'DEPARTMENT' AND n.source_id = ?)");
+            params.add(q.secondMajor());
+        }
+
+        sql.append(") ORDER BY n.posted_at DESC, n.title ASC LIMIT ? OFFSET ?");
+        params.add(q.size() + 1);
+        params.add((long) q.page() * q.size());
+
+        RowMapper<NoticeSearchRow> mapper = (rs, rowNum) -> new NoticeSearchRow(
+                rs.getLong("id"),
+                rs.getString("category"),
+                rs.getString("title"),
+                rs.getString("department"),
+                rs.getObject("posted_at", LocalDate.class),
+                rs.getObject("deadline_at", LocalDate.class)
+        );
+
+        return jdbcTemplate.query(sql.toString(), mapper, params.toArray());
     }
 
     private record QueryAndParams(String sql, List<Object> params) {}

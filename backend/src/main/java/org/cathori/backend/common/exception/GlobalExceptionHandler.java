@@ -1,5 +1,6 @@
 package org.cathori.backend.common.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -27,6 +28,18 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("입력값이 올바르지 않습니다");
         log.warn("Validation failed: {}", message);
+        return ResponseEntity
+                .badRequest()
+                .body(new ErrorResponse("INVALID_INPUT", message));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException e) {
+        String message = e.getConstraintViolations().stream()
+                .map(cv -> cv.getMessage())
+                .findFirst()
+                .orElse("입력값이 올바르지 않습니다");
+        log.warn("ConstraintViolation: {}", message);
         return ResponseEntity
                 .badRequest()
                 .body(new ErrorResponse("INVALID_INPUT", message));

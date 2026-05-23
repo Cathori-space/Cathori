@@ -4,4 +4,5 @@ import java.util.List;
 
 public interface NoticeFeedPort {
     List<NoticeRow> findFeed(NoticeFeedQuery query);
+    List<NoticeSearchRow> findSearch(NoticeSearchQuery query);
 }

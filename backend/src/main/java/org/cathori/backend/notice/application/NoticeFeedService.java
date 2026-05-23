@@ -6,6 +6,8 @@ import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.notice.api.dto.NoticeFeedItem;
 import org.cathori.backend.notice.api.dto.NoticeFeedResponse;
 import org.cathori.backend.notice.api.dto.NoticeDetailResponse;
+import org.cathori.backend.notice.api.dto.NoticeSearchItem;
+import org.cathori.backend.notice.api.dto.NoticeSearchResponse;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.user.UserErrorCode;
@@ -70,6 +72,37 @@ public class NoticeFeedService {
                 .toList();
 
         return new NoticeFeedResponse(content, page, size, hasNext);
+    }
+
+    @Transactional(readOnly = true)
+    public NoticeSearchResponse search(Long userId, String keyword, int page, int size) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        NoticeSearchQuery query = new NoticeSearchQuery(
+                userId, keyword, user.getMajor(), user.getSecondMajor(), page, size
+        );
+
+        List<NoticeSearchRow> rows = noticeFeedPort.findSearch(query);
+
+        boolean hasNext = rows.size() > size;
+        List<NoticeSearchRow> pageRows = hasNext ? rows.subList(0, size) : rows;
+
+        LocalDate today = LocalDate.now();
+        List<NoticeSearchItem> content = pageRows.stream()
+                .map(r -> toSearchItem(r, today))
+                .toList();
+
+        return new NoticeSearchResponse(content, page, size, hasNext);
+    }
+
+    private NoticeSearchItem toSearchItem(NoticeSearchRow row, LocalDate today) {
+        Integer dDay = row.deadlineAt() != null
+                ? (int) ChronoUnit.DAYS.between(today, row.deadlineAt())
+                : null;
+        return new NoticeSearchItem(
+                row.id(), row.category(), row.title(), row.department(), row.postedAt(), dDay
+        );
     }
 
     @Transactional

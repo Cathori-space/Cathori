@@ -37,7 +37,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
 
     private static final String EMAIL    = "test@catholic.ac.kr";
     private static final String PASSWORD = "password123!";
-    private static final String MAJOR    = "컴퓨터공학과";
+    private static final String MAJOR    = "컴퓨터정보공학";
     private static final int    GRADE    = 2;
     private static final String STATUS   = "재학";
 

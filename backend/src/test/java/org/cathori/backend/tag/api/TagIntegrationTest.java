@@ -41,7 +41,7 @@ class TagIntegrationTest extends IntegrationTestBase {
     private static final String EMAIL_A = "tagtest_a@catholic.ac.kr";
     private static final String EMAIL_B = "tagtest_b@catholic.ac.kr";
     private static final String PASSWORD = "password123!";
-    private static final String MAJOR = "컴퓨터공학과";
+    private static final String MAJOR = "컴퓨터정보공학";
 
     private Long userAId;
     private Long userBId;

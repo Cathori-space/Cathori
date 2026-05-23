@@ -60,12 +60,12 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     @BeforeEach
     void setUp() {
         verifiedEmailStore.markVerified(EMAIL_A);
-        authService.register(new RegisterRequest(EMAIL_A, PASSWORD, "csie", "ai", 2, "재학"));
+        authService.register(new RegisterRequest(EMAIL_A, PASSWORD, "컴퓨터정보공학", "인공지능", 2, "재학"));
         userAId = userJpaRepository.findByEmail(EMAIL_A).orElseThrow().getId();
         tokenA = jwtUtil.generateAccessToken(userAId);
 
         verifiedEmailStore.markVerified(EMAIL_B);
-        authService.register(new RegisterRequest(EMAIL_B, PASSWORD, "csie", "전공심화", 2, "재학"));
+        authService.register(new RegisterRequest(EMAIL_B, PASSWORD, "컴퓨터정보공학", "전공심화", 2, "재학"));
         userBId = userJpaRepository.findByEmail(EMAIL_B).orElseThrow().getId();
         tokenB = jwtUtil.generateAccessToken(userBId);
     }
@@ -158,11 +158,11 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("NF-2: 기본 피드 — MAIN + 전공(csie) 공지 포함, 무관 학과 제외")
+    @DisplayName("NF-2: 기본 피드 — MAIN + 전공(CSIE) 공지 포함, 무관 학과 제외")
     void getFeed_case1_defaultFeed() throws Exception {
         saveNotice("MAIN", null, "장학", "MAIN 공지", TODAY);
-        saveNotice("DEPARTMENT", "csie", "학과공지", "csie 학과 공지", TODAY);
-        saveNotice("DEPARTMENT", "business", "학과공지", "business 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "CSIE", "학과공지", "csie 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "BUSINESS", "학과공지", "business 학과 공지", TODAY);
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA))
@@ -175,11 +175,11 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("NF-3: secondMajor=전공심화인 유저 — ai 학과 공지 제외")
+    @DisplayName("NF-3: secondMajor=전공심화인 유저 — AI 학과 공지 제외")
     void getFeed_case1_excludeJeonGongSimhwa() throws Exception {
         saveNotice("MAIN", null, "장학", "MAIN 공지", TODAY);
-        saveNotice("DEPARTMENT", "csie", "학과공지", "csie 학과 공지", TODAY);
-        saveNotice("DEPARTMENT", "ai", "학과공지", "ai 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "CSIE", "학과공지", "csie 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "AI", "학과공지", "ai 학과 공지", TODAY);
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenB))
@@ -196,7 +196,7 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     void getFeed_case2_categoryFilter() throws Exception {
         saveNotice("MAIN", null, "장학", "장학 공지", TODAY);
         saveNotice("MAIN", null, "취업", "취업 공지", TODAY);
-        saveNotice("DEPARTMENT", "csie", "장학", "csie 장학 공지", TODAY);
+        saveNotice("DEPARTMENT", "CSIE", "장학", "csie 장학 공지", TODAY);
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA)
@@ -227,7 +227,7 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     void getFeed_case3_tagFilter() throws Exception {
         saveNotice("MAIN", null, "장학", "장학금 신청 안내", TODAY);
         saveNotice("MAIN", null, "취업", "일반 공지", TODAY);
-        saveNotice("DEPARTMENT", "csie", "학과공지", "장학금 혜택 안내", TODAY);
+        saveNotice("DEPARTMENT", "CSIE", "학과공지", "장학금 혜택 안내", TODAY);
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA)
@@ -257,7 +257,7 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     void getFeed_case4_unionPriority() throws Exception {
         saveNotice("MAIN", null, "장학", "장학금 공모", TODAY);           // priority 1
         saveNotice("MAIN", null, "장학", "일반 행사 안내", TODAY.minusDays(1)); // priority 2
-        saveNotice("DEPARTMENT", "csie", "학과공지", "장학 혜택 안내", TODAY); // priority 1
+        saveNotice("DEPARTMENT", "CSIE", "학과공지", "장학 혜택 안내", TODAY); // priority 1
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA)

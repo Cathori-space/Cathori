@@ -124,7 +124,7 @@ export interface PageResponse<T> {
 
 /** 즐겨찾기 토글 응답 */
 export interface BookmarkToggleResponse {
-  noticeId: number;
+  noticeId: string;
   isBookmarked: boolean;
 }
 

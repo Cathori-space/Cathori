@@ -135,7 +135,7 @@ public class NoticeFeedService {
         return new NoticeDetailResponse(
                 notice.getId(), category, notice.getTitle(), notice.getDepartment(),
                 notice.getPostedAt(), aiSummary, notice.getAiSummaryStatus(),
-                notice.getUrl(), isBookmarked, dDay, tags, deadlineAt
+                notice.getUrl(), isBookmarked, dDay, notice.getViewCount(), tags, deadlineAt
         );
     }
 
@@ -154,7 +154,7 @@ public class NoticeFeedService {
                 .toList();
         return new NoticeFeedItem(
                 String.valueOf(row.id()), category, row.title(), row.department(),
-                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.isBookmarked(), tags, deadlineAt
+                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.viewCount(), row.isBookmarked(), tags, deadlineAt
         );
     }
 }

@@ -17,5 +17,6 @@ public record NoticeRow(
         String aiSummary,
         String aiSummaryStatus,
         String url,
+        Long viewCount,
         boolean isBookmarked
 ) {}

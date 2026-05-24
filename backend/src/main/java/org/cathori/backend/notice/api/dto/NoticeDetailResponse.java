@@ -14,6 +14,7 @@ public record NoticeDetailResponse(
         String url,
         boolean isBookmarked,
         Integer dDay,
+        Long viewCount,
         List<String> tags,
         String deadlineAt
 ) {}

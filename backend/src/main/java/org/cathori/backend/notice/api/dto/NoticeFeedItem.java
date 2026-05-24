@@ -31,6 +31,7 @@ public record NoticeFeedItem(
         String aiSummaryStatus,
         String url,
         Integer dDay,
+        Long viewCount,
         boolean isBookmarked,
         List<String> tags,
         String deadlineAt

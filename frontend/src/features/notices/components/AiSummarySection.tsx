@@ -1,10 +1,14 @@
 /**
  * AiSummarySection — AI 요약 섹션 컴포넌트
  * aiSummaryStatus별 분기 렌더링:
- *   DONE       → 요약 텍스트 (bullet list)
+ *   SUCCESS    → 요약 텍스트 (bullet list)
  *   PENDING    → 스켈레톤 + "AI 요약을 생성하고 있습니다..."
- *   PROCESSING → 스켈레톤 + "AI 요약을 생성하고 있습니다..."
+ *   SKIPPED    → "요약을 불러올 수 없습니다" 안내 (FAILED와 동일)
  *   FAILED     → "요약을 불러올 수 없습니다" 안내
+ *
+ * aiSummary 형식 대응:
+ *   - JSON 배열 문자열: '["항목1","항목2"]' → JSON.parse 후 배열 순회
+ *   - bullet 텍스트:   '• 항목1\n• 항목2'  → \n 분리 + • 접두어 제거 (Mock 호환)
  */
 
 import { Feather } from '@expo/vector-icons';
@@ -32,9 +36,9 @@ function AiSummarySectionComponent({
       </View>
 
       {/* 상태별 분기 렌더링 */}
-      {aiSummaryStatus === 'DONE' && aiSummary != null ? (
+      {aiSummaryStatus === 'SUCCESS' && aiSummary != null ? (
         <SummaryContent summary={aiSummary} />
-      ) : aiSummaryStatus === 'FAILED' ? (
+      ) : aiSummaryStatus === 'FAILED' || aiSummaryStatus === 'SKIPPED' ? (
         <FailedContent />
       ) : (
         <LoadingContent />
@@ -45,13 +49,18 @@ function AiSummarySectionComponent({
 
 export const AiSummarySection = React.memo(AiSummarySectionComponent);
 
-// ─── DONE: 요약 텍스트 ────────────────────────────────────────────────
+// ─── SUCCESS: 요약 텍스트 ──────────────────────────────────────────────
 
+/**
+ * AI 요약 텍스트를 bullet 리스트로 렌더링한다.
+ *
+ * 백엔드 실제 응답: JSON 배열 문자열 '["항목1","항목2"]'
+ * Mock 데이터:       bullet 텍스트 '• 항목1\n• 항목2'
+ *
+ * 두 형식 모두 처리하여 Mock ↔ 실제 API 전환 시 깨지지 않도록 한다.
+ */
 function SummaryContent({ summary }: { summary: string }) {
-  const bullets = summary
-    .split('\n')
-    .map((line) => line.replace(/^•\s*/, '').trim())
-    .filter((line) => line.length > 0);
+  const bullets = parseSummary(summary);
 
   return (
     <View style={styles.summaryBox}>
@@ -65,7 +74,35 @@ function SummaryContent({ summary }: { summary: string }) {
   );
 }
 
-// ─── PENDING / PROCESSING: 로딩 ──────────────────────────────────────
+/**
+ * aiSummary 문자열을 bullet 배열로 파싱한다.
+ * JSON 배열 문자열이면 JSON.parse, 아니면 \n 분리 + • 제거 (기존 Mock 호환)
+ */
+function parseSummary(summary: string): string[] {
+  const trimmed = summary.trim();
+
+  // JSON 배열 형태인지 판별 ('[' 로 시작)
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => String(item).trim())
+          .filter((item) => item.length > 0);
+      }
+    } catch {
+      // JSON 파싱 실패 시 fallback으로 bullet 텍스트 파싱
+    }
+  }
+
+  // fallback: \n 분리 + • 접두어 제거 (Mock 데이터 호환)
+  return trimmed
+    .split('\n')
+    .map((line) => line.replace(/^•\s*/, '').trim())
+    .filter((line) => line.length > 0);
+}
+
+// ─── PENDING: 로딩 ──────────────────────────────────────────────────
 
 function LoadingContent() {
   return (
@@ -76,7 +113,7 @@ function LoadingContent() {
   );
 }
 
-// ─── FAILED: 실패 ─────────────────────────────────────────────────────
+// ─── FAILED / SKIPPED: 실패 ────────────────────────────────────────────
 
 function FailedContent() {
   return (

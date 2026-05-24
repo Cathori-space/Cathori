@@ -22,10 +22,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors } from '@/src/constants/colors';
 import { CategoryBadge, DeadlineBadge } from '@/src/features/notices';
 import { formatDate } from '@/src/shared/utils/date';
-import type { Notice } from '@/src/types/api';
+import type { SearchNoticeListItem } from '@/src/types/api';
 
 interface SearchResultItemProps {
-  notice: Notice;
+  // 슬림 페이로드 — aiSummary/url/isBookmarked/tags는 검색 응답에 미포함
+  notice: SearchNoticeListItem;
   /** 검색어 — 제목 내 매칭 부분 하이라이트용. 빈 문자열이면 하이라이트 없이 표시 */
   query: string;
 }

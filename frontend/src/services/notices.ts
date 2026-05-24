@@ -23,11 +23,23 @@ import apiClient from '@/src/services/api';
 import type {
   BookmarkToggleResponse,
   Notice,
+  NoticeCategory,
   NoticeListParams,
   NoticeSearchParams,
   PageResponse,
   SearchNoticeListItem,
 } from '@/src/types/api';
+
+/** 허용되는 카테고리 enum (백엔드 협의: enum 외 값은 null로 변환) */
+const KNOWN_CATEGORIES: readonly NoticeCategory[] = ['일반', '장학', '학사', '취창업'];
+
+/** 백엔드 category 문자열을 NoticeCategory | null로 정규화 */
+function normalizeCategory(raw: string | null | undefined): NoticeCategory | null {
+  if (raw == null) return null;
+  return (KNOWN_CATEGORIES as readonly string[]).includes(raw)
+    ? (raw as NoticeCategory)
+    : null;
+}
 
 // ─── 백엔드 응답 원본 타입 (매핑 전) ────────────────────────────────
 
@@ -89,7 +101,7 @@ function mapListItemToNotice(item: BackendNoticeListItem): Notice {
   return {
     id: String(item.noticeId),
     title: item.title,
-    category: item.category,
+    category: normalizeCategory(item.category),
     department: item.department,
     postedAt: item.publishedAt,
     url: item.url,
@@ -107,7 +119,7 @@ function mapListItemToNotice(item: BackendNoticeListItem): Notice {
 function mapSearchItem(item: BackendSearchListItem): SearchNoticeListItem {
   return {
     id: String(item.noticeId),
-    category: item.category,
+    category: normalizeCategory(item.category),
     title: item.title,
     department: item.department,
     postedAt: item.publishedAt,
@@ -120,7 +132,7 @@ function mapDetailToNotice(detail: BackendNoticeDetail): Notice {
   return {
     id: String(detail.noticeId),
     title: detail.title,
-    category: detail.category,
+    category: normalizeCategory(detail.category),
     department: detail.department,
     postedAt: detail.publishedAt,
     url: detail.url,

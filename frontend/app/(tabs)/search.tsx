@@ -76,9 +76,11 @@ export default function SearchScreen() {
       if (t) addEntry(t);
   };
 
-  // 히스토리 행 탭 → 입력값을 해당 키워드로 채워 검색 트리거
+  // 히스토리 행 탭 → 입력값을 해당 키워드로 채워 검색 트리거 + 최상단으로 이동
+  // addEntry 내부 dedup 로직이 기존 항목을 제거하고 최상단에 재삽입함
   const handleSelectHistory = (keyword: string) => {
     setQuery(keyword);
+    addEntry(keyword);
   };
 
   const handleEndReached = () => {

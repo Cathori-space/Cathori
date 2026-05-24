@@ -41,7 +41,7 @@ import {
 import { EmptyState } from '@/src/shared/components';
 import { useDebounce } from '@/src/shared/hooks';
 import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
-import type { Notice } from '@/src/types/api';
+import type { SearchNoticeListItem } from '@/src/types/api';
 
 /** SearchResultItem 한 행의 추정 높이 (paddingVertical 14*2 + 내용 약 40 = 68) */
 const ESTIMATED_ROW_HEIGHT = 68;
@@ -67,8 +67,8 @@ export default function SearchScreen() {
     isFetchingNextPage,    // ← 다음 페이지 로딩 중인지?
   } = useSearchNotices(debouncedQuery);
 
-  // 모든 페이지의 content를 평탄화
-  const results: Notice[] = data?.pages.flatMap((p) => p.content) ?? [];
+  // 모든 페이지의 content를 평탄화 — 검색 슬림 페이로드(SearchNoticeListItem)
+  const results: SearchNoticeListItem[] = data?.pages.flatMap((p) => p.content) ?? [];
 
   // 엔터/제출 시점에만 히스토리 추가 (디바운스 키 입력으로는 추가 안 함 — 노이즈 방지)
   const handleSubmit = (text: string) => {
@@ -89,10 +89,10 @@ export default function SearchScreen() {
 
   // FlatList 콜백 — 인라인 화살표 함수 방지 (Global Rules)
   // debouncedQuery를 prop으로 넘겨 매칭 부분 하이라이트에 사용
-  const renderItem = ({ item }: { item: Notice }) => (
+  const renderItem = ({ item }: { item: SearchNoticeListItem }) => (
     <SearchResultItem notice={item} query={debouncedQuery} />
   );
-  const keyExtractor = (item: Notice) => item.id;
+  const keyExtractor = (item: SearchNoticeListItem) => item.id;
   const getItemLayout = (_: unknown, index: number) => ({
     length: ESTIMATED_ROW_HEIGHT,
     offset: (ESTIMATED_ROW_HEIGHT + StyleSheet.hairlineWidth) * index,

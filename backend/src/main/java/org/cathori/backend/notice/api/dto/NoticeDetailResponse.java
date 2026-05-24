@@ -1,6 +1,7 @@
 package org.cathori.backend.notice.api.dto;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public record NoticeDetailResponse(
         Long noticeId,
@@ -13,5 +14,6 @@ public record NoticeDetailResponse(
         String url,
         boolean isBookmarked,
         Integer dDay,
+        List<String> tags,
         String deadlineAt
 ) {}

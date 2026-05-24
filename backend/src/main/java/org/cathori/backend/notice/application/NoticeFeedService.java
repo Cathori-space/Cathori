@@ -117,10 +117,15 @@ public class NoticeFeedService {
 
         boolean isBookmarked = bookmarkJpaRepository.existsByUserIdAndNoticeId(userId, noticeId);
 
-        return toDetail(notice, isBookmarked);
+        List<String> tags = tagRepository.findAllByUserId(userId).stream()
+                .map(Tag::getName)
+                .filter(t -> notice.getTitle().contains(t))
+                .toList();
+
+        return toDetail(notice, isBookmarked, tags);
     }
 
-    private NoticeDetailResponse toDetail(Notice notice, boolean isBookmarked) {
+    private NoticeDetailResponse toDetail(Notice notice, boolean isBookmarked, List<String> tags) {
         String aiSummary = "SUCCESS".equals(notice.getAiSummaryStatus()) ? notice.getAiSummary() : null;
         String category = "DEPARTMENT".equals(notice.getSourceType()) ? null : notice.getCategory();
         Integer dDay = notice.getDeadlineAt() != null
@@ -130,7 +135,7 @@ public class NoticeFeedService {
         return new NoticeDetailResponse(
                 notice.getId(), category, notice.getTitle(), notice.getDepartment(),
                 notice.getPostedAt(), aiSummary, notice.getAiSummaryStatus(),
-                notice.getUrl(), isBookmarked, dDay, deadlineAt
+                notice.getUrl(), isBookmarked, dDay, tags, deadlineAt
         );
     }
 

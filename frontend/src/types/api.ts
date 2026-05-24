@@ -32,7 +32,7 @@ export type NotificationFrequency = 'INSTANT' | 'DAILY'; // * 향후 변경 가�
 export interface Notice {
   id: string;
   title: string;
-  category: NoticeCategory | string; // 백엔드에서 '학과공지' 등 추가 값 가능성이 있지만 그 부분들은 현재는 null로 보내주기로 함
+  category: NoticeCategory | null; // 백엔드에서 '학과공지' 등 추가 값 가능성이 있지만 그 부분들은 현재는 null로 보내주기로 함
   /** 작성 부서 (ERD NOT NULL) */
   department: string;
   /** 공지 원문 링크 */

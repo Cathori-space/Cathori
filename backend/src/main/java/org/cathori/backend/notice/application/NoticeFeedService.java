@@ -119,8 +119,7 @@ public class NoticeFeedService {
 
     private NoticeDetailResponse toDetail(Notice notice, boolean isBookmarked) {
         String aiSummary = "SUCCESS".equals(notice.getAiSummaryStatus()) ? notice.getAiSummary() : null;
-        String category = (notice.getCategory() == null || notice.getCategory().isBlank())
-                ? "학과공지" : notice.getCategory();
+        String category = "DEPARTMENT".equals(notice.getSourceType()) ? null : notice.getCategory();
         Integer dDay = notice.getDeadlineAt() != null
                 ? (int) ChronoUnit.DAYS.between(LocalDate.now(), notice.getDeadlineAt())
                 : null;
@@ -139,8 +138,9 @@ public class NoticeFeedService {
         Integer dDay = row.deadlineAt() != null
                 ? (int) ChronoUnit.DAYS.between(today, row.deadlineAt())
                 : null;
+        String category = "DEPARTMENT".equals(row.sourceType()) ? null : row.category();
         return new NoticeFeedItem(
-                row.id(), row.category(), row.title(), row.department(),
+                String.valueOf(row.id()), category, row.title(), row.department(),
                 row.postedAt(), row.aiSummary(), row.url(), dDay, row.isBookmarked()
         );
     }

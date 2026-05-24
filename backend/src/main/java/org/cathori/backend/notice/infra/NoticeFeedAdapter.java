@@ -24,6 +24,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
     // DB컬럼 -> 자바객체로 전환
     private static final RowMapper<NoticeRow> ROW_MAPPER = (rs, rowNum) -> new NoticeRow(
             rs.getLong("id"),
+            rs.getString("source_type"),
             rs.getString("category"),
             rs.getString("title"),
             rs.getString("department"),
@@ -129,7 +130,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         // Part1: 태그 매칭 (출처 무관)
         StringBuilder sql = new StringBuilder(
                 "SELECT * FROM (" +
-                "SELECT n.id, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
+                "SELECT n.id, n.source_type, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
                 "       n.ai_summary, n.url, " +
                 "       CASE WHEN b.id IS NOT NULL THEN true ELSE false END AS is_bookmarked, " +
                 "       1 AS priority " +
@@ -144,7 +145,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         // Part2: category 매칭 MAIN, 태그 미매칭
         sql.append(
                 " UNION " +
-                "SELECT n.id, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
+                "SELECT n.id, n.source_type, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
                 "       n.ai_summary, n.url, " +
                 "       CASE WHEN b.id IS NOT NULL THEN true ELSE false END AS is_bookmarked, " +
                 "       2 AS priority " +

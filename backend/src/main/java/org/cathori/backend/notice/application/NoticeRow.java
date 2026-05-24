@@ -8,6 +8,7 @@ import java.time.LocalDate;
  */
 public record NoticeRow(
         Long id,
+        String sourceType,
         String category,
         String title,
         String department,

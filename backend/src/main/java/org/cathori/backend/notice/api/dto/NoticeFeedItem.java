@@ -1,6 +1,7 @@
 package org.cathori.backend.notice.api.dto;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 피드 목록의 단일 공지 카드 DTO. 클라이언트가 카드 UI를 렌더링하는 데 필요한 모든 필드를 담으며,
@@ -30,5 +31,6 @@ public record NoticeFeedItem(
         String aiSummaryStatus,
         String url,
         Integer dDay,
-        boolean isBookmarked
+        boolean isBookmarked,
+        List<String> tags
 ) {}

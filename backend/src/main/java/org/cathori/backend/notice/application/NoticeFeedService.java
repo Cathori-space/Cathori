@@ -3,6 +3,8 @@ package org.cathori.backend.notice.application;
 import lombok.RequiredArgsConstructor;
 import org.cathori.backend.bookmark.infra.BookmarkJpaRepository;
 import org.cathori.backend.common.exception.BusinessException;
+import org.cathori.backend.tag.domain.Tag;
+import org.cathori.backend.tag.domain.TagRepository;
 import org.cathori.backend.notice.api.dto.NoticeFeedItem;
 import org.cathori.backend.notice.api.dto.NoticeFeedResponse;
 import org.cathori.backend.notice.api.dto.NoticeDetailResponse;
@@ -29,6 +31,7 @@ public class NoticeFeedService {
     private final UserRepository userRepository;
     private final NoticeRepository noticeRepository;
     private final BookmarkJpaRepository bookmarkJpaRepository;
+    private final TagRepository tagRepository;
 
     /**
      * 사용자의 전공·복수전공을 자동으로 주입해 개인화된 공지 피드를 구성하는 메인 유스케이스.
@@ -68,7 +71,7 @@ public class NoticeFeedService {
         // 5. DTO 매핑 + 반환
         LocalDate today = LocalDate.now();
         List<NoticeFeedItem> content = pageRows.stream()
-                .map(r -> toItem(r, today))
+                .map(r -> toItem(r, today, tagList))
                 .toList();
 
         return new NoticeFeedResponse(content, page, size, hasNext);
@@ -134,14 +137,17 @@ public class NoticeFeedService {
      * {@code ChronoUnit.DAYS.between(today, deadlineAt)} 기준으로 dDay를 계산한다.
      * 양수 = 마감까지 남은 일수, 음수 = 마감 초과, null = 마감일 없는 공지.
      */
-    private NoticeFeedItem toItem(NoticeRow row, LocalDate today) {
+    private NoticeFeedItem toItem(NoticeRow row, LocalDate today, List<String> queryTags) {
         Integer dDay = row.deadlineAt() != null
                 ? (int) ChronoUnit.DAYS.between(today, row.deadlineAt())
                 : null;
         String category = "DEPARTMENT".equals(row.sourceType()) ? null : row.category();
+        List<String> tags = queryTags.stream()
+                .filter(t -> row.title().contains(t))
+                .toList();
         return new NoticeFeedItem(
                 String.valueOf(row.id()), category, row.title(), row.department(),
-                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.isBookmarked()
+                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.isBookmarked(), tags
         );
     }
 }

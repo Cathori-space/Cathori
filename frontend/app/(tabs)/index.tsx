@@ -99,7 +99,8 @@ export default function HomeScreen() {
 
   // 즐겨찾기 토글 (향후 useMutation으로 교체)
   const handleToggleBookmark = (noticeId: string) => {
-    // TODO: 즐겨찾기 낙관적 업데이트 useMutation 연동
+    // TODO(Sprint 2): useMutation({ mutationFn: toggleBookmark, onMutate: 낙관적 업데이트 })
+    //   fetcher: '@/src/services/notices' → toggleBookmark
     console.log('즐겨찾기 토글:', noticeId);
   };
 

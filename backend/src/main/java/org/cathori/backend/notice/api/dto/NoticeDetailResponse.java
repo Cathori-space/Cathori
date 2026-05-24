@@ -12,5 +12,6 @@ public record NoticeDetailResponse(
         String aiSummaryStatus,
         String url,
         boolean isBookmarked,
-        Integer dDay
+        Integer dDay,
+        String deadlineAt
 ) {}

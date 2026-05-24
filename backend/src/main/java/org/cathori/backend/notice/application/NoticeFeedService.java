@@ -126,10 +126,11 @@ public class NoticeFeedService {
         Integer dDay = notice.getDeadlineAt() != null
                 ? (int) ChronoUnit.DAYS.between(LocalDate.now(), notice.getDeadlineAt())
                 : null;
+        String deadlineAt = notice.getDeadlineAt() != null ? notice.getDeadlineAt().toString() : null;
         return new NoticeDetailResponse(
                 notice.getId(), category, notice.getTitle(), notice.getDepartment(),
                 notice.getPostedAt(), aiSummary, notice.getAiSummaryStatus(),
-                notice.getUrl(), isBookmarked, dDay
+                notice.getUrl(), isBookmarked, dDay, deadlineAt
         );
     }
 
@@ -142,12 +143,13 @@ public class NoticeFeedService {
                 ? (int) ChronoUnit.DAYS.between(today, row.deadlineAt())
                 : null;
         String category = "DEPARTMENT".equals(row.sourceType()) ? null : row.category();
+        String deadlineAt = row.deadlineAt() != null ? row.deadlineAt().toString() : null;
         List<String> tags = queryTags.stream()
                 .filter(t -> row.title().contains(t))
                 .toList();
         return new NoticeFeedItem(
                 String.valueOf(row.id()), category, row.title(), row.department(),
-                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.isBookmarked(), tags
+                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.isBookmarked(), tags, deadlineAt
         );
     }
 }

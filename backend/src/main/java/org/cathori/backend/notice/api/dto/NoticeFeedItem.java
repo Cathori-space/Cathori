@@ -32,5 +32,6 @@ public record NoticeFeedItem(
         String url,
         Integer dDay,
         boolean isBookmarked,
-        List<String> tags
+        List<String> tags,
+        String deadlineAt
 ) {}

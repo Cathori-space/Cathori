@@ -3,22 +3,20 @@
  * 실제 API 연동 시 이 파일의 fetcher 함수만 교체하면 됨
  */
 
-import type { Notice, PageResponse } from '@/src/types/api';
+import type { Notice, PageResponse, SearchNoticeListItem } from '@/src/types/api';
 
 export const MOCK_NOTICES: Notice[] = [
   {
     id: '1',
     title: '2026학년도 1학기 국가장학금 신청 안내',
-    sourceType: 'MAIN',
     category: '장학',
     department: '학생지원팀',
     url: 'https://www.catholic.ac.kr/ko/campuslife/notice.do',
     postedAt: '2026-03-28',
-    createdAt: '2026-03-28T09:05:00Z',
     viewCount: 1240,
     aiSummary:
       '• 1차 신청 기간은 4월 15일까지입니다.\n• 성적 기준 충족 시 최대 전액 수혜 가능합니다.\n• 한국장학재단 앱 또는 홈페이지에서 신청하세요.\n• 소득분위 8구간 이하 학생이 대상입니다.',
-    aiSummaryStatus: 'DONE',
+    aiSummaryStatus: 'SUCCESS',
     deadlineAt: '2026-04-15',
     tags: ['국가장학', '장학금'],
     isBookmarked: false,
@@ -26,16 +24,14 @@ export const MOCK_NOTICES: Notice[] = [
   {
     id: '2',
     title: '2026 하계 해외 연수 프로그램 참가자 모집',
-    sourceType: 'MAIN',
     category: '취창업',
     department: '국제교류팀',
     url: 'https://www.catholic.ac.kr/ko/campuslife/notice.do',
     postedAt: '2026-03-27',
-    createdAt: '2026-03-27T10:05:00Z',
     viewCount: 834,
     aiSummary:
       '• 미국, 영국, 독일 등 12개국 24개 대학 협약 프로그램입니다.\n• 어학 성적 우수자가 우대됩니다.\n• 장학생으로 선발 시 항공료 및 현지 생활비 일부 지원됩니다.',
-    aiSummaryStatus: 'DONE',
+    aiSummaryStatus: 'SUCCESS',
     deadlineAt: '2026-05-30',
     tags: ['교환학생', '해외연수'],
     isBookmarked: false,
@@ -43,16 +39,14 @@ export const MOCK_NOTICES: Notice[] = [
   {
     id: '3',
     title: '성적우수 핵심인재 장학금 지급 규정 변경',
-    sourceType: 'MAIN',
     category: '학사',
     department: '교무팀',
     url: 'https://www.catholic.ac.kr/ko/campuslife/notice.do',
     postedAt: '2026-03-26',
-    createdAt: '2026-03-26T11:05:00Z',
     viewCount: 567,
     aiSummary:
       '• 직전 학기 평점 평균 4.0 이상 대상자 중 상위 5% 이내 지급으로 요건이 강화되었습니다.\n• 변경 시점은 2026학년도 1학기부터입니다.\n• 이의신청 기간은 3월 30일까지입니다.',
-    aiSummaryStatus: 'DONE',
+    aiSummaryStatus: 'SUCCESS',
     deadlineAt: '2026-04-09',
     tags: ['장학금', '성적우수'],
     isBookmarked: true,
@@ -60,12 +54,10 @@ export const MOCK_NOTICES: Notice[] = [
   {
     id: '4',
     title: '2026-1학기 수강신청 정정 기간 안내',
-    sourceType: 'MAIN',
     category: '학사',
     department: '교학처',
     url: 'https://www.catholic.ac.kr/ko/campuslife/notice.do',
     postedAt: '2026-03-08',
-    createdAt: '2026-03-08T09:05:00Z',
     viewCount: 2103,
     // AI 요약 생성 중 상태 예시 — PENDING일 때 UI 스켈레톤 표시
     aiSummary: null,
@@ -77,15 +69,13 @@ export const MOCK_NOTICES: Notice[] = [
   {
     id: '5',
     title: '2026 캡스톤디자인 경진대회 참가팀 모집',
-    sourceType: 'MAIN',
     category: '일반',
     department: '산학협력단',
     url: 'https://www.catholic.ac.kr/ko/campuslife/notice.do',
     postedAt: '2026-04-01',
-    createdAt: '2026-04-01T09:05:00Z',
     viewCount: 451,
     aiSummary:
-      // '• 접수 기간: 4월 30일까지\n• 팀당 3~5명 구성, 지도교수 필수\n• 우수팀에게 총장상 및 장학금 수여',
+      // '• 접수 기간: 4월 30일까지\n• 팀당 3~5명 구성, 지도교수 필수\n• 우수팀에게 총장상 및 장학금 수여'
       null,
     aiSummaryStatus: 'FAILED',
     deadlineAt: '2026-04-30',
@@ -113,7 +103,7 @@ export function getMockNotices(params: {
   if (params.tags) {
     const tagKeyword = params.tags.replace('#', '');
     filtered = filtered.filter((n) =>
-      n.tags.some((t) => t.includes(tagKeyword)),
+      n.tags?.some((t) => t.includes(tagKeyword)) ?? false,
     );
   }
 
@@ -124,8 +114,6 @@ export function getMockNotices(params: {
     content,
     page: params.page,
     size: params.size,
-    totalElements: filtered.length,
-    totalPages: Math.ceil(filtered.length / params.size),
     hasNext: start + params.size < filtered.length,
   };
 }
@@ -140,15 +128,16 @@ export function getMockNoticeById(id: string): Notice | undefined {
 
 /**
  * 공지 검색 Mock fetcher
- * - title / department / tags 세 필드에 대해 대소문자 무시 부분일치
+ * - title / department / tags 세 필드에 대해 대소문자 무시 부분일치 (tags는 매칭 기여만, 응답 미포함)
  * - 빈 쿼리는 빈 결과 반환 (호출 측 enabled 처리와 별개로 안전망)
+ * - 실제 API와 동일하게 슬림 페이로드(SearchNoticeListItem) 반환 — 행형 UI 전용
  * - 실제 API 교체 시 이 함수만 수정
  */
 export function getMockSearchNotices(params: {
   q: string;
   page: number;
   size: number;
-}): PageResponse<Notice> {
+}): PageResponse<SearchNoticeListItem> {
   const q = params.q.trim().toLowerCase();
 
   if (!q) {
@@ -156,8 +145,6 @@ export function getMockSearchNotices(params: {
       content: [],
       page: params.page,
       size: params.size,
-      totalElements: 0,
-      totalPages: 0,
       hasNext: false,
     };
   }
@@ -165,18 +152,26 @@ export function getMockSearchNotices(params: {
   const filtered = MOCK_NOTICES.filter((n) =>
     n.title.toLowerCase().includes(q) ||
     n.department.toLowerCase().includes(q) ||
-    n.tags.some((t) => t.toLowerCase().includes(q)),
+    (n.tags?.some((t) => t.toLowerCase().includes(q)) ?? false),
   );
 
   const start = (params.page - 1) * params.size;
-  const content = filtered.slice(start, start + params.size);
+  // 실제 API 응답과 동일한 슬림 페이로드로 매핑 — aiSummary/url/isBookmarked/tags 제외
+  const content: SearchNoticeListItem[] = filtered
+    .slice(start, start + params.size)
+    .map((n) => ({
+      id: n.id,
+      category: n.category,
+      title: n.title,
+      department: n.department,
+      postedAt: n.postedAt,
+      deadlineAt: n.deadlineAt ?? null,
+    }));
 
   return {
     content,
     page: params.page,
     size: params.size,
-    totalElements: filtered.length,
-    totalPages: Math.ceil(filtered.length / params.size),
     hasNext: start + params.size < filtered.length,
   };
 }

@@ -141,7 +141,7 @@ public class NoticeFeedService {
         String category = "DEPARTMENT".equals(row.sourceType()) ? null : row.category();
         return new NoticeFeedItem(
                 String.valueOf(row.id()), category, row.title(), row.department(),
-                row.postedAt(), row.aiSummary(), row.url(), dDay, row.isBookmarked()
+                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.isBookmarked()
         );
     }
 }

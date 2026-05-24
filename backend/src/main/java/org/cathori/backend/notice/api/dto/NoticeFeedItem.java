@@ -27,6 +27,7 @@ public record NoticeFeedItem(
         String department,
         LocalDate publishedAt,
         String aiSummary,
+        String aiSummaryStatus,
         String url,
         Integer dDay,
         boolean isBookmarked

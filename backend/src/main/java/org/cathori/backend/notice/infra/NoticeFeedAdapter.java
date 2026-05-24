@@ -31,6 +31,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
             rs.getObject("posted_at", LocalDate.class),
             rs.getObject("deadline_at", LocalDate.class),
             rs.getString("ai_summary"),
+            rs.getString("ai_summary_status"),
             rs.getString("url"),
             rs.getBoolean("is_bookmarked")
     );
@@ -131,7 +132,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         StringBuilder sql = new StringBuilder(
                 "SELECT * FROM (" +
                 "SELECT n.id, n.source_type, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
-                "       n.ai_summary, n.url, " +
+                "       n.ai_summary, n.ai_summary_status, n.url, " +
                 "       CASE WHEN b.id IS NOT NULL THEN true ELSE false END AS is_bookmarked, " +
                 "       1 AS priority " +
                 "FROM notices n " +
@@ -146,7 +147,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         sql.append(
                 " UNION " +
                 "SELECT n.id, n.source_type, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
-                "       n.ai_summary, n.url, " +
+                "       n.ai_summary, n.ai_summary_status, n.url, " +
                 "       CASE WHEN b.id IS NOT NULL THEN true ELSE false END AS is_bookmarked, " +
                 "       2 AS priority " +
                 "FROM notices n " +

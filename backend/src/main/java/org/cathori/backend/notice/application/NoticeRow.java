@@ -15,6 +15,7 @@ public record NoticeRow(
         LocalDate postedAt,
         LocalDate deadlineAt,
         String aiSummary,
+        String aiSummaryStatus,
         String url,
         boolean isBookmarked
 ) {}

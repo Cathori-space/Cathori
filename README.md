@@ -168,29 +168,6 @@ graph LR
 
 추후 이미지 추가 예정
 
-### 🗄 주요 엔티티
-
-```
-users
-  └─ id, email, student_id, department, created_at
-
-keywords
-  └─ id, user_id (FK), keyword, category
-
-notices
-  └─ id, source_url, title, content, category,
-     ai_summary, deadline_at, published_at, crawled_at
-
-bookmarks
-  └─ id, user_id (FK), notice_id (FK), created_at
-
-user_push_tokens
-  └─ id, user_id (FK), fcm_token, platform, updated_at
-
-notification_logs
-  └─ id, user_id (FK), notice_id (FK), sent_at, clicked_at
-```
-
 ---
 
 ## 🛠 기술 스택
@@ -297,7 +274,7 @@ cathori/
 		    <img src="https://github.com/tomass22.png" width="120" style="border-radius: 50%;"/><br/>
 		    <a href="https://github.com/tomass22" target="_blank" style="text-decoration: none; color: inherit;"><b>이정훈</b></a><br/>
 		    <sub>Team Lead</sub><br/>
-		    기획 · 프론트 리드
+		    기획 · 앱
 	    </td>
       <!-- 팀원 2: 이기백 -->
       <td align="center" width="160">

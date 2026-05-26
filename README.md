@@ -6,7 +6,7 @@
 
 <h3>관심 공지를 편하게, 놓치지 않고 알람으로</h3> <p>가톨릭대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
 
-<a href="#">🚀 서비스 바로가기 (출시 후 업데이트 예정)</a> | <a href="#">📚 팀 Wiki</a>
+<a href="#">🚀 서비스 바로가기 (출시 후 업데이트 예정)</a> | <a href="https://github.com/tomass22/Cathori/wiki">📚 팀 Wiki</a>
 
 <br/>
 
@@ -156,7 +156,7 @@ graph LR
 
 </details>
 
-> 💡 더 자세한 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki]()에서 확인할 수 있습니다 _(추후 링크 추가 예정)_.
+> 💡 더 자세한 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 확인할 수 있습니다 _(추후 링크 추가 예정)_.
 
 ---
 

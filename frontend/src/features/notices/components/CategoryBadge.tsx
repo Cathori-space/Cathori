@@ -11,7 +11,7 @@ import { Colors } from '@/src/constants/colors';
 import type { NoticeCategory } from '@/src/types/api';
 
 interface CategoryBadgeProps {
-  category: NoticeCategory;
+  category: NoticeCategory | null; // 백엔드에서 '학과공지' 등 추가 값 가능성이 있지만 그 부분들은 현재는 null로 보내주기로 함
 }
 
 function CategoryBadgeComponent({ category }: CategoryBadgeProps) {

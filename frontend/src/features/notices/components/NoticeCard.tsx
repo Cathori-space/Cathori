@@ -67,8 +67,8 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
         </Text>
       </View>
 
-      {/* AI 요약 미리보기 — DONE 상태일 때만 표시 */}
-      {notice.aiSummaryStatus === 'DONE' && notice.aiSummary != null && (
+      {/* AI 요약 미리보기 — SUCCESS 상태일 때만 표시 */}
+      {notice.aiSummaryStatus === 'SUCCESS' && notice.aiSummary != null && (
         <View style={styles.summaryContainer}>
           <View style={styles.summaryContent}>
             <Feather

@@ -77,7 +77,8 @@ export default function NoticeDetailScreen() {
 
   // 즐겨찾기 토글
   const handleBookmark = () => {
-    // TODO: 즐겨찾기 낙관적 업데이트 useMutation 연동
+    // TODO(Sprint 2): useMutation({ mutationFn: toggleBookmark, onMutate: 낙관적 업데이트 })
+    //   fetcher: '@/src/services/notices' → toggleBookmark
     if (notice) {
       console.log('즐겨찾기 토글:', notice.id);
     }
@@ -156,9 +157,12 @@ export default function NoticeDetailScreen() {
             <Text style={styles.infoText}>{formatDate(notice.postedAt)}</Text>
             <View style={styles.infoDot} />
             <Text style={styles.infoText}>{notice.department}</Text>
-            <View style={styles.infoDot} />
-            {/*TODO: 조회수 API 연동 및 조회 텍스트 눈 이모지로 변경 필요*/}
-            <Text style={styles.infoText}>조회 {notice.viewCount}</Text>
+            {notice.viewCount != null && notice.viewCount > 0 && (
+              <>
+                <View style={styles.infoDot} />
+                <Text style={styles.infoText}>조회 {notice.viewCount}</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -173,8 +177,8 @@ export default function NoticeDetailScreen() {
           />
         </View>
 
-        {/* 태그 */}
-        {notice.tags.length > 0 && (
+        {/* 태그 — 백엔드 상세 응답에서 미포함 가능 (optional) */}
+        {notice.tags != null && notice.tags.length > 0 && (
           <View style={styles.tagSection}>
             {notice.tags.map((tag) => (
               <View key={tag} style={styles.tagChip}>

@@ -1,9 +1,13 @@
 package org.cathori.backend.notice.application;
 
 import lombok.RequiredArgsConstructor;
+import org.cathori.backend.bookmark.infra.BookmarkJpaRepository;
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.notice.api.dto.NoticeFeedItem;
 import org.cathori.backend.notice.api.dto.NoticeFeedResponse;
+import org.cathori.backend.notice.api.dto.NoticeDetailResponse;
+import org.cathori.backend.notice.model.Notice;
+import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.domain.UserRepository;
@@ -21,6 +25,8 @@ public class NoticeFeedService {
 
     private final NoticeFeedPort noticeFeedPort;
     private final UserRepository userRepository;
+    private final NoticeRepository noticeRepository;
+    private final BookmarkJpaRepository bookmarkJpaRepository;
 
     /**
      * 사용자의 전공·복수전공을 자동으로 주입해 개인화된 공지 피드를 구성하는 메인 유스케이스.
@@ -64,6 +70,32 @@ public class NoticeFeedService {
                 .toList();
 
         return new NoticeFeedResponse(content, page, size, hasNext);
+    }
+
+    @Transactional
+    public NoticeDetailResponse getDetail(Long userId, Long noticeId) {
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new BusinessException(NoticeErrorCode.NOTICE_NOT_FOUND));
+
+        noticeRepository.incrementViewCount(noticeId);
+
+        boolean isBookmarked = bookmarkJpaRepository.existsByUserIdAndNoticeId(userId, noticeId);
+
+        return toDetail(notice, isBookmarked);
+    }
+
+    private NoticeDetailResponse toDetail(Notice notice, boolean isBookmarked) {
+        String aiSummary = "SUCCESS".equals(notice.getAiSummaryStatus()) ? notice.getAiSummary() : null;
+        String category = (notice.getCategory() == null || notice.getCategory().isBlank())
+                ? "학과공지" : notice.getCategory();
+        Integer dDay = notice.getDeadlineAt() != null
+                ? (int) ChronoUnit.DAYS.between(LocalDate.now(), notice.getDeadlineAt())
+                : null;
+        return new NoticeDetailResponse(
+                notice.getId(), category, notice.getTitle(), notice.getDepartment(),
+                notice.getPostedAt(), aiSummary, notice.getAiSummaryStatus(),
+                notice.getUrl(), isBookmarked, dDay
+        );
     }
 
     /**

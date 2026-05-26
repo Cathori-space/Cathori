@@ -168,6 +168,71 @@ graph LR
 
 추후 이미지 추가 예정
 
+## 🗂 프로젝트 구조
+
+<details>
+<summary><h3>프로젝트 설계 구조</h3></summary>
+
+```
+cathori/
+├── frontend/                    # React Native + Expo
+│   └── src/
+│       ├── app/                 # Expo Router 스크린
+│       │   ├── (tabs)/          # 하단 탭 (홈, 검색, 마이)
+│       │   ├── notice/[id].tsx  # 공지 상세
+│       │   └── auth/            # 로그인/회원가입
+│       ├── features/            # 도메인 모듈
+│       │   ├── notices/         # 공지 도메인
+│       │   ├── search/          # 검색 도메인
+│       │   └── auth/            # 인증 도메인
+│       ├── shared/              # 공용 컴포넌트/훅/유틸
+│       ├── services/            # Axios 인스턴스
+│       ├── store/               # Zustand 스토어
+│       └── constants/           # 디자인 토큰
+│
+├── backend/                     # Spring Boot
+│   └── src/main/java/com/cathori/
+│       ├── auth/                # 인증 (회원가입, 로그인, JWT)
+│       ├── notice/              # 공지 도메인
+│       ├── crawler/             # 크롤러 (Jsoup + Scheduler)
+│       ├── summary/             # AI 요약 (Gemini)
+│       ├── keyword/             # 키워드 관리
+│       ├── bookmark/            # 즐겨찾기
+│       ├── notification/        # FCM 푸시 (포트만 정의)
+│       └── common/              # 공용 (예외, 설정, 보안)
+│
+├── docs/                        # 문서 (ADR, ERD, API 명세)
+└── docker-compose.yml           # 로컬 개발 환경
+```
+
+</details>
+
+<details>
+<summary><h3>주요 엔티티</h3></summary>
+
+```
+users
+  └─ id, email, student_id, department, created_at
+
+keywords
+  └─ id, user_id (FK), keyword, category
+
+notices
+  └─ id, source_url, title, content, category,
+     ai_summary, deadline_at, published_at, crawled_at
+
+bookmarks
+  └─ id, user_id (FK), notice_id (FK), created_at
+
+user_push_tokens
+  └─ id, user_id (FK), fcm_token, platform, updated_at
+
+notification_logs
+  └─ id, user_id (FK), notice_id (FK), sent_at, clicked_at
+```
+	
+</details>
+
 ---
 
 ## 🛠 기술 스택
@@ -225,40 +290,6 @@ graph LR
 |**상태 관리**<br>Zustand|Redux 대비 보일러플레이트 최소화, RN과 궁합 양호|
 
 ---
-
-## 🗂 프로젝트 구조
-
-```
-cathori/
-├── frontend/                    # React Native + Expo
-│   └── src/
-│       ├── app/                 # Expo Router 스크린
-│       │   ├── (tabs)/          # 하단 탭 (홈, 검색, 마이)
-│       │   ├── notice/[id].tsx  # 공지 상세
-│       │   └── auth/            # 로그인/회원가입
-│       ├── features/            # 도메인 모듈
-│       │   ├── notices/         # 공지 도메인
-│       │   ├── search/          # 검색 도메인
-│       │   └── auth/            # 인증 도메인
-│       ├── shared/              # 공용 컴포넌트/훅/유틸
-│       ├── services/            # Axios 인스턴스
-│       ├── store/               # Zustand 스토어
-│       └── constants/           # 디자인 토큰
-│
-├── backend/                     # Spring Boot
-│   └── src/main/java/com/cathori/
-│       ├── auth/                # 인증 (회원가입, 로그인, JWT)
-│       ├── notice/              # 공지 도메인
-│       ├── crawler/             # 크롤러 (Jsoup + Scheduler)
-│       ├── summary/             # AI 요약 (Gemini)
-│       ├── keyword/             # 키워드 관리
-│       ├── bookmark/            # 즐겨찾기
-│       ├── notification/        # FCM 푸시 (포트만 정의)
-│       └── common/              # 공용 (예외, 설정, 보안)
-│
-├── docs/                        # 문서 (ADR, ERD, API 명세)
-└── docker-compose.yml           # 로컬 개발 환경
-```
 
 ---
 

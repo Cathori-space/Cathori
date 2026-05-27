@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record NoticeDetailResponse(
-        Long noticeId,
+        String noticeId,
         String category,
         String title,
         String department,

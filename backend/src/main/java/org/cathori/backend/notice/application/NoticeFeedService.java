@@ -104,7 +104,7 @@ public class NoticeFeedService {
                 ? (int) ChronoUnit.DAYS.between(today, row.deadlineAt())
                 : null;
         return new NoticeSearchItem(
-                row.id(), row.category(), row.title(), row.department(), row.postedAt(), dDay
+                String.valueOf(row.id()), row.category(), row.title(), row.department(), row.postedAt(), dDay
         );
     }
 
@@ -133,7 +133,7 @@ public class NoticeFeedService {
                 : null;
         String deadlineAt = notice.getDeadlineAt() != null ? notice.getDeadlineAt().toString() : null;
         return new NoticeDetailResponse(
-                notice.getId(), category, notice.getTitle(), notice.getDepartment(),
+                String.valueOf(notice.getId()), category, notice.getTitle(), notice.getDepartment(),
                 notice.getPostedAt(), aiSummary, notice.getAiSummaryStatus(),
                 notice.getUrl(), isBookmarked, dDay, notice.getViewCount(), tags, deadlineAt
         );

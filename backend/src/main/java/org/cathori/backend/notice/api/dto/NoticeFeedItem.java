@@ -22,7 +22,7 @@ import java.util.List;
  * </pre>
  */
 public record NoticeFeedItem(
-        Long noticeId,
+        String noticeId,
         String category,
         String title,
         String department,

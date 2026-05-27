@@ -25,10 +25,10 @@ public class BookmarkService {
 
         if (bookmarkRepository.existsByUserIdAndNoticeId(userId, noticeId)) {
             bookmarkRepository.deleteByUserIdAndNoticeId(userId, noticeId);
-            return new BookmarkToggleResponse(noticeId, false);
+            return new BookmarkToggleResponse(String.valueOf(noticeId), false);
         }
 
         bookmarkRepository.save(Bookmark.create(userId, noticeId));
-        return new BookmarkToggleResponse(noticeId, true);
+        return new BookmarkToggleResponse(String.valueOf(noticeId), true);
     }
 }

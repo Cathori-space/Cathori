@@ -2,6 +2,7 @@ package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.security.JwtUtil;
+import org.cathori.backend.tag.application.TagService;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.api.dto.LoginRequest;
 import org.cathori.backend.user.api.dto.LoginResponse;
@@ -11,20 +12,20 @@ import org.cathori.backend.user.domain.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 public class AuthService {
 
     private final VerifiedEmailStore verifiedEmailStore;
     private final UserService userService;
+    private final TagService tagService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
     public AuthService(VerifiedEmailStore verifiedEmailStore, UserService userService,
-                       PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+                       TagService tagService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.verifiedEmailStore = verifiedEmailStore;
         this.userService = userService;
+        this.tagService = tagService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
     }
@@ -59,7 +60,7 @@ public class AuthService {
                 user.getId(), user.getEmail(),
                 user.getMajor(), user.getSecondMajor(),
                 user.getGrade(), user.getEnrollmentStatus(),
-                List.of()
+                tagService.getTags(user.getId())
         );
     }
 }

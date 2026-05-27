@@ -1,5 +1,7 @@
 package org.cathori.backend.user.api.dto;
 
+import org.cathori.backend.tag.api.dto.TagResponse;
+
 import java.util.List;
 
 public record LoginResponse(
@@ -11,5 +13,5 @@ public record LoginResponse(
         String secondMajor,
         int grade,
         String enrollmentStatus,
-        List<TagDto> tags
+        List<TagResponse> tags
 ) {}

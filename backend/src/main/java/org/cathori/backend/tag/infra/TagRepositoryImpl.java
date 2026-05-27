@@ -4,6 +4,7 @@ import org.cathori.backend.tag.domain.Tag;
 import org.cathori.backend.tag.domain.TagRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -33,6 +34,11 @@ public class TagRepositoryImpl implements TagRepository {
     @Override
     public Optional<Tag> findByIdAndUserId(Long tagId, Long userId) {
         return jpaRepository.findByIdAndUserId(tagId, userId);
+    }
+
+    @Override
+    public List<Tag> findAllByUserId(Long userId) {
+        return jpaRepository.findAllByUserId(userId);
     }
 
     @Override

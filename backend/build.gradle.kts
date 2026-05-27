@@ -39,9 +39,10 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")
     implementation("org.jsoup:jsoup:1.18.1")
-    testImplementation("org.springframework.boot:spring-boot-starter-batch-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-postgresql:2.0.5")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

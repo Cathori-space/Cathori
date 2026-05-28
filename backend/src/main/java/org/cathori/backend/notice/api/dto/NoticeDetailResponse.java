@@ -1,9 +1,10 @@
 package org.cathori.backend.notice.api.dto;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public record NoticeDetailResponse(
-        Long noticeId,
+        String noticeId,
         String category,
         String title,
         String department,
@@ -12,5 +13,8 @@ public record NoticeDetailResponse(
         String aiSummaryStatus,
         String url,
         boolean isBookmarked,
-        Integer dDay
+        Integer dDay,
+        Long viewCount,
+        List<String> tags,
+        String deadlineAt
 ) {}

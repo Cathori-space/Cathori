@@ -10,7 +10,7 @@ import java.time.LocalDate;
  * dDay는 오늘 기준 마감일까지 남은 일수(양수=남음, 음수=초과, null=마감일 없는 공지).
  */
 public record NoticeSearchItem(
-        @Schema(example = "1") Long noticeId,
+        @Schema(example = "1") String noticeId,
         @Schema(example = "장학") String category,
         @Schema(example = "2026학년도 1학기 국가장학금 신청 안내") String title,
         @Schema(example = "학생지원팀") String department,

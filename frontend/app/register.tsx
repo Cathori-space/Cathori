@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'Pretendard',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#757684', // 시안: 라벨 색상
     letterSpacing: 1.1,
     lineHeight: 17,

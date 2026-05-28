@@ -59,7 +59,7 @@ const INITIAL_STATE = {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      ...INITIAL_STATE,
+      ...INITIAL_STATE, // 스토어 처음 켜졌을 시 세팅용 초기값
 
       setAuth: (response) =>
         set({

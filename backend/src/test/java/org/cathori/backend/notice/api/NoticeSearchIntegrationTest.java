@@ -180,8 +180,8 @@ class NoticeSearchIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("NS-6: 제1전공 학과 공지 제목 매칭이면 결과에 포함")
     void ns6_majorNoticeMatched() throws Exception {
-        // userA의 major = CSIE (컴퓨터정보공학)
-        saveNotice("DEPARTMENT", "CSIE", "컴퓨터정보공학 장학금 안내", LocalDate.now());
+        // userA의 major = 컴퓨터정보공학
+        saveNotice("DEPARTMENT", "컴퓨터정보공학", "컴퓨터정보공학 장학금 안내", LocalDate.now());
 
         mockMvc.perform(get("/api/notices/search").param("q", "장학금")
                         .header("Authorization", "Bearer " + tokenA))
@@ -192,8 +192,8 @@ class NoticeSearchIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("NS-7: 제2전공 학과 공지 매칭 (전공심화 아님)이면 결과에 포함")
     void ns7_secondMajorNoticeMatched() throws Exception {
-        // userA의 secondMajor = AI (인공지능)
-        saveNotice("DEPARTMENT", "AI", "인공지능 장학금 안내", LocalDate.now());
+        // userA의 secondMajor = 인공지능
+        saveNotice("DEPARTMENT", "인공지능", "인공지능 장학금 안내", LocalDate.now());
 
         mockMvc.perform(get("/api/notices/search").param("q", "장학금")
                         .header("Authorization", "Bearer " + tokenA))

@@ -1,9 +1,7 @@
 /**
  * 회원가입 화면
- * Phase 1 Task 1-3~1-4에서 로직 본격 구현
- * 시나리오: R-1 ~ R-4
  *
- * 레이아웃 구조:
+ * 레이아웃:
  *  - TopAppBar: 뒤로 가기 + "회원가입" 타이틀 (blur 배경, absolute)
  *  - Main: 노란 안내 카드 + 폼 6섹션 (스크롤)
  *  - BottomNavBar: 이전 + 완료 버튼 (blur 배경, absolute)
@@ -11,7 +9,10 @@
 
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,6 +25,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
+import { useEmailVerification, useRegister } from '@/src/features/auth/hooks';
 
 /** 학년 옵션 */
 const GRADE_OPTIONS = [1, 2, 3, 4] as const;
@@ -35,9 +37,65 @@ export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Phase 1에서 실제 상태 관리로 교체
-  const selectedGrade = 1; // 기본 선택: 1학년
-  const selectedStatus = '재학'; // 기본 선택: 재학
+  // ── 폼 상태 ──
+  const [email, setEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [major1, setMajor1] = useState('');
+  const [major2, setMajor2] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState<number>(1);
+  const [selectedStatus, setSelectedStatus] = useState<string>('재학');
+
+  // ── 훅 ──
+  const emailVerification = useEmailVerification(); // TODO: 구조 할당 분해 문법으로 변경 예정 
+  const { register, isLoading: isRegistering, errorMessage: registerError, resetError: resetRegisterError } = useRegister();
+
+  /** 인증번호 전송 핸들러 */
+  const handleSendVerification = () => {
+    if (!email.trim()) return;
+    emailVerification.sendVerification({ email: email.trim() });
+  };
+
+  /** 인증번호 검증 핸들러 (6자리 입력 완료 시 자동 검증) */
+  const handleVerify = (code: string) => {
+    setVerificationCode(code);
+    if (code.length === 6) {
+      emailVerification.verify({ email: email.trim(), code });
+    }
+  };
+
+  /** 완료 버튼 — 회원가입 + 자동 로그인 */
+  const handleComplete = () => {
+    if (isRegistering) return;
+    if (!emailVerification.isVerified) {
+      Alert.alert('알림', '이메일 인증을 먼저 완료해주세요.');
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert('알림', '비밀번호는 8자 이상이어야 합니다.');
+      return;
+    }
+    if (!major1.trim()) {
+      Alert.alert('알림', '주전공을 입력해주세요.');
+      return;
+    }
+
+    resetRegisterError();
+    register({
+      email: email.trim(),
+      password,
+      major1: major1.trim(),
+      major2: major2.trim() || null,
+      grade: selectedGrade,
+      status: selectedStatus,
+    });
+  };
+
+  /** 폼 전체 유효성 */
+  const isFormValid =
+    emailVerification.isVerified &&
+    password.length >= 8 &&
+    major1.trim().length > 0;
 
   return (
     <View style={styles.container}>
@@ -98,44 +156,91 @@ export default function RegisterScreen() {
                     placeholderTextColor="#9CA3AF"
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    editable={false} // Phase 1에서 활성화
+                    autoCorrect={false}
+                    value={email}
+                    onChangeText={setEmail}
+                    editable={!emailVerification.isVerified && !emailVerification.isSending}
                   />
                 </View>
               </View>
               {/* 인증번호 전송 버튼 */}
               <TouchableOpacity
-                style={styles.verifyButton}
+                style={[
+                  styles.verifyButton,
+                  (emailVerification.isVerified || !email.trim()) && styles.buttonDisabled,
+                ]}
                 activeOpacity={0.85}
-                disabled // Phase 1에서 활성화
+                disabled={emailVerification.isVerified || !email.trim() || emailVerification.isSending}
+                onPress={handleSendVerification}
               >
-                <Text style={styles.verifyButtonText}>인증번호 전송</Text>
+                {emailVerification.isSending ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.verifyButtonText}>
+                    {emailVerification.isSent ? '재발송' : '인증번호 전송'}
+                  </Text>
+                )}
               </TouchableOpacity>
+              {/* 발송 에러 메시지 */}
+              {emailVerification.sendErrorMessage && (
+                <View style={styles.errorContainer}>
+                  <Feather name="alert-circle" size={14} color="#EF4444" />
+                  <Text style={styles.errorText}>{emailVerification.sendErrorMessage}</Text>
+                </View>
+              )}
             </View>
 
             {/* 2. 인증번호 섹션 */}
-            <View style={styles.sectionGroup}>
-              <View style={styles.labelContainer}>
-                <Text style={styles.sectionLabel}>인증번호</Text>
+            {emailVerification.isSent && (
+              <View style={styles.sectionGroup}>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.sectionLabel}>인증번호</Text>
+                </View>
+                <View style={styles.codeInputRow}>
+                  <View style={[styles.inputContainer, { flex: 1 }]}>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="인증 번호 6자리 입력"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      value={verificationCode}
+                      onChangeText={handleVerify}
+                      editable={!emailVerification.isVerified && !emailVerification.isVerifying}
+                    />
+                  </View>
+                  {/* 타이머 표시 */}
+                  {!emailVerification.isVerified && (
+                    <Text style={[
+                      styles.timerText,
+                      emailVerification.isExpired && styles.timerExpired,
+                    ]}>
+                      {emailVerification.formattedTime}
+                    </Text>
+                  )}
+                </View>
+                {/* 인증 성공 표시 */}
+                {emailVerification.isVerified && (
+                  <View style={styles.successContainer}>
+                    <Feather name="check-circle" size={14} color="#10B981" />
+                    <Text style={styles.successText}>인증이 완료되었습니다</Text>
+                  </View>
+                )}
+                {/* 검증 에러 메시지 */}
+                {emailVerification.verifyErrorMessage && (
+                  <View style={styles.errorContainer}>
+                    <Feather name="alert-circle" size={14} color="#EF4444" />
+                    <Text style={styles.errorText}>{emailVerification.verifyErrorMessage}</Text>
+                  </View>
+                )}
               </View>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="인증 번호 6자리 입력"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  editable={false} // Phase 1에서 활성화
-                />
-                {/* Phase 1에서 타이머 표시 추가 */}
-              </View>
-            </View>
+            )}
 
             {/* 3. 비밀번호 섹션 */}
             <View style={styles.sectionGroup}>
               <View style={styles.labelContainer}>
                 <Text style={styles.sectionLabel}>비밀번호</Text>
               </View>
-              {/* 비밀번호 규칙 안내 — Phase 1에서 동적 검증으로 교체 */}
               <View style={styles.passwordRulesContainer}>
                 <Text style={styles.passwordRule}>
                   • 8자 이상, 영문·숫자·특수문자 포함
@@ -147,7 +252,8 @@ export default function RegisterScreen() {
                   placeholder="비밀번호 입력"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry
-                  editable={false} // Phase 1에서 활성화
+                  value={password}
+                  onChangeText={setPassword}
                 />
               </View>
             </View>
@@ -159,16 +265,15 @@ export default function RegisterScreen() {
                 <View style={styles.labelContainer}>
                   <Text style={styles.sectionLabel}>전공 선택</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.selectButton}
-                  activeOpacity={0.7}
-                  disabled // Phase 1에서 활성화
-                >
-                  <Text style={styles.selectPlaceholder}>
-                    전공을 선택하세요
-                  </Text>
-                  <Feather name="chevron-down" size={16} color="#757684" />
-                </TouchableOpacity>
+                <View style={styles.inputContainer}>
+                  <TextInput // TODO: 드롭다운 형식으로 변경 예정
+                    style={styles.textInput}
+                    placeholder="전공을 입력하세요 (예: 컴퓨터공학과)"
+                    placeholderTextColor="#9CA3AF"
+                    value={major1}
+                    onChangeText={setMajor1}
+                  />
+                </View>
               </View>
               {/* 복수/부전공 */}
               <View style={styles.subsection}>
@@ -177,16 +282,15 @@ export default function RegisterScreen() {
                     복수 · 부전공 선택 (선택사항)
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.selectButton}
-                  activeOpacity={0.7}
-                  disabled // Phase 1에서 활성화
-                >
-                  <Text style={styles.selectPlaceholder}>
-                    선택안함/미확정시 비워주세요
-                  </Text>
-                  <Feather name="chevron-down" size={16} color="#757684" />
-                </TouchableOpacity>
+                <View style={styles.inputContainer}>
+                  <TextInput // TODO: 드롭다운 형식으로 변경 예정
+                    style={styles.textInput}
+                    placeholder="선택안함/미확정시 비워주세요"
+                    placeholderTextColor="#9CA3AF"
+                    value={major2}
+                    onChangeText={setMajor2}
+                  />
+                </View>
                 <View style={styles.helperContainer}>
                   <Text style={styles.helperText}>
                     추후 마이페이지에서 변경 가능합니다
@@ -211,7 +315,7 @@ export default function RegisterScreen() {
                         isSelected && styles.gradePillSelected,
                       ]}
                       activeOpacity={0.7}
-                      disabled // Phase 1에서 활성화
+                      onPress={() => setSelectedGrade(grade)}
                     >
                       <Text
                         style={[
@@ -243,7 +347,7 @@ export default function RegisterScreen() {
                         isSelected && styles.statusToggleSelected,
                       ]}
                       activeOpacity={0.7}
-                      disabled // Phase 1에서 활성화
+                      onPress={() => setSelectedStatus(status)}
                     >
                       <Text
                         style={[
@@ -259,6 +363,14 @@ export default function RegisterScreen() {
               </View>
             </View>
           </View>
+
+          {/* 회원가입 에러 메시지 */}
+          {registerError && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={14} color="#EF4444" />
+              <Text style={styles.errorText}>{registerError}</Text>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -277,12 +389,22 @@ export default function RegisterScreen() {
 
           {/* 완료 버튼 */}
           <TouchableOpacity
-            style={styles.completeButton}
+            style={[
+              styles.completeButton,
+              (!isFormValid || isRegistering) && styles.buttonDisabled,
+            ]}
             activeOpacity={0.85}
-            disabled // Phase 1에서 활성화
+            disabled={!isFormValid || isRegistering}
+            onPress={handleComplete}
           >
-            <Text style={styles.completeButtonText}>완료</Text>
-            <Feather name="check" size={18} color="#FFFFFF" />
+            {isRegistering ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.completeButtonText}>완료</Text>
+                <Feather name="check" size={18} color="#FFFFFF" />
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -415,6 +537,22 @@ const styles = StyleSheet.create({
   emailInput: {
     // 이메일 입력은 전체 너비
   },
+  codeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  timerText: {
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primary,
+    minWidth: 44,
+    textAlign: 'right',
+  },
+  timerExpired: {
+    color: '#EF4444',
+  },
 
   // ─── 인증번호 전송 버튼 ───────────────────────────────
   verifyButton: {
@@ -429,6 +567,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
+  // ─── 에러/성공 메시지 ──────────────────────────────────
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  errorText: {
+    fontFamily: 'Pretendard',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#EF4444',
+    lineHeight: 18,
+  },
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  successText: {
+    fontFamily: 'Pretendard',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#10B981',
+    lineHeight: 18,
   },
 
   // ─── 비밀번호 규칙 ────────────────────────────────────

@@ -44,7 +44,7 @@ import {
   CategoryBadge,
   DeadlineBadge,
 } from '@/src/features/notices';
-import { useNoticeDetail } from '@/src/features/notices/hooks';
+import { useNoticeDetail, useToggleBookmark } from '@/src/features/notices/hooks';
 import { formatDate } from '@/src/shared/utils/date';
 
 export default function NoticeDetailScreen() {
@@ -75,12 +75,12 @@ export default function NoticeDetailScreen() {
     }
   };
 
-  // 즐겨찾기 토글
+  // 즐겨찾기 토글 mutation
+  const { mutate: toggleBookmarkMutate } = useToggleBookmark(); // mutate함수명을 변경함 (toggleBookmark)
+
   const handleBookmark = () => {
-    // TODO(Sprint 2): useMutation({ mutationFn: toggleBookmark, onMutate: 낙관적 업데이트 })
-    //   fetcher: '@/src/services/notices' → toggleBookmark
     if (notice) {
-      console.log('즐겨찾기 토글:', notice.id);
+      toggleBookmarkMutate(notice.id);
     }
   };
 

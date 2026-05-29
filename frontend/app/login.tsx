@@ -1,16 +1,16 @@
 /**
  * 로그인 화면
- * Phase 1 Task 1-2에서 로직 본격 구현
- * 시나리오: L-1 ~ L-4
  *
- * 레이아웃 구조:
+ * 레이아웃:
  *  - 상단 40%: DCU Blue 배경 + 블러 장식 + 브랜드 로고
  *  - 하단 60%: 흰색 Auth Sheet (cornerRadius 24) + 로그인 폼
  */
 
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -21,9 +21,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLogin } from '@/src/features/auth/hooks';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 /** 상단 브랜딩 영역 비율 (시안: 353.59 / 884 ≈ 40%) */
@@ -32,6 +33,23 @@ const HEADER_HEIGHT = Math.round(SCREEN_HEIGHT * 0.4);
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  // ── 폼 상태 ──
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  // ── 로그인 mutation ──
+  const { login, isLoading, errorMessage, resetError } = useLogin();
+
+  /** 이메일/비밀번호 기본 유효성 (빈 값 방지) */
+  const isFormValid = email.trim().length > 0 && password.trim().length > 0;
+
+  /** 로그인 버튼 터치 핸들러 */
+  const handleLogin = () => {
+    if (!isFormValid || isLoading) return;
+    resetError(); // 이전 에러 초기화
+    login({ email: email.trim(), password });
+  };
 
   return (
     <View style={styles.container}>
@@ -76,7 +94,7 @@ export default function LoginScreen() {
         >
           {/* ── 폼 섹션 ── */}
           <View style={styles.formSection}>
-            {/* 이메일 입력 — Phase 1에서 EmailField 컴포넌트로 교체 */}
+            {/* 이메일 입력 */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>UNIVERSITY EMAIL</Text>
               <View style={styles.inputContainer}>
@@ -84,14 +102,21 @@ export default function LoginScreen() {
                   style={styles.textInput}
                   placeholder="@catholic.ac.kr"
                   placeholderTextColor="#9CA3AF"
-                  keyboardType="email-address"
+                  keyboardType="email-address" // 이메일 전용 키보드 타입
                   autoCapitalize="none"
-                  editable={false} // Phase 1에서 활성화
+                  autoCorrect={false} // 자동교정 해제
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errorMessage) resetError();
+                  }}
+                  editable={!isLoading}
+                  returnKeyType="next" // 키보드에서 다음으로 버튼 클릭 시
                 />
               </View>
             </View>
 
-            {/* 비밀번호 입력 — Phase 1에서 PasswordField 컴포넌트로 교체 */}
+            {/* 비밀번호 입력 */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>PASSWORD</Text>
               <View style={styles.inputContainer}>
@@ -100,18 +125,41 @@ export default function LoginScreen() {
                   placeholder="••••••••"
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry
-                  editable={false} // Phase 1에서 활성화
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errorMessage) resetError();
+                  }}
+                  editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
                 />
               </View>
             </View>
 
+            {/* 에러 메시지 */}
+            {errorMessage && (
+              <View style={styles.errorContainer}>
+                <Feather name="alert-circle" size={14} color="#EF4444" />
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            )}
+
             {/* 로그인 CTA 버튼 */}
             <TouchableOpacity
-              style={styles.loginButton}
+              style={[
+                styles.loginButton,
+                (!isFormValid || isLoading) && styles.loginButtonDisabled,
+              ]}
               activeOpacity={0.85}
-              disabled // Phase 1에서 활성화
+              disabled={!isFormValid || isLoading}
+              onPress={handleLogin}
             >
-              <Text style={styles.loginButtonText}>로그인</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>로그인</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -135,7 +183,8 @@ export default function LoginScreen() {
               <Text style={styles.registerButtonText}>회원가입</Text>
             </TouchableOpacity>
 
-            {/* 게스트 둘러보기 — 시나리오 L-4 "준비 중입니다" 토스트 */}
+            {/* 게스트 둘러보기
+            TODO : "준비 중입니다" 토스트 구현 필요 */}
             <TouchableOpacity
               style={styles.guestButton}
               activeOpacity={0.5}
@@ -305,12 +354,30 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  loginButtonDisabled: {
+    opacity: 0.5,
+  },
   loginButtonText: {
     fontFamily: 'Pretendard',
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
     lineHeight: 28,
+  },
+
+  // ─── 에러 메시지 ──────────────────────────────────────
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  errorText: {
+    fontFamily: 'Pretendard',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#EF4444',
+    lineHeight: 18,
   },
 
   // ─── 디바이더 ─────────────────────────────────────────

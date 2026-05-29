@@ -45,7 +45,7 @@ function normalizeCategory(raw: string | null | undefined): NoticeCategory | nul
 
 /** 백엔드 공지 목록 응답의 개별 아이템 */
 interface BackendNoticeListItem {
-  noticeId: number;
+  noticeId: string;
   category: string;
   title: string;
   department: string;
@@ -64,7 +64,7 @@ interface BackendNoticeListItem {
  * (검색 결과는 행 단위 빠른 스캔 UX, 행 탭 시 상세에서 재조회)
  */
 interface BackendSearchListItem {
-  noticeId: number;
+  noticeId: string;
   category: string;
   title: string;
   department: string;
@@ -74,7 +74,7 @@ interface BackendSearchListItem {
 
 /** 백엔드 공지 상세 응답 */
 interface BackendNoticeDetail {
-  noticeId: number;
+  noticeId: string;
   category: string;
   title: string;
   department: string;
@@ -82,6 +82,7 @@ interface BackendNoticeDetail {
   aiSummary: string | null;
   aiSummaryStatus: string;
   url: string;
+  viewCount: number;
   deadlineAt?: string | null;
   isBookmarked: boolean;
 }
@@ -99,7 +100,7 @@ interface BackendPageResponse<T> {
 /** 백엔드 목록 아이템 → 프론트 Notice 변환 */
 function mapListItemToNotice(item: BackendNoticeListItem): Notice {
   return {
-    id: String(item.noticeId),
+    id: item.noticeId,
     title: item.title,
     category: normalizeCategory(item.category),
     department: item.department,
@@ -118,7 +119,7 @@ function mapListItemToNotice(item: BackendNoticeListItem): Notice {
 /** 백엔드 검색 슬림 아이템 → 프론트 SearchNoticeListItem */
 function mapSearchItem(item: BackendSearchListItem): SearchNoticeListItem {
   return {
-    id: String(item.noticeId),
+    id: item.noticeId,
     category: normalizeCategory(item.category),
     title: item.title,
     department: item.department,
@@ -130,7 +131,7 @@ function mapSearchItem(item: BackendSearchListItem): SearchNoticeListItem {
 /** 백엔드 상세 응답 → 프론트 Notice 변환 */
 function mapDetailToNotice(detail: BackendNoticeDetail): Notice {
   return {
-    id: String(detail.noticeId),
+    id: detail.noticeId,
     title: detail.title,
     category: normalizeCategory(detail.category),
     department: detail.department,
@@ -140,8 +141,7 @@ function mapDetailToNotice(detail: BackendNoticeDetail): Notice {
     aiSummaryStatus: detail.aiSummaryStatus as Notice['aiSummaryStatus'],
     deadlineAt: detail.deadlineAt ?? null,
     isBookmarked: detail.isBookmarked,
-    // 상세에서 tags, viewCount 미포함
-    viewCount: 0,
+    viewCount: detail.viewCount,
     tags: [],
   };
 }
@@ -231,13 +231,11 @@ export async function fetchSearchNotices(
  *     },
  *     onSettled: () => queryClient.invalidateQueries(...),
  *   });
- *
- * 주의:
- *   - 인증 토큰 인터셉터 미활성 (Sprint 2). 현 시점 호출 시 401 반환.
- *   - BookmarkToggleResponse.noticeId는 추후 string으로 반환하도록 협의
+ * 
+ * TODO: 추후 헬퍼 함수 noticeId -> id가 일관성 있게 되도록 수정
  */
 export async function toggleBookmark(
-  noticeId: string,
+  noticeId: string
 ): Promise<BookmarkToggleResponse> {
   const { data } = await apiClient.post<BookmarkToggleResponse>(
     `/api/notices/${noticeId}/bookmark`,

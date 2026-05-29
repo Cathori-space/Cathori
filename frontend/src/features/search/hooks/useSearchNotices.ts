@@ -13,7 +13,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { NOTICE_PAGE_SIZE } from '@/src/constants/api';
-import { getMockSearchNotices } from '@/src/mocks/notices';
+import { fetchSearchNotices } from '@/src/services/notices';
 
 export function useSearchNotices(q: string) {
   const trimmed = q.trim();
@@ -23,7 +23,7 @@ export function useSearchNotices(q: string) {
     enabled: trimmed.length > 0,
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
-      getMockSearchNotices({
+      fetchSearchNotices({
         q: trimmed,
         page: pageParam,
         size: NOTICE_PAGE_SIZE,
@@ -32,3 +32,4 @@ export function useSearchNotices(q: string) {
       lastPage.hasNext ? lastPage.page + 1 : undefined,
   });
 }
+

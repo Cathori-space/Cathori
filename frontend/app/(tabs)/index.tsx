@@ -79,12 +79,18 @@ export default function HomeScreen() {
   const selectedTag = useNoticeFilterStore((s) => s.selectedTag);
 
   // 데이터 조회 (TanStack Query) — category/tag 각각 null이면 해당 필터 건너뜀
-  const { data, isLoading } = useNotices({
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useNotices({
     category: selectedCategory,
     tag: selectedTag,
   });
 
-  const notices = data?.content ?? [];
+  const notices = data?.pages.flatMap((page) => page.content) ?? [];
 
   // Today's Highlight — 실 데이터 중 마감일이 있는 첫 번째 공지, 없으면 첫 번째 공지
   // TODO(2차 MVP): 1차 MVP에서는 hightlightNotice 구현 X
@@ -123,6 +129,23 @@ export default function HomeScreen() {
         <EmptyState message="조건에 맞는 공지가 없습니다." />
       );
 
+  // 무한 스크롤 추가 로드
+  const handleLoadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  // 푸터 로딩바 컴포넌트
+  const ListFooter = () => {
+    if (!isFetchingNextPage) return null;
+    return (
+      <View style={styles.footerLoading}>
+        <ActivityIndicator size="small" color={Colors.primary} />
+      </View>
+    );
+  };
+
   return (
     <View style={styles.screen}>
       {/* 상단 헤더 */}
@@ -149,6 +172,9 @@ export default function HomeScreen() {
           </>
         }
         ListEmptyComponent={ListEmpty}
+        ListFooterComponent={ListFooter} // 다음 페이지 호출 중일 경우 하단에 스피너 컴포넌트 렌더링
+        onEndReached={handleLoadMore} // 다음 페이지 fetch 호출
+        onEndReachedThreshold={0.5} // 리스트 하단에서 50% 만큼 남았을 때 onEndReached 트리거
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
@@ -173,5 +199,10 @@ const styles = StyleSheet.create({
   loadingContainer: {
     paddingVertical: 80,
     alignItems: 'center',
+  },
+  footerLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

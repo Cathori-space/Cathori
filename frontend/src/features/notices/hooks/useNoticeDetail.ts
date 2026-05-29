@@ -1,11 +1,11 @@
 /**
  * useNoticeDetail — 공지 상세 조회 TanStack Query hook
- * 현재 Mock fetcher 기반, API 전환 시 fetchNoticeById만 교체하면 됨
+ * 실 API fetcher 기반
  */
 
 import { useQuery } from '@tanstack/react-query';
 
-import { getMockNoticeById } from '@/src/mocks/notices';
+import { fetchNoticeById } from '@/src/services/notices';
 import type { Notice } from '@/src/types/api';
 
 /**
@@ -15,7 +15,8 @@ import type { Notice } from '@/src/types/api';
 export function useNoticeDetail(id: string) {
   return useQuery<Notice | undefined>({
     queryKey: ['notice', id],
-    queryFn: () => getMockNoticeById(id),
+    queryFn: () => fetchNoticeById(id),
     enabled: id != null && id !== '', // id가 유효할 때만 실행
   });
 }
+

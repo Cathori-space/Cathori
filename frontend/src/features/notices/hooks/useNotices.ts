@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { NOTICE_PAGE_SIZE } from '@/src/constants/api';
-import { getMockNotices } from '@/src/mocks/notices';
+import { fetchNotices } from '@/src/services/notices';
 import type { Notice, NoticeCategory, PageResponse } from '@/src/types/api';
 
 interface UseNoticesParams {
@@ -32,7 +32,7 @@ export function useNotices({ category, tag, page = 1 }: UseNoticesParams) {
   return useQuery<PageResponse<Notice>>({
     queryKey: ['notices', category, tag, page],
     queryFn: () =>
-      getMockNotices({
+      fetchNotices({
         category: category ?? undefined,
         tags: tag ?? undefined,
         page,
@@ -40,3 +40,4 @@ export function useNotices({ category, tag, page = 1 }: UseNoticesParams) {
       }),
   });
 }
+

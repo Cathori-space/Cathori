@@ -13,6 +13,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 
 import { toggleBookmark } from '@/src/services/notices';
 import type { Notice, PageResponse } from '@/src/types/api';
@@ -22,7 +23,7 @@ interface ToggleBookmarkContext {
   /** 낙관적 업데이트 전 스냅샷 (목록 캐시) */
   previousNoticesQueries: Array<{
     queryKey: readonly unknown[];
-    data: PageResponse<Notice> | undefined;
+    data: InfiniteData<PageResponse<Notice>> | undefined;
   }>;
   /** 낙관적 업데이트 전 스냅샷 (상세 캐시) */
   previousDetail: Notice | undefined;
@@ -40,7 +41,7 @@ export function useToggleBookmark() {
       await queryClient.cancelQueries({ queryKey: ['notice', noticeId] });
 
       // ── 목록 캐시 스냅샷 + 낙관적 업데이트 ──
-      const noticesQueries = queryClient.getQueriesData<PageResponse<Notice>>({
+      const noticesQueries = queryClient.getQueriesData<InfiniteData<PageResponse<Notice>>>({
         queryKey: ['notices'],
       });
 
@@ -53,13 +54,16 @@ export function useToggleBookmark() {
       // 모든 목록 캐시에서 해당 공지의 isBookmarked 반전
       noticesQueries.forEach(([queryKey, data]) => {
         if (!data) return;
-        queryClient.setQueryData<PageResponse<Notice>>(queryKey, {
+        queryClient.setQueryData<InfiniteData<PageResponse<Notice>>>(queryKey, {
           ...data,
-          content: data.content.map((notice) =>
-            notice.id === noticeId
-              ? { ...notice, isBookmarked: !notice.isBookmarked }
-              : notice,
-          ),
+          pages: data.pages.map((page) => ({
+            ...page,
+            content: page.content.map((notice) =>
+              notice.id === noticeId
+                ? { ...notice, isBookmarked: !notice.isBookmarked }
+                : notice,
+            ),
+          })),
         });
       });
 
@@ -97,3 +101,4 @@ export function useToggleBookmark() {
     },
   });
 }
+

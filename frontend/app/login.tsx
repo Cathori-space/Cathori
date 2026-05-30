@@ -48,7 +48,7 @@ export default function LoginScreen() {
   const handleLogin = () => {
     if (!isFormValid || isLoading) return;
     resetError(); // 이전 에러 초기화
-    login({ email: email.trim(), password });
+    login({ email: email.trim(), password: password.trim() });
   };
 
   return (

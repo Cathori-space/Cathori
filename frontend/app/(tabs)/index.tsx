@@ -31,20 +31,14 @@ import {
   TodayHighlightCard,
   TopAppBar,
   useNotices,
+  useToggleBookmark,
 } from '@/src/features/notices';
-import { MOCK_NOTICES } from '@/src/mocks/notices';
 import { EmptyState } from '@/src/shared/components';
 import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
 import type { Notice } from '@/src/types/api';
 
 /** FlatList getItemLayout — 고정 높이 추정값 (성능 최적화) */
 const ESTIMATED_CARD_HEIGHT = 200;
-
-/**
- * Today's Highlight용 고정 공지 — 필터 영향 없음
- * 추후 별도 선정 알고리즘 적용 시 이 부분만 교체
- */
-const HIGHLIGHT_NOTICE = MOCK_NOTICES.find((n) => n.deadlineAt != null) ?? MOCK_NOTICES[0];
 
 // ─── 리스트 헤더 별도 컴포넌트 ────────────────────────────────────────
 function FeedHeaderComponent() {
@@ -56,12 +50,7 @@ function FeedHeaderComponent() {
 
   return (
     <View>
-      {/* Today's Highlight — 필터 무관, 고정 공지 */}
-      {HIGHLIGHT_NOTICE != null && (
-        <View style={styles.highlightSection}>
-          <TodayHighlightCard notice={HIGHLIGHT_NOTICE} />
-        </View>
-      )}
+      {/* Today's Highlight — 필터 무관, 첫 번째 마감일 공지 */}
 
       {/* 대분류 카테고리 탭 — 토글 방식 (재클릭 시 해제) */}
       <CategoryTab
@@ -90,18 +79,28 @@ export default function HomeScreen() {
   const selectedTag = useNoticeFilterStore((s) => s.selectedTag);
 
   // 데이터 조회 (TanStack Query) — category/tag 각각 null이면 해당 필터 건너뜀
-  const { data, isLoading } = useNotices({
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useNotices({
     category: selectedCategory,
     tag: selectedTag,
   });
 
-  const notices = data?.content ?? [];
+  const notices = data?.pages.flatMap((page) => page.content) ?? [];
 
-  // 즐겨찾기 토글 (향후 useMutation으로 교체)
+  // Today's Highlight — 실 데이터 중 마감일이 있는 첫 번째 공지, 없으면 첫 번째 공지
+  // TODO(2차 MVP): 1차 MVP에서는 hightlightNotice 구현 X
+  const highlightNotice = null;
+
+  // 즐겨찾기 토글 mutation
+  const { mutate: toggleBookmarkMutate } = useToggleBookmark();
+
   const handleToggleBookmark = (noticeId: string) => {
-    // TODO(Sprint 2): useMutation({ mutationFn: toggleBookmark, onMutate: 낙관적 업데이트 })
-    //   fetcher: '@/src/services/notices' → toggleBookmark
-    console.log('즐겨찾기 토글:', noticeId);
+    toggleBookmarkMutate(noticeId);
   };
 
   // FlatList renderItem — 인라인 화살표 함수 방지 (Global Rules)
@@ -130,6 +129,23 @@ export default function HomeScreen() {
         <EmptyState message="조건에 맞는 공지가 없습니다." />
       );
 
+  // 무한 스크롤 추가 로드
+  const handleLoadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  // 푸터 로딩바 컴포넌트
+  const ListFooter = () => {
+    if (!isFetchingNextPage) return null;
+    return (
+      <View style={styles.footerLoading}>
+        <ActivityIndicator size="small" color={Colors.primary} />
+      </View>
+    );
+  };
+
   return (
     <View style={styles.screen}>
       {/* 상단 헤더 */}
@@ -144,8 +160,21 @@ export default function HomeScreen() {
         renderItem={renderNoticeCard}
         keyExtractor={keyExtractor}
         getItemLayout={getItemLayout}
-        ListHeaderComponent={FeedHeader} 
+        ListHeaderComponent={
+          <>
+            {/* Today's Highlight(2차 MVP에서 구현 예정) */}
+            {highlightNotice != null && (
+              <View style={styles.highlightSection}>
+                <TodayHighlightCard notice={highlightNotice} />
+              </View>
+            )}
+            <FeedHeader />
+          </>
+        }
         ListEmptyComponent={ListEmpty}
+        ListFooterComponent={ListFooter} // 다음 페이지 호출 중일 경우 하단에 스피너 컴포넌트 렌더링
+        onEndReached={handleLoadMore} // 다음 페이지 fetch 호출
+        onEndReachedThreshold={0.5} // 리스트 하단에서 50% 만큼 남았을 때 onEndReached 트리거
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
@@ -170,5 +199,10 @@ const styles = StyleSheet.create({
   loadingContainer: {
     paddingVertical: 80,
     alignItems: 'center',
+  },
+  footerLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

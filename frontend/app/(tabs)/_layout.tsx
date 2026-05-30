@@ -60,7 +60,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* 꿀팁 탭 — Task 4에서 구현 */}
+      {/* 꿀팁 탭 — 1차 MVP 이후에 구현 */}
       <Tabs.Screen
         name="tips"
         options={{

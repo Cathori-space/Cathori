@@ -2,7 +2,7 @@
  * 메인 피드 화면 — app/(tabs)/index.tsx
  *
  * 구조:
- * ┌─ TopAppBar ─────────────────────────────┐
+ * ┌─ MainHedaer ─────────────────────────────┐
  * │ Cathori 로고                    알림🔔  │
  * ├─ FeedHeader (별도 컴포넌트) ────────────┤
  * │ TodayHighlightCard (고정)               │

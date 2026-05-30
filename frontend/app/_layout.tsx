@@ -118,6 +118,11 @@ function RootLayoutNav() {
             name="register"
             options={{ headerShown: false, animation: 'slide_from_right' }}
           />
+          {/* 설정 — 관심 키워드 화면 */}
+          <Stack.Screen
+            name="settings/keywords"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
         </Stack>
         {/* Android only: 상태바 스타일 */}
         <StatusBar style="light" backgroundColor="transparent" translucent />

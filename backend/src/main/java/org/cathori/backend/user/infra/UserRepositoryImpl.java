@@ -4,6 +4,7 @@ import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.domain.UserRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -33,5 +34,10 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findById(Long id) {
         return jpaRepository.findById(id);
+    }
+
+    @Override
+    public List<User> findUsersWithTagMatchingTitle(String title) {
+        return jpaRepository.findUsersWithTagMatchingTitle(title);
     }
 }

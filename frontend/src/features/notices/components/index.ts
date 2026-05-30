@@ -9,4 +9,3 @@ export { DeadlineBadge } from './DeadlineBadge';
 export { NoticeCard } from './NoticeCard';
 export { TagChipList } from './TagChipList';
 export { TodayHighlightCard } from './TodayHighlightCard';
-export { TopAppBar } from './TopAppBar';

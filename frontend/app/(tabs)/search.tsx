@@ -29,7 +29,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 import { Colors } from '@/src/constants/colors';
 import {
@@ -38,7 +38,7 @@ import {
   SearchResultItem,
   useSearchNotices,
 } from '@/src/features/search';
-import { EmptyState } from '@/src/shared/components';
+import { EmptyState, MainHeader } from '@/src/shared/components';
 import { useDebounce } from '@/src/shared/hooks';
 import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
 import type { SearchNoticeListItem } from '@/src/types/api';
@@ -105,7 +105,10 @@ export default function SearchScreen() {
   const isSearching = trimmed.length > 0;
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <View style={styles.screen}>
+      {/* 상단 헤더 — 메인과 동일 */}
+      <MainHeader />
+
       <View style={styles.searchBarArea}>
         <SearchBar
           value={query}
@@ -172,7 +175,7 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -1,13 +1,15 @@
 /**
- * TopAppBar — 메인 화면 상단 헤더
- * 시안: gBevW 노드
+ * MainHeader — 앱 공용 메인 헤더
+ *
+ * 사용 화면: 메인 피드, 검색, 설정
+ * 시안: 설정 화면 Y98fYM 노드, 메인 화면 gBevW 노드
  *
  * 구조:
  * ┌─────────────────────────────┐
  * │ 🏫 Cathori              🔔  │
  * └─────────────────────────────┘
  *
- * fill #00288C, height 64, padding [0, 24]
+ * fill #00175B (DCU Blue), height 64, padding [0, 24]
  * 로고: Pretendard 20 / 900 / white, letterSpacing -1
  * 알림 아이콘: 16x20 흰색 + 노란 dot (#FCC006)
  */
@@ -19,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
 
-function TopAppBarComponent() {
+function MainHeaderComponent() {
   const insets = useSafeAreaInsets();
 
   return (
@@ -42,7 +44,7 @@ function TopAppBarComponent() {
   );
 }
 
-export const TopAppBar = TopAppBarComponent;
+export const MainHeader = React.memo(MainHeaderComponent);
 
 const styles = StyleSheet.create({
   container: {

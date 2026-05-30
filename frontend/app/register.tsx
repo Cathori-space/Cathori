@@ -2,7 +2,7 @@
  * 회원가입 화면
  *
  * 레이아웃:
- *  - TopAppBar: 뒤로 가기 + "회원가입" 타이틀 (blur 배경, absolute)
+ *  - SubHeader: 뒤로 가기 + "회원가입" 타이틀 (blur 배경, absolute)
  *  - Main: 노란 안내 카드 + 폼 6섹션 (스크롤)
  *  - BottomNavBar: 이전 + 완료 버튼 (blur 배경, absolute)
  */
@@ -26,6 +26,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Colors } from '@/src/constants/colors';
 import { useEmailVerification, useRegister } from '@/src/features/auth/hooks';
+import { SubHeader } from '@/src/shared/components';
 
 /** 학년 옵션 */
 const GRADE_OPTIONS = [1, 2, 3, 4] as const;
@@ -99,20 +100,8 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── TopAppBar (absolute) ── */}
-      <SafeAreaView edges={['top']} style={styles.topAppBar}>
-        <View style={styles.topAppBarContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Feather name="chevron-left" size={24} color="#00175B" />
-          </TouchableOpacity>
-          <Text style={styles.topAppBarTitle}>회원가입</Text>
-          {/* 오른쪽 빈 공간 (중앙 정렬용) */}
-          <View style={styles.backButton} />
-        </View>
-      </SafeAreaView>
+      {/* ── SubHeader (absolute) ── */}
+      <SubHeader title="회원가입" />
 
       {/* ── Main (스크롤) ── */}
       <KeyboardAvoidingView
@@ -418,38 +407,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9F9F9', // 시안: 메인 배경
   },
 
-  // ─── TopAppBar ────────────────────────────────────────
-  topAppBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    backgroundColor: '#FFFFFFCC', // 시안: 80% 흰색 + blur
-  },
-  topAppBarContent: {
-    height: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topAppBarTitle: {
-    flex: 1,
-    fontFamily: 'Pretendard',
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#00175B',
-    letterSpacing: -0.45,
-    textAlign: 'center',
-  },
 
-  // ─── Main (스크롤) ────────────────────────────────────
+  // ─── Main (스크롤) ────────────────────────────────────────
   mainContainer: {
     flex: 1,
   },
@@ -457,7 +416,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 96, // TopAppBar 높이 (64) + SafeArea + 여유
+    paddingTop: 96, // SubHeader 높이 (64) + SafeArea + 여유
     paddingHorizontal: 24,
     paddingBottom: 144, // BottomNavBar 높이 + 여유
     gap: 39, // 시안: Main gap

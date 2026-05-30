@@ -29,11 +29,10 @@ import {
   NoticeCard,
   TagChipList,
   TodayHighlightCard,
-  TopAppBar,
   useNotices,
   useToggleBookmark,
 } from '@/src/features/notices';
-import { EmptyState } from '@/src/shared/components';
+import { EmptyState, MainHeader } from '@/src/shared/components';
 import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
 import type { Notice } from '@/src/types/api';
 
@@ -149,7 +148,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen}>
       {/* 상단 헤더 */}
-      <TopAppBar />
+      <MainHeader />
 
       {/* 공지 리스트
        * getItemLayout - 아이템의 높이/위치를 미리 계산해 알려주는 함수

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
@@ -24,4 +25,7 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     @Query("SELECT n FROM Notice n WHERE n.aiSummaryStatus IN :statuses ORDER BY n.id ASC")
     List<Notice> findTop15ForSummary(@Param("statuses") List<String> statuses, Pageable pageable);
+
+    @Query("SELECT n FROM Notice n WHERE n.id NOT IN :sentIds")
+    List<Notice> findUnsentNotices(@Param("sentIds") Set<Long> sentIds);
 }

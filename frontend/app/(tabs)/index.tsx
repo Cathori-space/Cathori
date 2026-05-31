@@ -130,46 +130,34 @@ export default function HomeScreen() {
   // 즐겨찾기 토글 mutation
   const { mutate: toggleBookmarkMutate } = useToggleBookmark();
 
-  const handleToggleBookmark = React.useCallback(
-    (noticeId: string) => {
-      toggleBookmarkMutate(noticeId);
-    },
-    [toggleBookmarkMutate]
-  );
+  const handleToggleBookmark = (noticeId: string) => {
+    toggleBookmarkMutate(noticeId);
+  };
 
   // FlatList renderItem — 인라인 화살표 함수 방지 (Global Rules)
-  const renderNoticeCard = React.useCallback(
-    ({ item }: { item: Notice }) => (
-      <NoticeCard notice={item} onToggleBookmark={handleToggleBookmark} />
-    ),
-    [handleToggleBookmark]
+  const renderNoticeCard = ({ item }: { item: Notice }) => (
+    <NoticeCard notice={item} onToggleBookmark={handleToggleBookmark} />
   );
 
   // FlatList keyExtractor
-  const keyExtractor = React.useCallback((item: Notice) => item.id, []);
+  const keyExtractor = (item: Notice) => item.id;
 
   // FlatList getItemLayout (성능 최적화)
-  const getItemLayout = React.useCallback(
-    (_: unknown, index: number) => ({
-      length: ESTIMATED_CARD_HEIGHT,
-      offset: ESTIMATED_CARD_HEIGHT * index,
-      index,
-    }),
-    []
-  );
+  const getItemLayout = (_: unknown, index: number) => ({
+    length: ESTIMATED_CARD_HEIGHT,
+    offset: ESTIMATED_CARD_HEIGHT * index,
+    index,
+  });
   
   // 리스트 빈 상태
-  const ListEmpty = React.useCallback(
-    () =>
-      isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : (
-        <EmptyState message="조건에 맞는 공지가 없습니다." />
-      ),
-    [isLoading]
-  );
+  const ListEmpty = () =>
+    isLoading ? (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    ) : (
+      <EmptyState message="조건에 맞는 공지가 없습니다." />
+    );
 
   // 무한 스크롤 추가 로드
   const handleLoadMore = () => {
@@ -179,14 +167,14 @@ export default function HomeScreen() {
   };
 
   // 푸터 로딩바 컴포넌트
-  const ListFooter = React.useCallback(() => {
+  const ListFooter = () => {
     if (!isFetchingNextPage) return null;
     return (
       <View style={styles.footerLoading}>
         <ActivityIndicator size="small" color={Colors.primary} />
       </View>
     );
-  }, [isFetchingNextPage]);
+  };
 
   return (
     <View style={styles.screen}>

@@ -25,7 +25,7 @@
 
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   AppState,
@@ -83,19 +83,20 @@ export default function SettingsScreen() {
   const appStateRef = useRef(AppState.currentState);
 
   /** OS 알림 권한 확인 */
-  const checkNotificationPermission = useCallback(async () => {
-    if (!getPermissionsAsync) {
-      // expo-notifications 미설치 → 권한 확인 불가, 배너 숨김
-      setNotificationPermitted(true);
-      return;
-    }
-    try {
-      const { status } = await getPermissionsAsync();
-      setNotificationPermitted(status === 'granted'); // 알람 허용이 돼 있으면 true 아니라면 false
-    } catch {
-      setNotificationPermitted(true);
-    }
-  }, []);
+  /** OS 알림 권한 확인 */
+const checkNotificationPermission = async () => {
+  if (!getPermissionsAsync) {
+    // expo-notifications 미설치 → 권한 확인 불가, 배너 숨김
+    setNotificationPermitted(true);
+    return;
+  }
+  try {
+    const { status } = await getPermissionsAsync();
+    setNotificationPermitted(status === 'granted'); // 알람 허용이 돼 있으면 true 아니라면 false
+  } catch {
+    setNotificationPermitted(true);
+  }
+};
 
   // 화면 진입 시 + 포그라운드 복귀 시 권한 재확인 (트랩 10 주의: 리스너 1회만 등록)
   useEffect(() => {

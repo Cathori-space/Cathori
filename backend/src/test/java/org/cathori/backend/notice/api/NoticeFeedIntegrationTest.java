@@ -161,8 +161,8 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     @DisplayName("NF-2: 기본 피드 — MAIN + 전공(CSIE) 공지 포함, 무관 학과 제외")
     void getFeed_case1_defaultFeed() throws Exception {
         saveNotice("MAIN", null, "장학", "MAIN 공지", TODAY);
-        saveNotice("DEPARTMENT", "컴퓨터정보공학", "학과공지", "csie 학과 공지", TODAY);
-        saveNotice("DEPARTMENT", "경영학과", "학과공지", "business 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "CSIE", "학과공지", "csie 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "BUSINESS", "학과공지", "business 학과 공지", TODAY);
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA))
@@ -178,8 +178,8 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     @DisplayName("NF-3: secondMajor=전공심화인 유저 — AI 학과 공지 제외")
     void getFeed_case1_excludeJeonGongSimhwa() throws Exception {
         saveNotice("MAIN", null, "장학", "MAIN 공지", TODAY);
-        saveNotice("DEPARTMENT", "컴퓨터정보공학", "학과공지", "csie 학과 공지", TODAY);
-        saveNotice("DEPARTMENT", "인공지능", "학과공지", "ai 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "CSIE", "학과공지", "csie 학과 공지", TODAY);
+        saveNotice("DEPARTMENT", "AI", "학과공지", "ai 학과 공지", TODAY);
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenB))
@@ -227,7 +227,7 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     void getFeed_case3_tagFilter() throws Exception {
         saveNotice("MAIN", null, "장학", "장학금 신청 안내", TODAY);
         saveNotice("MAIN", null, "취업", "일반 공지", TODAY);
-        saveNotice("DEPARTMENT", "컴퓨터정보공학", "학과공지", "장학금 혜택 안내", TODAY);
+        saveNotice("DEPARTMENT", "CSIE", "학과공지", "장학금 혜택 안내", TODAY);
 
         MvcResult result = mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA)

@@ -129,7 +129,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
     private QueryAndParams buildCase4(NoticeFeedQuery q) {
         List<Object> params = new ArrayList<>();
 
-        // Part1: 태그 매칭 (출처 무관)
+        // Part1: 태그 매칭 — MAIN + 제1전공 + 제2전공(전공심화 제외) 범위 내에서 제목 LIKE 필터
         StringBuilder sql = new StringBuilder(
                 "SELECT * FROM (" +
                 "SELECT n.id, n.source_type, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
@@ -142,6 +142,13 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         );
         params.add(q.userId());
         appendTagLikes(sql, params, q.tags(), "n.title");
+        sql.append(") AND (n.source_type = 'MAIN'");
+        sql.append(" OR (n.source_type = 'DEPARTMENT' AND n.source_id = ?)");
+        params.add(q.major());
+        if (q.secondMajor() != null && !"전공심화".equals(q.secondMajor())) {
+            sql.append(" OR (n.source_type = 'DEPARTMENT' AND n.source_id = ?)");
+            params.add(q.secondMajor());
+        }
         sql.append(")");
 
         // Part2: category 매칭 MAIN, 태그 미매칭

@@ -3,6 +3,7 @@ package org.cathori.backend.alert.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.cathori.backend.alert.domain.AlertHistory;
+import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.user.domain.User;
@@ -69,6 +70,7 @@ public class AlertService {
     private void dispatchForNotice(Notice notice) {
         List<String> tokens = userRepository.findUsersWithTagMatchingTitle(notice.getTitle())
                 .stream()
+                .filter(u -> isEligibleForNotice(u, notice))
                 .map(User::getDeviceToken)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -119,6 +121,20 @@ public class AlertService {
     }
 
     /**
+     * MAIN 공지는 전체 허용, DEPARTMENT 공지는 사용자의 제1·제2전공과 source_id가 일치하는 경우만 허용합니다.
+     */
+    private boolean isEligibleForNotice(User user, Notice notice) {
+        if ("MAIN".equals(notice.getSourceType())) return true;
+        String sourceId = notice.getSourceId();
+        String majorCode = DepartmentSource.findEnumNameByDisplayName(user.getMajor());
+        if (sourceId.equals(majorCode)) return true;
+        String secondMajor = user.getSecondMajor();
+        if (secondMajor == null || "전공심화".equals(secondMajor)) return false;
+        String secondMajorCode = DepartmentSource.findEnumNameByDisplayName(secondMajor);
+        return sourceId.equals(secondMajorCode);
+    }
+
+    /**
      * 실패 이력 하나에 대해 알림 재발송을 시도하고 결과를 갱신합니다.
      *
      * - 원본 공지가 삭제된 경우에는 재시도 없이 조용히 건너뜁니다.
@@ -130,6 +146,7 @@ public class AlertService {
 
         List<String> tokens = userRepository.findUsersWithTagMatchingTitle(notice.getTitle())
                 .stream()
+                .filter(u -> isEligibleForNotice(u, notice))
                 .map(User::getDeviceToken)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());

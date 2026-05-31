@@ -28,6 +28,7 @@ import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -43,6 +44,7 @@ import {
   getTagErrorMessage,
   useCreateTag,
   useDeleteTag,
+  useRefreshTags,
 } from '@/src/features/settings/hooks';
 import { SubHeader } from '@/src/shared/components';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -67,6 +69,17 @@ export default function KeywordSettingsScreen() {
 
   const createTagMutation = useCreateTag();
   const deleteTagMutation = useDeleteTag();
+  const { refreshTags, isRefreshing } = useRefreshTags();
+
+  /** 최신 태그 목록 새로고침 (Pull-to-Refresh) */
+  const handleRefresh = async () => {
+    const { success } = await refreshTags();
+    if (success) {
+      showToast('관심 키워드 목록이 갱신되었습니다');
+    } else {
+      showToast('키워드 목록을 가져오지 못했습니다. 네트워크 상태를 확인해주세요.');
+    }
+  };
 
   /** 태그 추가 */
   const handleAddTag = () => {
@@ -128,6 +141,13 @@ export default function KeywordSettingsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[Colors.primary]}
+          />
+        }
       >
         {/* ── 페이지 타이틀 + 안내 ── */}
         <View style={styles.pageTitleSection}>

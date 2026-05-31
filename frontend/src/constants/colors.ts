@@ -34,7 +34,7 @@ export const Colors = {
   /** 대분류 태그 텍스트 (미선택) */
   tabText: '#44465299',   // 60% opacity
   /** 소분류 태그 배경 */
-  chipBg: '#F5F6FA',
+  chipBg: '#E8EDF5',
   /** 소분류 태그 텍스트 */
   chipText: '#444652B2',  // 70% opacity
 

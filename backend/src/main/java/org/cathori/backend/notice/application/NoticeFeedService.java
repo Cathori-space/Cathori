@@ -15,6 +15,7 @@ import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.domain.UserRepository;
+import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,8 +57,9 @@ public class NoticeFeedService {
                         .toList();
 
         // 3. 쿼리 객체 생성 + 포트 위임
+        String majorCode = DepartmentSource.findEnumNameByDisplayName(user.getMajor());
         NoticeFeedQuery query = new NoticeFeedQuery(
-                userId, user.getMajor(), user.getSecondMajor(),
+                userId, majorCode, resolveSecondMajorCode(user.getSecondMajor()),
                 category, tagList, page, size
         );
 
@@ -82,8 +84,9 @@ public class NoticeFeedService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
+        String majorCode = DepartmentSource.findEnumNameByDisplayName(user.getMajor());
         NoticeSearchQuery query = new NoticeSearchQuery(
-                userId, keyword, user.getMajor(), user.getSecondMajor(), page, size
+                userId, keyword, majorCode, resolveSecondMajorCode(user.getSecondMajor()), page, size
         );
 
         List<NoticeSearchRow> rows = noticeFeedPort.findSearch(query);
@@ -137,6 +140,13 @@ public class NoticeFeedService {
                 notice.getPostedAt(), aiSummary, notice.getAiSummaryStatus(),
                 notice.getUrl(), isBookmarked, dDay, notice.getViewCount(), tags, deadlineAt
         );
+    }
+
+    private String resolveSecondMajorCode(String secondMajor) {
+        if (secondMajor == null || "전공심화".equals(secondMajor)) {
+            return secondMajor;
+        }
+        return DepartmentSource.findEnumNameByDisplayName(secondMajor);
     }
 
     /**

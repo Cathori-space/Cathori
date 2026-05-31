@@ -83,4 +83,12 @@ public enum DepartmentSource {
 
     public String getCode() { return code; }
     public String getDisplayName() { return displayName; }
+
+    public static String findEnumNameByDisplayName(String displayName) {
+        return java.util.Arrays.stream(values())
+                .filter(d -> d.displayName.equals(displayName))
+                .map(Enum::name)
+                .findFirst()
+                .orElse(null);
+    }
 }

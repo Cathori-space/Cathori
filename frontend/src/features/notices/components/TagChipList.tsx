@@ -1,10 +1,3 @@
-/**
- * TagChip — 소분류 태그 칩 컴포넌트
- * 시안: #F5F6FA 배경, #444652B2 텍스트
- * padding [6, 12], borderRadius 9999, fontSize 12, fontWeight 500
- * 수평 스크롤 리스트에서 사용
- */
-
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -17,9 +10,11 @@ interface TagChipListProps {
   selectedTag: string | null;
   /** 태그 토글 콜백 — 같은 값 다시 탭 시 해제(null) */
   onSelect: (tag: string) => void;
+  /** 키워드 추가(+) 버튼 클릭 콜백 */
+  onAddPress?: () => void;
 }
 
-function TagChipListComponent({ tags, selectedTag, onSelect }: TagChipListProps) {
+function TagChipListComponent({ tags, selectedTag, onSelect, onAddPress }: TagChipListProps) {
   return (
     <View style={styles.wrapper}>
       <ScrollView
@@ -32,12 +27,23 @@ function TagChipListComponent({ tags, selectedTag, onSelect }: TagChipListProps)
           return (
             <ChipButton
               key={tag}
-              label={tag}
+              label={'#' + tag}
               isSelected={isSelected}
               onPress={() => onSelect(tag)}
             />
           );
         })}
+
+        {/* 사용자 정의 태그가 있든 없든 항상 노출되는 '+' 설정 추가 버튼 */}
+        {onAddPress && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={onAddPress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.chipText}>{'+태그'}</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -104,5 +110,13 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: '#FFFFFF',
+  },
+  addButton: {
+    backgroundColor: Colors.chipBg,
+    borderRadius: 9999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

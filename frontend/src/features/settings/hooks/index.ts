@@ -1,1 +1,1 @@
-export { useCreateTag, useDeleteTag, extractTagErrorCode, getTagErrorMessage } from './useTags';
+export { useCreateTag, useDeleteTag, useRefreshTags, extractTagErrorCode, getTagErrorMessage } from './useTags';

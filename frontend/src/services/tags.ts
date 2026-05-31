@@ -17,6 +17,8 @@ import apiClient from './api';
 
 // ─── 타입 ──────────────────────────────────────────────────────────
 
+import type { UserTag } from '@/src/types/auth';
+
 /** 태그 생성 요청 */
 interface CreateTagRequest {
   tagName: string;
@@ -85,4 +87,13 @@ export async function createTag(tagName: string): Promise<CreateTagResponse> {
  */
 export async function deleteTag(tagId: number): Promise<void> {
   await apiClient.delete(`/api/tags/${tagId}`);
+}
+
+/**
+ * 태그 목록 전체 조회
+ * GET /api/tags
+ */
+export async function getTags(): Promise<UserTag[]> {
+  const { data } = await apiClient.get<UserTag[]>('/api/tags');
+  return data;
 }

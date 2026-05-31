@@ -14,15 +14,17 @@
  *
  */
 
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
 
-import { CATEGORY_TABS, TAG_LIST } from '@/src/constants/categories';
+import { CATEGORY_TABS } from '@/src/constants/categories';
 import { Colors } from '@/src/constants/colors';
 import {
   CategoryTab,
@@ -32,7 +34,9 @@ import {
   useNotices,
   useToggleBookmark,
 } from '@/src/features/notices';
+import { useRefreshTags } from '@/src/features/settings/hooks';
 import { EmptyState, MainHeader } from '@/src/shared/components';
+import { useAuthStore } from '@/src/store/useAuthStore';
 import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
 import type { Notice } from '@/src/types/api';
 
@@ -41,11 +45,29 @@ const ESTIMATED_CARD_HEIGHT = 200;
 
 // ─── 리스트 헤더 별도 컴포넌트 ────────────────────────────────────────
 function FeedHeaderComponent() {
+  const router = useRouter();
+
   // HomeScreen에서 props로 받지 않고 직접 구독 — 재마운트 원인 제거
   const selectedCategory = useNoticeFilterStore((s) => s.selectedCategory);
   const selectedTag = useNoticeFilterStore((s) => s.selectedTag);
   const toggleCategory = useNoticeFilterStore((s) => s.toggleCategory);
   const toggleTag = useNoticeFilterStore((s) => s.toggleTag);
+
+  // Zustand 사용자 정의 태그 리스트 가져옴
+  const userTags = useAuthStore((s) => s.tags);
+  const tagNames = userTags.map((t) => t.tagName);
+
+  // 만약 선택된 태그가 현재 사용자의 태그 목록에 존재하지 않게 되었다면(키워드 화면에서 삭제 등), 필터를 초기화
+  useEffect(() => {
+    if (selectedTag && !tagNames.includes(selectedTag)) {
+      // selectedTag를 강제로 해제(null)하기 위해 toggleTag 호출
+      toggleTag(selectedTag);
+    }
+  }, [selectedTag, tagNames, toggleTag]);
+
+  const handleAddPress = () => {
+    router.push('/settings/keywords' as never);
+  };
 
   return (
     <View>
@@ -58,17 +80,18 @@ function FeedHeaderComponent() {
         onSelect={toggleCategory}
       />
 
-      {/* 소분류 태그 칩 — 독립 동작, 대분류와 무관 */}
+      {/* 소분류 태그 칩 — 독립 동작, 대분류와 무관. 사용자 정의 태그 적용 및 플러스 버튼 탑재 */}
       <TagChipList
-        tags={TAG_LIST}
+        tags={tagNames}
         selectedTag={selectedTag}
         onSelect={toggleTag}
+        onAddPress={handleAddPress}
       />
     </View>
   );
 }
 
-const FeedHeader = React.memo(FeedHeaderComponent);
+const FeedHeader = FeedHeaderComponent;
 
 // ─── 메인 화면 ────────────────────────────────────────────────────────
 
@@ -84,10 +107,19 @@ export default function HomeScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch,
+    isRefetching,
   } = useNotices({
     category: selectedCategory,
     tag: selectedTag,
   });
+
+  const { refreshTags, isRefreshing: isRefreshingTags } = useRefreshTags();
+
+  const handleRefresh = async () => {
+    // 공지사항 데이터와 태그 데이터를 동시에 새로고침합니다.
+    await Promise.all([refetch(), refreshTags()]);
+  };
 
   const notices = data?.pages.flatMap((page) => page.content) ?? [];
 
@@ -112,21 +144,20 @@ export default function HomeScreen() {
 
   // FlatList getItemLayout (성능 최적화)
   const getItemLayout = (_: unknown, index: number) => ({
-      length: ESTIMATED_CARD_HEIGHT,
-      offset: ESTIMATED_CARD_HEIGHT * index,
-      index,
-    });
+    length: ESTIMATED_CARD_HEIGHT,
+    offset: ESTIMATED_CARD_HEIGHT * index,
+    index,
+  });
   
   // 리스트 빈 상태
-  const ListEmpty = 
-    () =>
-      isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
-      ) : (
-        <EmptyState message="조건에 맞는 공지가 없습니다." />
-      );
+  const ListEmpty = () =>
+    isLoading ? (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    ) : (
+      <EmptyState message="조건에 맞는 공지가 없습니다." />
+    );
 
   // 무한 스크롤 추가 로드
   const handleLoadMore = () => {
@@ -176,6 +207,13 @@ export default function HomeScreen() {
         onEndReachedThreshold={0.5} // 리스트 하단에서 50% 만큼 남았을 때 onEndReached 트리거
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching || isRefreshingTags}
+            onRefresh={handleRefresh}
+            colors={[Colors.primary]}
+          />
+        }
       />
     </View>
   );

@@ -130,7 +130,7 @@ export default function SettingsScreen() {
   };
 
   const handleToggleKeywordNotification = () => {
-    showToast('현재는 설정한 모든 키워드에 대해서 알림을 수신합니다. (추후 개선 예정)');
+    showToast('현재는 설정한 모든 관심 태그에 대해서 알림을 수신합니다. (추후 개선 예정)');
   };
 
   const handleToggleEventNotification = () => {
@@ -255,7 +255,7 @@ export default function SettingsScreen() {
               <View style={styles.settingsRowLeft}>
                 <Feather name="tag" size={18} color={Colors.primary} />
                 <Text style={styles.settingsRowText}>
-                  관심 공지 키워드 설정
+                  관심 공지 태그 설정
                 </Text>
               </View>
               <Feather name="chevron-right" size={18} color={Colors.textSecondary} />
@@ -271,7 +271,7 @@ export default function SettingsScreen() {
             <View style={styles.settingsRow}>
               <View style={styles.settingsRowLeft}>
                 <Feather name="bell" size={18} color={Colors.primary} />
-                <Text style={styles.settingsRowText}>키워드 알림 수신</Text>
+                <Text style={styles.settingsRowText}>관심 태그 알림 수신</Text>
               </View>
               <Switch
                 value={false}

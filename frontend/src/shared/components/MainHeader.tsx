@@ -44,7 +44,7 @@ function MainHeaderComponent() {
   );
 }
 
-export const MainHeader = React.memo(MainHeaderComponent);
+export const MainHeader = MainHeaderComponent;
 
 const styles = StyleSheet.create({
   container: {

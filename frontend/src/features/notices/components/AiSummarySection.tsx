@@ -47,7 +47,7 @@ function AiSummarySectionComponent({
   );
 }
 
-export const AiSummarySection = React.memo(AiSummarySectionComponent);
+export const AiSummarySection = AiSummarySectionComponent;
 
 // ─── SUCCESS: 요약 텍스트 ──────────────────────────────────────────────
 

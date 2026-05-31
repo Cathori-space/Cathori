@@ -14,6 +14,7 @@
  *
  */
 
+import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
@@ -22,7 +23,6 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 
 import { CATEGORY_TABS } from '@/src/constants/categories';
 import { Colors } from '@/src/constants/colors';
@@ -36,8 +36,8 @@ import {
 } from '@/src/features/notices';
 import { useRefreshTags } from '@/src/features/settings/hooks';
 import { EmptyState, MainHeader } from '@/src/shared/components';
-import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
 import type { Notice } from '@/src/types/api';
 
 /** FlatList getItemLayout — 고정 높이 추정값 (성능 최적화) */
@@ -55,7 +55,7 @@ function FeedHeaderComponent() {
 
   // Zustand 사용자 정의 태그 리스트 가져옴
   const userTags = useAuthStore((s) => s.tags);
-  const tagNames = React.useMemo(() => userTags.map((t) => t.tagName), [userTags]);
+  const tagNames = userTags.map((t) => t.tagName);
 
   // 만약 선택된 태그가 현재 사용자의 태그 목록에 존재하지 않게 되었다면(키워드 화면에서 삭제 등), 필터를 초기화
   useEffect(() => {
@@ -91,7 +91,7 @@ function FeedHeaderComponent() {
   );
 }
 
-const FeedHeader = React.memo(FeedHeaderComponent);
+const FeedHeader = FeedHeaderComponent;
 
 // ─── 메인 화면 ────────────────────────────────────────────────────────
 

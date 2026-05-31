@@ -64,7 +64,7 @@ function SubHeaderComponent({ title, onBack }: SubHeaderProps) {
   );
 }
 
-export const SubHeader = React.memo(SubHeaderComponent);
+export const SubHeader = SubHeaderComponent;
 
 const styles = StyleSheet.create({
   container: {

@@ -11,6 +11,7 @@
  *  - useAuthStore.tags를 단일 진실 원천(Single Source of Truth)으로 사용
  */
 
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
 import {
@@ -18,6 +19,7 @@ import {
   deleteTag,
   extractTagErrorCode,
   getTagErrorMessage,
+  getTags,
 } from '@/src/services/tags';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import type { UserTag } from '@/src/types/auth';
@@ -99,6 +101,28 @@ export function useDeleteTag() {
       }
     },
   });
+}
+
+// ─── 태그 새로고침 훅 ──────────────────────────────────────────────
+
+export function useRefreshTags() {
+  const updateTags = useAuthStore((s) => s.updateTags);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshTags = async () => {
+    setIsRefreshing(true);
+    try {
+      const latestTags = await getTags();
+      updateTags(latestTags);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return { refreshTags, isRefreshing };
 }
 
 // ─── 에러 유틸 re-export ─────────────────────────────────────────

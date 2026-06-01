@@ -19,8 +19,6 @@ import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 
@@ -71,9 +69,8 @@ public class NoticeFeedService {
 
 
         // 5. DTO 매핑 + 반환
-        LocalDate today = LocalDate.now();
         List<NoticeFeedItem> content = pageRows.stream()
-                .map(r -> toItem(r, today, tagList))
+                .map(r -> toItem(r, tagList))
                 .toList();
 
         return new NoticeFeedResponse(content, page, size, hasNext);
@@ -94,20 +91,17 @@ public class NoticeFeedService {
         boolean hasNext = rows.size() > size;
         List<NoticeSearchRow> pageRows = hasNext ? rows.subList(0, size) : rows;
 
-        LocalDate today = LocalDate.now();
         List<NoticeSearchItem> content = pageRows.stream()
-                .map(r -> toSearchItem(r, today))
+                .map(this::toSearchItem)
                 .toList();
 
         return new NoticeSearchResponse(content, page, size, hasNext);
     }
 
-    private NoticeSearchItem toSearchItem(NoticeSearchRow row, LocalDate today) {
-        Integer dDay = row.deadlineAt() != null
-                ? (int) ChronoUnit.DAYS.between(today, row.deadlineAt())
-                : null;
+    private NoticeSearchItem toSearchItem(NoticeSearchRow row) {
+        String deadlineAt = row.deadlineAt() != null ? row.deadlineAt().toString() : null;
         return new NoticeSearchItem(
-                String.valueOf(row.id()), row.category(), row.title(), row.department(), row.postedAt(), dDay
+                String.valueOf(row.id()), row.category(), row.title(), row.department(), row.postedAt(), deadlineAt
         );
     }
 
@@ -131,14 +125,11 @@ public class NoticeFeedService {
     private NoticeDetailResponse toDetail(Notice notice, boolean isBookmarked, List<String> tags) {
         String aiSummary = "SUCCESS".equals(notice.getAiSummaryStatus()) ? notice.getAiSummary() : null;
         String category = "DEPARTMENT".equals(notice.getSourceType()) ? null : notice.getCategory();
-        Integer dDay = notice.getDeadlineAt() != null
-                ? (int) ChronoUnit.DAYS.between(LocalDate.now(), notice.getDeadlineAt())
-                : null;
         String deadlineAt = notice.getDeadlineAt() != null ? notice.getDeadlineAt().toString() : null;
         return new NoticeDetailResponse(
                 String.valueOf(notice.getId()), category, notice.getTitle(), notice.getDepartment(),
                 notice.getPostedAt(), aiSummary, notice.getAiSummaryStatus(),
-                notice.getUrl(), isBookmarked, dDay, notice.getViewCount(), tags, deadlineAt
+                notice.getUrl(), isBookmarked, notice.getViewCount(), tags, deadlineAt
         );
     }
 
@@ -149,14 +140,7 @@ public class NoticeFeedService {
         return DepartmentSource.findEnumNameByDisplayName(secondMajor);
     }
 
-    /**
-     * {@code ChronoUnit.DAYS.between(today, deadlineAt)} 기준으로 dDay를 계산한다.
-     * 양수 = 마감까지 남은 일수, 음수 = 마감 초과, null = 마감일 없는 공지.
-     */
-    private NoticeFeedItem toItem(NoticeRow row, LocalDate today, List<String> queryTags) {
-        Integer dDay = row.deadlineAt() != null
-                ? (int) ChronoUnit.DAYS.between(today, row.deadlineAt())
-                : null;
+    private NoticeFeedItem toItem(NoticeRow row, List<String> queryTags) {
         String category = "DEPARTMENT".equals(row.sourceType()) ? null : row.category();
         String deadlineAt = row.deadlineAt() != null ? row.deadlineAt().toString() : null;
         List<String> tags = queryTags.stream()
@@ -164,7 +148,7 @@ public class NoticeFeedService {
                 .toList();
         return new NoticeFeedItem(
                 String.valueOf(row.id()), category, row.title(), row.department(),
-                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), dDay, row.viewCount(), row.isBookmarked(), tags, deadlineAt
+                row.postedAt(), row.aiSummary(), row.aiSummaryStatus(), row.url(), row.viewCount(), row.isBookmarked(), tags, deadlineAt
         );
     }
 }

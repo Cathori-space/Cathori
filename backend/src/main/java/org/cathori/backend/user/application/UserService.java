@@ -1,5 +1,7 @@
 package org.cathori.backend.user.application;
 
+import org.cathori.backend.common.exception.BusinessException;
+import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.domain.UserRepository;
@@ -36,5 +38,12 @@ public class UserService {
                         request.major1(), request.major2(),
                         request.grade(), request.status())
         );
+    }
+
+    @Transactional
+    public void updateDeviceToken(Long userId, String deviceToken) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+        user.updateDeviceToken(deviceToken);
     }
 }

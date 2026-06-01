@@ -44,6 +44,10 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    public void updateDeviceToken(String deviceToken) {
+        this.deviceToken = deviceToken;
+    }
+
     public static User create(String email, String encodedPassword,
                               String major, String secondMajor,
                               int grade, String enrollmentStatus) {

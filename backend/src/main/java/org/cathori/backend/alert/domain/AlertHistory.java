@@ -28,7 +28,7 @@ public class AlertHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "notice_id", nullable = false)
+    @Column(name = "notice_id", nullable = false, unique = true)
     private Long noticeId;
 
     @Column(nullable = false, length = 20)

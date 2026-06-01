@@ -39,6 +39,9 @@ public class User {
     private String deviceToken;
 
     @Column(nullable = false)
+    private int dailyAlertLimit = 1;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     public static User create(String email, String encodedPassword,

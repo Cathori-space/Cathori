@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "cathori",
+    "slug": "cathori",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "cathori",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

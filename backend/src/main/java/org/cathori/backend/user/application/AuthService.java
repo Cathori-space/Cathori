@@ -16,6 +16,7 @@ import org.cathori.backend.user.domain.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -57,6 +58,7 @@ public class AuthService {
         return new RegisterResponse(saved.getId(), saved.getEmail());
     }
 
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userService.findByEmail(request.email())
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
@@ -82,6 +84,7 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public ReissueResponse reissue(ReissueRequest request) {
         RefreshToken stored = refreshTokenRepository.findByToken(request.refreshToken())
                 .orElseThrow(() -> new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID));

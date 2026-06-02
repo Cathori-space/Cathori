@@ -326,36 +326,40 @@ class NoticeFeedIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("NF-13: deadlineAt 없는 공지 → dDay=null")
-    void getFeed_dDay_null() throws Exception {
+    @DisplayName("NF-13: deadlineAt 없는 공지 -> dDay 미반환")
+    void getFeed_dDay_notReturned() throws Exception {
         saveNotice("MAIN", null, "장학", "공지", TODAY);
 
         mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].dDay").value(nullValue()));
+                .andExpect(jsonPath("$.content[0].dDay").doesNotExist());
     }
 
     @Test
-    @DisplayName("NF-14: deadlineAt 미래 → dDay > 0")
-    void getFeed_dDay_positive() throws Exception {
-        saveNoticeWithSummary("MAIN", null, "장학", "공지", TODAY, TODAY.plusDays(30));
+    @DisplayName("NF-14: deadlineAt 미래 -> dDay 없이 deadlineAt 반환")
+    void getFeed_deadlineAt_future_withoutDday() throws Exception {
+        LocalDate deadline = TODAY.plusDays(30);
+        saveNoticeWithSummary("MAIN", null, "장학", "공지", TODAY, deadline);
 
         mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].dDay").value(greaterThan(0)));
+                .andExpect(jsonPath("$.content[0].dDay").doesNotExist())
+                .andExpect(jsonPath("$.content[0].deadlineAt").value(deadline.toString()));
     }
 
     @Test
-    @DisplayName("NF-15: deadlineAt 과거 → dDay < 0")
-    void getFeed_dDay_negative() throws Exception {
-        saveNoticeWithSummary("MAIN", null, "장학", "공지", TODAY, TODAY.minusDays(5));
+    @DisplayName("NF-15: deadlineAt 과거 -> dDay 없이 deadlineAt 반환")
+    void getFeed_deadlineAt_past_withoutDday() throws Exception {
+        LocalDate deadline = TODAY.minusDays(5);
+        saveNoticeWithSummary("MAIN", null, "장학", "공지", TODAY, deadline);
 
         mockMvc.perform(get("/api/notices")
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].dDay").value(lessThan(0)));
+                .andExpect(jsonPath("$.content[0].dDay").doesNotExist())
+                .andExpect(jsonPath("$.content[0].deadlineAt").value(deadline.toString()));
     }
 
     @Test

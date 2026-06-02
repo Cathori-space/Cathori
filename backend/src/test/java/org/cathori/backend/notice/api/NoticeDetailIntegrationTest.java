@@ -181,31 +181,33 @@ class NoticeDetailIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("ND-8: deadlineAt 있는 공지 조회 시 dDay 반환")
-    void getDetail_dDay_returned() throws Exception {
+    @DisplayName("ND-8: deadlineAt 있는 공지 조회 시 dDay 없이 deadlineAt 반환")
+    void getDetail_deadlineAt_returned_withoutDday() throws Exception {
         Notice futureNotice = saveNoticeWithSummary(LocalDate.now().plusDays(10));
         Notice pastNotice   = saveNoticeWithSummary(LocalDate.now().minusDays(3));
 
         mockMvc.perform(get("/api/notices/" + futureNotice.getId())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dDay").value(greaterThan(0)));
+                .andExpect(jsonPath("$.dDay").doesNotExist())
+                .andExpect(jsonPath("$.deadlineAt").value(futureNotice.getDeadlineAt().toString()));
 
         mockMvc.perform(get("/api/notices/" + pastNotice.getId())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dDay").value(lessThan(0)));
+                .andExpect(jsonPath("$.dDay").doesNotExist())
+                .andExpect(jsonPath("$.deadlineAt").value(pastNotice.getDeadlineAt().toString()));
     }
 
     @Test
-    @DisplayName("ND-9: deadlineAt 없는 공지 조회 시 dDay=null 반환")
-    void getDetail_dDay_null() throws Exception {
+    @DisplayName("ND-9: deadlineAt 없는 공지 조회 시 dDay 미반환")
+    void getDetail_dDay_notReturned() throws Exception {
         Notice notice = saveNotice("장학", "테스트 공지", LocalDate.now());
 
         mockMvc.perform(get("/api/notices/" + notice.getId())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.dDay").value(nullValue()));
+                .andExpect(jsonPath("$.dDay").doesNotExist());
     }
 
     @Test

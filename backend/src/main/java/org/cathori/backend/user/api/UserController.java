@@ -7,6 +7,7 @@ import org.cathori.backend.user.api.dto.UpdateDeviceTokenRequest;
 import org.cathori.backend.user.application.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,13 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody @Valid UpdateDeviceTokenRequest request) {
         userService.updateDeviceToken(userDetails.getUserId(), request.deviceToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/device-token")
+    public ResponseEntity<Void> clearDeviceToken(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        userService.clearDeviceToken(userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
 }

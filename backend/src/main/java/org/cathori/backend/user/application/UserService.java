@@ -46,4 +46,11 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
         user.updateDeviceToken(deviceToken);
     }
+
+    @Transactional
+    public void clearDeviceToken(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+        user.clearDeviceToken();
+    }
 }

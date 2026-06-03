@@ -69,12 +69,19 @@ public class Notice {
     @Column(nullable = false)
     private Long viewCount = 0L;
 
+    @Column(name = "alert_dispatched", nullable = false)
+    private boolean alertDispatched = false;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public void markAlertDispatched() {
+        this.alertDispatched = true;
     }
 
     public List<String> getImageUrls() {

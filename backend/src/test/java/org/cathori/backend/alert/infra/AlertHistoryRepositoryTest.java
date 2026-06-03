@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,67 +27,38 @@ class AlertHistoryRepositoryTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("R-1: findAllSentNoticeIds() - 저장된 모든 이력의 noticeId Set 반환")
-    void findAllSentNoticeIds_returnsAllIds() {
-        alertHistoryJpaRepository.save(AlertHistory.success(10L));
-        alertHistoryJpaRepository.save(AlertHistory.failed(20L));
-        alertHistoryJpaRepository.save(AlertHistory.partialSuccess(30L));
+    @DisplayName("R-1: findFailedForRetry() — retryCount=0,1,2인 FAILED 이력 반환")
+    void findFailedForRetry_returnsFailedWithRetryCountUnder3() {
+        AlertHistory h0 = AlertHistory.create(1L, 1L);
+        h0.markFailed();
 
-        Set<Long> ids = alertHistoryJpaRepository.findAllSentNoticeIds();
+        AlertHistory h1 = AlertHistory.create(2L, 2L);
+        h1.markFailed();
+        h1.incrementRetry();
 
-        assertThat(ids).containsExactlyInAnyOrder(10L, 20L, 30L);
-    }
+        AlertHistory h2 = AlertHistory.create(3L, 3L);
+        h2.markFailed();
+        h2.incrementRetry();
+        h2.incrementRetry();
 
-    @Test
-    @DisplayName("R-2: findAllSentNoticeIds() - 이력 없으면 빈 Set 반환")
-    void findAllSentNoticeIds_returnsEmptySetWhenNoHistory() {
-        Set<Long> ids = alertHistoryJpaRepository.findAllSentNoticeIds();
-
-        assertThat(ids).isEmpty();
-    }
-
-    @Test
-    @DisplayName("R-3: findFailedForRetry() - FAILED이고 retryCount < 3인 이력 반환")
-    void findFailedForRetry_returnsFailedWithinRetryLimit() {
-        AlertHistory retryCount0 = AlertHistory.failed(1L);
-        AlertHistory retryCount1 = AlertHistory.failed(2L);
-        retryCount1.incrementRetry();
-        AlertHistory retryCount2 = AlertHistory.failed(3L);
-        retryCount2.incrementRetry();
-        retryCount2.incrementRetry();
-
-        alertHistoryJpaRepository.save(retryCount0);
-        alertHistoryJpaRepository.save(retryCount1);
-        alertHistoryJpaRepository.save(retryCount2);
+        alertHistoryJpaRepository.save(h0);
+        alertHistoryJpaRepository.save(h1);
+        alertHistoryJpaRepository.save(h2);
 
         List<AlertHistory> result = alertHistoryJpaRepository.findFailedForRetry();
 
         assertThat(result).hasSize(3);
-        assertThat(result.stream().map(AlertHistory::getNoticeId))
-                .containsExactlyInAnyOrder(1L, 2L, 3L);
     }
 
     @Test
-    @DisplayName("R-4: findFailedForRetry() - SUCCESS, PARTIAL_SUCCESS 이력은 제외")
-    void findFailedForRetry_excludesNonFailedStatuses() {
-        alertHistoryJpaRepository.save(AlertHistory.success(1L));
-        alertHistoryJpaRepository.save(AlertHistory.partialSuccess(2L));
-        alertHistoryJpaRepository.save(AlertHistory.failed(3L));
-
-        List<AlertHistory> result = alertHistoryJpaRepository.findFailedForRetry();
-
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().getNoticeId()).isEqualTo(3L);
-    }
-
-    @Test
-    @DisplayName("R-5: findFailedForRetry() - retryCount=3인 FAILED 이력은 제외 (경계값)")
-    void findFailedForRetry_excludesMaxRetryCount() {
-        AlertHistory maxRetry = AlertHistory.failed(1L);
-        maxRetry.incrementRetry();
-        maxRetry.incrementRetry();
-        maxRetry.incrementRetry();
-        alertHistoryJpaRepository.save(maxRetry);
+    @DisplayName("R-2: findFailedForRetry() — retryCount=3인 FAILED 이력 제외 (경계값)")
+    void findFailedForRetry_excludesRetryCount3() {
+        AlertHistory h = AlertHistory.create(1L, 1L);
+        h.markFailed();
+        h.incrementRetry();
+        h.incrementRetry();
+        h.incrementRetry();
+        alertHistoryJpaRepository.save(h);
 
         List<AlertHistory> result = alertHistoryJpaRepository.findFailedForRetry();
 

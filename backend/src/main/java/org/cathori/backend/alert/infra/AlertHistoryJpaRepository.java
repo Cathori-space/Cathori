@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, Long> {
 
-    @Query("SELECT ah FROM AlertHistory ah WHERE ah.alarmStatus = 'FAILED' AND ah.retryCount <= 3")
+    @Query("SELECT ah FROM AlertHistory ah WHERE ah.alarmStatus = 'FAILED' AND ah.retryCount < 3")
     List<AlertHistory> findFailedForRetry();
 
     @Modifying

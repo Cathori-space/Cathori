@@ -13,7 +13,6 @@ public record NoticeDetailResponse(
         String aiSummaryStatus,
         String url,
         boolean isBookmarked,
-        Integer dDay,
         Long viewCount,
         List<String> tags,
         String deadlineAt

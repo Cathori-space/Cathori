@@ -252,20 +252,21 @@ class NoticeSearchIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("NS-12: deadline 있는 공지는 dDay 정수 반환")
-    void ns12_dDayPresent() throws Exception {
+    @DisplayName("NS-12: deadline 있는 공지는 dDay 없이 deadlineAt 반환")
+    void ns12_deadlineAtPresentWithoutDday() throws Exception {
         LocalDate future = LocalDate.now().plusDays(5);
         saveNoticeWithDeadline("MAIN", null, "국가장학금 마감 안내", LocalDate.now(), future);
 
         mockMvc.perform(get("/api/notices/search").param("q", "국가장학금")
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].dDay").value(5));
+                .andExpect(jsonPath("$.content[0].dDay").doesNotExist())
+                .andExpect(jsonPath("$.content[0].deadlineAt").value(future.toString()));
     }
 
     @Test
-    @DisplayName("NS-13: deadline 없는 공지는 dDay=null")
-    void ns13_dDayNull() throws Exception {
+    @DisplayName("NS-13: deadline 없는 공지는 dDay 미반환")
+    void ns13_dDayNotReturned() throws Exception {
         saveNotice("MAIN", null, "국가장학금 안내", LocalDate.now());
 
         mockMvc.perform(get("/api/notices/search").param("q", "국가장학금")

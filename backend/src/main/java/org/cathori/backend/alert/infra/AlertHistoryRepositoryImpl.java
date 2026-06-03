@@ -5,14 +5,7 @@ import org.cathori.backend.alert.domain.AlertHistory;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Set;
 
-/**
- * AlertHistoryRepository 인터페이스의 실제 구현체입니다.
- *
- * AlertService는 이 클래스를 직접 참조하지 않고 AlertHistoryRepository 인터페이스를 통해 접근합니다.
- * 실제 데이터베이스 쿼리는 AlertHistoryJpaRepository에 위임합니다.
- */
 @Repository
 public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
 
@@ -23,8 +16,8 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     }
 
     @Override
-    public Set<Long> findAllSentNoticeIds() {
-        return jpaRepository.findAllSentNoticeIds();
+    public void saveAll(List<AlertHistory> logs) {
+        jpaRepository.saveAll(logs);
     }
 
     @Override
@@ -33,7 +26,25 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     }
 
     @Override
-    public AlertHistory save(AlertHistory history) {
-        return jpaRepository.save(history);
+    public AlertHistory save(AlertHistory log) {
+        return jpaRepository.save(log);
+    }
+
+    @Override
+    public void markSuccessForUsers(Long noticeId, List<Long> userIds) {
+        if (userIds.isEmpty()) return;
+        jpaRepository.markSuccessForUsers(noticeId, userIds);
+    }
+
+    @Override
+    public void markFailedForUsers(Long noticeId, List<Long> userIds) {
+        if (userIds.isEmpty()) return;
+        jpaRepository.markFailedForUsers(noticeId, userIds);
+    }
+
+    @Override
+    public void incrementRetryForUsers(Long noticeId, List<Long> userIds) {
+        if (userIds.isEmpty()) return;
+        jpaRepository.incrementRetryForUsers(noticeId, userIds);
     }
 }

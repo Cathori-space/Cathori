@@ -51,9 +51,9 @@ export function usePushNotifications() {
         // 테스트 중에는 콘솔에 찍힌 토큰을 복사해 DB users.device_token에 수기 입력할 수 있다.
         // console.log('[push] device token =', token);
         await registerDeviceToken(token);
-      } catch (e) {
-        // console.warn('[push] 토큰 등록 실패:', e);
-        registeredRef.current = false; // 실패 시 다음 변화에서 재시도
+      } catch {
+        // 토큰 등록 실패해도 앱 흐름은 진행. 다음 accessToken 변화에서 재시도.
+        registeredRef.current = false;
       }
     })();
   }, [accessToken]);

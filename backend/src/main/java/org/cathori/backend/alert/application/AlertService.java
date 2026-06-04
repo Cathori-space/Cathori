@@ -48,8 +48,9 @@ public class AlertService {
         }
 
         // PENDING row 일괄 INSERT
+        Map<Long, String> matchedTags = userRepository.findFirstMatchedTagsByTitle(notice.getTitle());
         List<AlertHistory> pendingLogs = targets.stream()
-                .map(t -> AlertHistory.create(t.userId(), notice.getId()))
+                .map(t -> AlertHistory.create(t.userId(), notice.getId(), matchedTags.get(t.userId())))
                 .toList();
         alertHistoryRepository.saveAll(pendingLogs);
 

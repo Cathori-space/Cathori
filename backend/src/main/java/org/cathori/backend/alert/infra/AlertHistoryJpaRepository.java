@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, Long> {
 
@@ -24,4 +25,6 @@ public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, L
     @Modifying
     @Query("UPDATE AlertHistory ah SET ah.retryCount = ah.retryCount + 1 WHERE ah.noticeId = :noticeId AND ah.userId IN :userIds")
     void incrementRetryForUsers(@Param("noticeId") Long noticeId, @Param("userIds") List<Long> userIds);
+
+    Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
 }

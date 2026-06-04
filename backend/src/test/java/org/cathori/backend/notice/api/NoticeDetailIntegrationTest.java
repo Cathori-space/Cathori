@@ -52,7 +52,7 @@ class NoticeDetailIntegrationTest extends IntegrationTestBase {
     @BeforeEach
     void setUp() {
         verifiedEmailStore.markVerified(EMAIL);
-        authService.register(new RegisterRequest(EMAIL, PASSWORD, "컴퓨터정보공학", null, 2, "재학"));
+        authService.register(new RegisterRequest(EMAIL, PASSWORD, "컴퓨터정보공학부", null, 2, "재학"));
         userId = userJpaRepository.findByEmail(EMAIL).orElseThrow().getId();
         token = jwtUtil.generateAccessToken(userId);
     }

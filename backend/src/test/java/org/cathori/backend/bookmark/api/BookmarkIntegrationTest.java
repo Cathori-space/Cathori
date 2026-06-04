@@ -52,12 +52,12 @@ class BookmarkIntegrationTest extends IntegrationTestBase {
     @BeforeEach
     void setUp() {
         verifiedEmailStore.markVerified(EMAIL_A);
-        authService.register(new RegisterRequest(EMAIL_A, PASSWORD, "컴퓨터정보공학", null, 2, "재학"));
+        authService.register(new RegisterRequest(EMAIL_A, PASSWORD, "컴퓨터정보공학부", null, 2, "재학"));
         userAId = userJpaRepository.findByEmail(EMAIL_A).orElseThrow().getId();
         tokenA = jwtUtil.generateAccessToken(userAId);
 
         verifiedEmailStore.markVerified(EMAIL_B);
-        authService.register(new RegisterRequest(EMAIL_B, PASSWORD, "컴퓨터정보공학", null, 2, "재학"));
+        authService.register(new RegisterRequest(EMAIL_B, PASSWORD, "컴퓨터정보공학부", null, 2, "재학"));
         userBId = userJpaRepository.findByEmail(EMAIL_B).orElseThrow().getId();
         tokenB = jwtUtil.generateAccessToken(userBId);
     }

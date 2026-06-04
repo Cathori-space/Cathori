@@ -36,7 +36,10 @@ public class AlertHistory {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    public static AlertHistory create(Long userId, Long noticeId) {
+    @Column(name = "matched_tag", length = 20)
+    private String matchedTag;
+
+    public static AlertHistory create(Long userId, Long noticeId, String matchedTag) {
         AlertHistory h = new AlertHistory();
         h.userId = userId;
         h.noticeId = noticeId;
@@ -44,7 +47,12 @@ public class AlertHistory {
         h.isRead = false;
         h.retryCount = 0;
         h.createdAt = LocalDateTime.now();
+        h.matchedTag = matchedTag;
         return h;
+    }
+
+    public void markRead() {
+        this.isRead = true;
     }
 
     public void markSuccess() {

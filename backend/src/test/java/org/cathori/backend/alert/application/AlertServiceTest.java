@@ -195,6 +195,22 @@ class AlertServiceTest extends IntegrationTestBase {
         verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
 
+    @Test
+    @DisplayName("DA-3: FCM 발송 시 matched_tag 저장 — 가나다 순 첫 번째 태그")
+    void dispatchAlerts_savesMatchedTagAsMinTagName() {
+        Notice notice = saveNotice("국가장학금 신청 안내");
+        User user = saveUserWithToken("user1@test.com", "token-abc");
+        saveTag(user.getId(), "장학");
+        saveTag(user.getId(), "국가장학");
+        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
+
+        alertService.dispatchAlerts();
+
+        AlertHistory history = alertHistoryJpaRepository.findAll().getFirst();
+        assertThat(history.getMatchedTag()).isEqualTo("국가장학");
+    }
+
     // --- retryFailedAlerts() ---
 
     @Test
@@ -202,7 +218,7 @@ class AlertServiceTest extends IntegrationTestBase {
     void retryFailedAlerts_fcmSuccess_updatesStatusToSuccess() {
         Notice notice = saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
-        AlertHistory failed = AlertHistory.create(user.getId(), notice.getId());
+        AlertHistory failed = AlertHistory.create(user.getId(), notice.getId(), null);
         failed.markFailed();
         AlertHistory saved = alertHistoryJpaRepository.save(failed);
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))

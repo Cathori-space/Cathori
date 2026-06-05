@@ -29,14 +29,14 @@ class AlertHistoryRepositoryTest extends IntegrationTestBase {
     @Test
     @DisplayName("R-1: findFailedForRetry() — retryCount=0,1,2인 FAILED 이력 반환")
     void findFailedForRetry_returnsFailedWithRetryCountUnder3() {
-        AlertHistory h0 = AlertHistory.create(1L, 1L);
+        AlertHistory h0 = AlertHistory.create(1L, 1L, null);
         h0.markFailed();
 
-        AlertHistory h1 = AlertHistory.create(2L, 2L);
+        AlertHistory h1 = AlertHistory.create(2L, 2L, null);
         h1.markFailed();
         h1.incrementRetry();
 
-        AlertHistory h2 = AlertHistory.create(3L, 3L);
+        AlertHistory h2 = AlertHistory.create(3L, 3L, null);
         h2.markFailed();
         h2.incrementRetry();
         h2.incrementRetry();
@@ -53,7 +53,7 @@ class AlertHistoryRepositoryTest extends IntegrationTestBase {
     @Test
     @DisplayName("R-2: findFailedForRetry() — retryCount=3인 FAILED 이력 제외 (경계값)")
     void findFailedForRetry_excludesRetryCount3() {
-        AlertHistory h = AlertHistory.create(1L, 1L);
+        AlertHistory h = AlertHistory.create(1L, 1L, null);
         h.markFailed();
         h.incrementRetry();
         h.incrementRetry();

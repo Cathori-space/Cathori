@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { usePushNotifications } from '@/src/features/notifications';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
 // SplashScreen을 수동 제어 — rehydrate 완료 전까지 유지
@@ -94,6 +95,8 @@ export default function RootLayout() {
 function RootLayoutNav() {
   // 인증 상태 기반 라우팅 가드 활성화
   useProtectedRoute();
+  // 푸시 토큰 동기화(로그인 시 등록) + 알림 탭 → 공지 상세 네비게이션
+  usePushNotifications();
 
   // SafeAreaProvider — react-native-safe-area-context의 inset 컨텍스트를 트리에 주입.
   // 트리 상단에 Provider가 없으면 useSafeAreaInsets() - SafeAreaView가 inset을 0으로
@@ -106,6 +109,11 @@ function RootLayoutNav() {
           {/* 공지 상세 화면 */}
           <Stack.Screen
             name="notice/[id]"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
+          {/* 알림 리스트 화면 */}
+          <Stack.Screen
+            name="notification/index"
             options={{ headerShown: false, animation: 'slide_from_right' }}
           />
           {/* 인증 화면 — 로그인 */}

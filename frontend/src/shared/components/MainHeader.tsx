@@ -15,14 +15,16 @@
  */
 
 import { Feather } from '@expo/vector-icons';
+import { useRouter, type Href } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
 
 function MainHeaderComponent() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -33,12 +35,17 @@ function MainHeaderComponent() {
           <Text style={styles.logoText}>Cathori</Text>
         </View>
 
-        {/* 알림 아이콘 + dot */}
-        <View style={styles.bellSection}>
+        {/* 알림 아이콘 + dot — 탭 시 알림 리스트로 이동 */}
+        <TouchableOpacity
+          style={styles.bellSection}
+          onPress={() => router.push('/notification' as Href)}
+          hitSlop={8}
+          activeOpacity={0.7}
+        >
           <Feather name="bell" size={20} color="#FFFFFF" />
           {/* 알림 dot — #FCC006, 10x10, border #00288C 2px */}
           <View style={styles.notificationDot} />
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );

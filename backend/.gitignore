@@ -4,6 +4,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+.env
 
 ### STS ###
 .apt_generated
@@ -36,4 +37,4 @@ out/
 ### VS Code ###
 .vscode/
 
-src/main/resources/cathori-firebase.json
+src/main/resources/*.json

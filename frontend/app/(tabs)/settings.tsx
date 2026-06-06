@@ -41,6 +41,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
+import { unregisterDeviceToken } from '@/src/services/pushToken';
 import { MainHeader } from '@/src/shared/components';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
@@ -158,7 +159,14 @@ const checkNotificationPermission = async () => {
         {
           text: '로그아웃',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            // 토큰 반납(DELETE)은 JWT가 아직 유효할 때 먼저 호출해야 한다.
+            // clearAuth()가 먼저면 토큰이 사라져 401이 된다. 실패해도 로그아웃은 진행.
+            try {
+              await unregisterDeviceToken();
+            } catch (e) {
+              console.warn('[push] 토큰 반납 실패:', e);
+            }
             clearAuth();
             router.replace('/login');
           },

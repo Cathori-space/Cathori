@@ -46,9 +46,9 @@ const ERROR_MESSAGES: Record<RegisterErrorCode, string> = {
 };
 
 function extractErrorCode(
-  error: AxiosError<ApiErrorResponse>,
+  error?: AxiosError<ApiErrorResponse>,
 ): RegisterErrorCode {
-  const code = error.response?.data?.code;
+  const code = error?.response?.data?.code;
   if (code && code in ERROR_MESSAGES) {
     return code as RegisterErrorCode;
   }
@@ -71,7 +71,14 @@ export function useRegister() {
   >({
     mutationFn: async (req: RegisterRequest) => {
       // 1단계: 회원가입
-      await register(req);
+      try {
+        await register(req);
+      } catch (registerError) {
+        throw {
+          phase: 'register',
+          axiosError: registerError as AxiosError<ApiErrorResponse>,
+        } as RegisterError;
+      }
 
       // 2단계: 자동 로그인 (트랩 #7 — 가입 응답에 JWT 없음)
       try {
@@ -86,7 +93,7 @@ export function useRegister() {
         throw {
           phase: 'autoLogin',
           axiosError: autoLoginError as AxiosError<ApiErrorResponse>,
-        };
+        } as RegisterError;
       }
     },
   });

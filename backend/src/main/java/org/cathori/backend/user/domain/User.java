@@ -48,6 +48,11 @@ public class User {
         this.deviceToken = deviceToken;
     }
 
+    /** 로그아웃 등으로 기기 토큰을 반납합니다. 이후 이 사용자는 알림 대상에서 제외됩니다. */
+    public void clearDeviceToken() {
+        this.deviceToken = null;
+    }
+
     public static User create(String email, String encodedPassword,
                               String major, String secondMajor,
                               int grade, String enrollmentStatus) {

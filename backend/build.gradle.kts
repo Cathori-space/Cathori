@@ -51,3 +51,25 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    val envFile = file(".env")
+    if (envFile.exists()) {
+        envFile.readLines().forEach { line ->
+            val trimmed = line.trim()
+            // 빈 줄이거나 주석(#)인 경우는 제외
+            if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
+                val parts = trimmed.split("=", limit = 2)
+                if (parts.size == 2) {
+                    val key = parts[0].trim()
+                    val value = parts[1].trim()
+                    // 톳씨나 따옴표("")가 값에 포함되어 있다면 제거
+                    val cleanValue = value.removeSurrounding("\"").removeSurrounding("'")
+
+                    // Gradle bootRun 프로세스에 환경 변수 주입
+                    environment(key, cleanValue)
+                }
+            }
+        }
+    }
+}

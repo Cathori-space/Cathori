@@ -1,0 +1,28 @@
+# ── 1단계: Gradle 빌드 ──────────────────────────────
+FROM eclipse-temurin:21-jdk-alpine AS builder
+WORKDIR /app
+
+# 의존성 캐시 레이어 (소스 변경 시 재다운로드 방지)
+COPY backend/gradlew backend/gradlew
+COPY backend/gradle backend/gradle
+COPY backend/build.gradle.kts backend/build.gradle.kts
+COPY backend/settings.gradle.kts backend/settings.gradle.kts
+RUN chmod +x backend/gradlew && \
+    cd backend && ./gradlew dependencies --no-daemon -q
+
+# 소스 복사 + 빌드 (테스트 제외)
+COPY backend/src backend/src
+RUN cd backend && ./gradlew bootJar --no-daemon -x test
+
+# ── 2단계: 실행 이미지 ──────────────────────────────
+FROM eclipse-temurin:21-jre-alpine AS runner
+WORKDIR /app
+
+# 보안: root 대신 일반 유저로 실행
+RUN addgroup -S cathori && adduser -S cathori -G cathori
+USER cathori
+
+COPY --from=builder /app/backend/build/libs/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=prod", "app.jar"]

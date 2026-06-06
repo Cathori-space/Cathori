@@ -65,7 +65,6 @@ public class AlertService {
             noticeRepository.save(notice);
             return;
         }
-
         // (user_id, notice_id)는 유니크 제약이므로, 이미 이력이 있는 사용자에게는 새 PENDING row를 INSERT X
         // 발송 자체는 전체 대상에게 하고, 기존 row는 persistDispatchResult의 UPDATE로 갱신된다.
 
@@ -73,9 +72,10 @@ public class AlertService {
         Set<Long> alreadyLogged = new HashSet<>(alertHistoryRepository.findUserIdsByNoticeId(notice.getId()));
 
         // 2. AlertHistory에 저장된 user_id를 제외한 나머지 user_id에 대해서만 AlertHistory를 생성
+        Map<Long, String> matchedTags = userRepository.findFirstMatchedTagsByTitle(notice.getTitle());
         List<AlertHistory> pendingLogs = targets.stream()
                 .filter(t -> !alreadyLogged.contains(t.userId()))
-                .map(t -> AlertHistory.create(t.userId(), notice.getId()))
+                .map(t -> AlertHistory.create(t.userId(), notice.getId(), matchedTags.get(t.userId())))
                 .toList();
 
         // 3. 기존 AlertHistory에 없을 경우 PENDING 로그를 추가

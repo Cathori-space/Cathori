@@ -7,10 +7,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, Long> {
 
-    @Query("SELECT ah FROM AlertHistory ah WHERE ah.alarmStatus = 'FAILED' AND ah.retryCount <= 3")
+    @Query("SELECT ah FROM AlertHistory ah WHERE ah.alarmStatus = 'FAILED' AND ah.retryCount < 3")
     List<AlertHistory> findFailedForRetry();
 
     @Query("SELECT ah.userId FROM AlertHistory ah WHERE ah.noticeId = :noticeId")
@@ -27,4 +28,6 @@ public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, L
     @Modifying
     @Query("UPDATE AlertHistory ah SET ah.retryCount = ah.retryCount + 1 WHERE ah.noticeId = :noticeId AND ah.userId IN :userIds")
     void incrementRetryForUsers(@Param("noticeId") Long noticeId, @Param("userIds") List<Long> userIds);
+
+    Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
 }

@@ -4,16 +4,18 @@ import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.alert.domain.AlertHistory;
 import org.cathori.backend.alert.infra.AlertHistoryJpaRepository;
 import org.cathori.backend.notice.application.CrawledNotice;
+import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
-import org.cathori.backend.tag.infra.TagJpaRepository;
 import org.cathori.backend.tag.domain.Tag;
+import org.cathori.backend.tag.infra.TagJpaRepository;
 import org.cathori.backend.user.application.NotificationPort;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.infra.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -51,60 +53,43 @@ class AlertServiceTest extends IntegrationTestBase {
     // --- dispatchAlerts() ---
 
     @Test
-    @DisplayName("DA-1: FCM 전부 성공 시 SUCCESS 이력 저장")
-    void dispatchAlerts_allSuccess_savesSuccessHistory() {
+    @DisplayName("DA-1: FCM 성공 → 사용자별 SUCCESS 이력 저장")
+    void dispatchAlerts_fcmSuccess_savesSuccessHistory() {
         Notice notice = saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(new FcmBatchResult(1, 0));
+                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
         alertService.dispatchAlerts();
 
         List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
         assertThat(histories).hasSize(1);
-        assertThat(histories.getFirst().getStatus()).isEqualTo("SUCCESS");
-        assertThat(histories.getFirst().getNoticeId()).isEqualTo(notice.getId());
+        assertThat(histories.getFirst().getAlarmStatus()).isEqualTo("SUCCESS");
     }
 
     @Test
-    @DisplayName("DA-2: FCM 일부 실패 시 PARTIAL_SUCCESS 이력 저장")
-    void dispatchAlerts_partialFailure_savesPartialSuccessHistory() {
+    @DisplayName("DA-2: FCM 실패 → 사용자별 FAILED 이력 저장")
+    void dispatchAlerts_fcmFailure_savesFailedHistory() {
         saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(new FcmBatchResult(1, 1));
+                .willReturn(List.of(new UserFcmResult(user.getId(), false)));
 
         alertService.dispatchAlerts();
 
         List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
         assertThat(histories).hasSize(1);
-        assertThat(histories.getFirst().getStatus()).isEqualTo("PARTIAL_SUCCESS");
+        assertThat(histories.getFirst().getAlarmStatus()).isEqualTo("FAILED");
     }
 
     @Test
-    @DisplayName("DA-3: FCM 전부 실패 시 FAILED 이력 저장")
-    void dispatchAlerts_allFailure_savesFailedHistory() {
+    @DisplayName("DA-4: 태그 미매칭 → FCM 미호출, 이력 미저장")
+    void dispatchAlerts_noTagMatch_doesNotSendOrSave() {
         saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
-        saveTag(user.getId(), "장학금");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(new FcmBatchResult(0, 1));
-
-        alertService.dispatchAlerts();
-
-        List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
-        assertThat(histories).hasSize(1);
-        assertThat(histories.getFirst().getStatus()).isEqualTo("FAILED");
-    }
-
-    @Test
-    @DisplayName("DA-4: 매칭 사용자 없으면 FCM 미호출, 이력 미저장")
-    void dispatchAlerts_noMatchingUser_doesNotSendOrSave() {
-        saveNotice("장학금 안내");
-        User user = saveUserWithToken("user1@test.com", "token-abc");
-        saveTag(user.getId(), "취업");  // 공지 제목과 매칭 안 됨
+        saveTag(user.getId(), "취업");
 
         alertService.dispatchAlerts();
 
@@ -113,7 +98,7 @@ class AlertServiceTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("DA-5: 매칭 사용자 있지만 deviceToken=null이면 FCM 미호출, 이력 미저장")
+    @DisplayName("DA-5: deviceToken=null → FCM 미호출, 이력 미저장")
     void dispatchAlerts_nullDeviceToken_doesNotSendOrSave() {
         saveNotice("장학금 안내");
         User user = saveUserWithoutToken("user1@test.com");
@@ -126,110 +111,123 @@ class AlertServiceTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("DA-6: 공지 없으면 FCM 미호출")
-    void dispatchAlerts_noNotices_doesNotSend() {
+    @DisplayName("DA-7: alertDispatched=true 공지 → FCM 미호출")
+    void dispatchAlerts_alreadyDispatched_doesNotSend() {
+        CrawledNotice crawled = CrawledNotice.builder()
+                .articleNo("TEST001")
+                .sourceType("MAIN")
+                .sourceId(null)
+                .category("일반")
+                .title("장학금 안내")
+                .department("공지사항")
+                .postedAt(LocalDate.now().toString())
+                .url("https://example.com/notice/1")
+                .bodyText("")
+                .imageUrls(List.of())
+                .build();
+        Notice notice = Notice.from(crawled);
+        notice.markAlertDispatched();
+        noticeRepository.save(notice);
+
         alertService.dispatchAlerts();
 
         verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
 
     @Test
-    @DisplayName("DA-7: 모든 공지가 이미 발송됨이면 FCM 미호출")
-    void dispatchAlerts_allAlreadySent_doesNotSend() {
-        Notice notice = saveNotice("장학금 안내");
-        alertHistoryJpaRepository.save(AlertHistory.success(notice.getId()));
-
-        alertService.dispatchAlerts();
-
-        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
-    }
-
-    @Test
-    @DisplayName("DA-8: FCM 발송 중 예외 발생 시 FAILED 이력 저장")
-    void dispatchAlerts_fcmException_savesFailedHistory() {
+    @DisplayName("DA-9: 발송 완료 후 notice.alertDispatched=true 변경")
+    void dispatchAlerts_afterDispatch_marksNoticeAsDispatched() {
         Notice notice = saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willThrow(new RuntimeException("FCM 연결 실패"));
+                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
         alertService.dispatchAlerts();
 
-        List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
-        assertThat(histories).hasSize(1);
-        assertThat(histories.getFirst().getStatus()).isEqualTo("FAILED");
-        assertThat(histories.getFirst().getNoticeId()).isEqualTo(notice.getId());
+        Notice reloaded = noticeRepository.findById(notice.getId()).orElseThrow();
+        assertThat(reloaded.isAlertDispatched()).isTrue();
+    }
+
+    @Test
+    @DisplayName("DA-10: 매칭 사용자 없어도 notice.alertDispatched=true 변경")
+    void dispatchAlerts_noMatchingUser_stillMarksNoticeAsDispatched() {
+        Notice notice = saveNotice("장학금 안내");
+        saveUserWithoutToken("user1@test.com");  // 태그 없는 사용자 (매칭 안 됨)
+
+        alertService.dispatchAlerts();
+
+        Notice reloaded = noticeRepository.findById(notice.getId()).orElseThrow();
+        assertThat(reloaded.isAlertDispatched()).isTrue();
+    }
+
+    @Test
+    @DisplayName("DA-11: 학과 공지 — 제1전공 일치 사용자에게만 발송")
+    @SuppressWarnings("unchecked")
+    void dispatchAlerts_departmentNotice_onlySendsToMatchingMajorUser() {
+        String csieCode = DepartmentSource.findEnumNameByDisplayName("컴퓨터정보공학");
+        saveDepartmentNotice("장학금 안내", csieCode);
+        User matching = saveUserWithToken("csie@test.com", "token-csie");
+        saveTag(matching.getId(), "장학금");
+        User nonMatching = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", null);
+        saveTag(nonMatching.getId(), "장학금");
+        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+                .willReturn(List.of(new UserFcmResult(matching.getId(), true)));
+
+        alertService.dispatchAlerts();
+
+        ArgumentCaptor<List<UserToken>> captor = ArgumentCaptor.forClass(List.class);
+        verify(fcmPort).sendMulticast(captor.capture(), anyString(), anyString(), anyLong());
+        assertThat(captor.getValue()).hasSize(1);
+        assertThat(captor.getValue().getFirst().userId()).isEqualTo(matching.getId());
+    }
+
+    @Test
+    @DisplayName("DA-14: 학과 공지 — 제2전공=전공심화 → 제외")
+    void dispatchAlerts_departmentNotice_excludesSecondMajorJeonGongSimhwa() {
+        String csieCode = DepartmentSource.findEnumNameByDisplayName("컴퓨터정보공학");
+        saveDepartmentNotice("장학금 안내", csieCode);
+        User user = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", "전공심화");
+        saveTag(user.getId(), "장학금");
+
+        alertService.dispatchAlerts();
+
+        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("DA-3: FCM 발송 시 matched_tag 저장 — 가나다 순 첫 번째 태그")
+    void dispatchAlerts_savesMatchedTagAsMinTagName() {
+        Notice notice = saveNotice("국가장학금 신청 안내");
+        User user = saveUserWithToken("user1@test.com", "token-abc");
+        saveTag(user.getId(), "장학");
+        saveTag(user.getId(), "국가장학");
+        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
+
+        alertService.dispatchAlerts();
+
+        AlertHistory history = alertHistoryJpaRepository.findAll().getFirst();
+        assertThat(history.getMatchedTag()).isEqualTo("국가장학");
     }
 
     // --- retryFailedAlerts() ---
 
     @Test
-    @DisplayName("RA-1: 재시도 FCM 성공 시 status가 SUCCESS로 변경")
+    @DisplayName("RA-1: 재시도 FCM 성공 → alarmStatus=SUCCESS 변경")
     void retryFailedAlerts_fcmSuccess_updatesStatusToSuccess() {
         Notice notice = saveNotice("장학금 안내");
-        AlertHistory failed = alertHistoryJpaRepository.save(AlertHistory.failed(notice.getId()));
         User user = saveUserWithToken("user1@test.com", "token-abc");
-        saveTag(user.getId(), "장학금");
+        AlertHistory failed = AlertHistory.create(user.getId(), notice.getId(), null);
+        failed.markFailed();
+        AlertHistory saved = alertHistoryJpaRepository.save(failed);
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(new FcmBatchResult(1, 0));
+                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
         alertService.retryFailedAlerts();
 
-        AlertHistory updated = alertHistoryJpaRepository.findById(failed.getId()).orElseThrow();
-        assertThat(updated.getStatus()).isEqualTo("SUCCESS");
-    }
-
-    @Test
-    @DisplayName("RA-2: 재시도 FCM 실패 시 retryCount 증가")
-    void retryFailedAlerts_fcmFailure_incrementsRetryCount() {
-        Notice notice = saveNotice("장학금 안내");
-        AlertHistory failed = alertHistoryJpaRepository.save(AlertHistory.failed(notice.getId()));
-        User user = saveUserWithToken("user1@test.com", "token-abc");
-        saveTag(user.getId(), "장학금");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(new FcmBatchResult(0, 1));
-
-        alertService.retryFailedAlerts();
-
-        AlertHistory updated = alertHistoryJpaRepository.findById(failed.getId()).orElseThrow();
-        assertThat(updated.getRetryCount()).isEqualTo(1);
-        assertThat(updated.getStatus()).isEqualTo("FAILED");
-    }
-
-    @Test
-    @DisplayName("RA-3: 재시도 중 예외 발생 시 retryCount 증가")
-    void retryFailedAlerts_fcmException_incrementsRetryCount() {
-        Notice notice = saveNotice("장학금 안내");
-        AlertHistory failed = alertHistoryJpaRepository.save(AlertHistory.failed(notice.getId()));
-        User user = saveUserWithToken("user1@test.com", "token-abc");
-        saveTag(user.getId(), "장학금");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willThrow(new RuntimeException("FCM 타임아웃"));
-
-        alertService.retryFailedAlerts();
-
-        AlertHistory updated = alertHistoryJpaRepository.findById(failed.getId()).orElseThrow();
-        assertThat(updated.getRetryCount()).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("RA-4: 실패 이력의 공지가 DB에 없으면 조용히 스킵")
-    void retryFailedAlerts_noticeNotFound_skipsQuietly() {
-        alertHistoryJpaRepository.save(AlertHistory.failed(999L));
-
-        alertService.retryFailedAlerts();
-
-        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
-        AlertHistory history = alertHistoryJpaRepository.findAll().getFirst();
-        assertThat(history.getRetryCount()).isEqualTo(0);
-    }
-
-    @Test
-    @DisplayName("RA-5: 실패 이력 없으면 FCM 미호출")
-    void retryFailedAlerts_noFailedHistory_doesNotSend() {
-        alertService.retryFailedAlerts();
-
-        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
+        AlertHistory updated = alertHistoryJpaRepository.findById(saved.getId()).orElseThrow();
+        assertThat(updated.getAlarmStatus()).isEqualTo("SUCCESS");
     }
 
     // --- 헬퍼 메서드 ---
@@ -250,6 +248,22 @@ class AlertServiceTest extends IntegrationTestBase {
         return noticeRepository.save(Notice.from(crawled));
     }
 
+    private Notice saveDepartmentNotice(String title, String sourceId) {
+        CrawledNotice crawled = CrawledNotice.builder()
+                .articleNo("DEP001")
+                .sourceType("DEPARTMENT")
+                .sourceId(sourceId)
+                .category("일반")
+                .title(title)
+                .department("학과공지")
+                .postedAt(LocalDate.now().toString())
+                .url("https://example.com/dept/1")
+                .bodyText("")
+                .imageUrls(List.of())
+                .build();
+        return noticeRepository.save(Notice.from(crawled));
+    }
+
     private User saveUserWithToken(String email, String token) {
         User user = userJpaRepository.save(
                 User.create(email, "encodedPwd", "컴퓨터정보공학", null, 2, "재학"));
@@ -260,6 +274,15 @@ class AlertServiceTest extends IntegrationTestBase {
     private User saveUserWithoutToken(String email) {
         return userJpaRepository.save(
                 User.create(email, "encodedPwd", "컴퓨터정보공학", null, 2, "재학"));
+    }
+
+    private User saveUserWithSecondMajor(String email, String token, String major, String secondMajor) {
+        User user = userJpaRepository.save(
+                User.create(email, "encodedPwd", major, secondMajor, 2, "재학"));
+        if (token != null) {
+            jdbcTemplate.update("UPDATE users SET device_token = ? WHERE id = ?", token, user.getId());
+        }
+        return user;
     }
 
     private void saveTag(Long userId, String tagName) {

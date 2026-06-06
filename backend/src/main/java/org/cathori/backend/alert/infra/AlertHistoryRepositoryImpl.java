@@ -5,6 +5,7 @@ import org.cathori.backend.alert.domain.AlertHistory;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
@@ -51,5 +52,10 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     public void incrementRetryForUsers(Long noticeId, List<Long> userIds) {
         if (userIds.isEmpty()) return;
         jpaRepository.incrementRetryForUsers(noticeId, userIds);
+    }
+
+    @Override
+    public Optional<AlertHistory> findByIdAndUserId(Long id, Long userId) {
+        return jpaRepository.findByIdAndUserId(id, userId);
     }
 }

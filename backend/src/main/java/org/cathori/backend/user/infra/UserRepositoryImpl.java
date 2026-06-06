@@ -5,7 +5,9 @@ import org.cathori.backend.user.domain.UserRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 public class UserRepositoryImpl implements UserRepository {
@@ -39,5 +41,14 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public List<User> findUsersWithTagMatchingTitle(String title) {
         return jpaRepository.findUsersWithTagMatchingTitle(title);
+    }
+
+    @Override
+    public Map<Long, String> findFirstMatchedTagsByTitle(String title) {
+        return jpaRepository.findFirstMatchedTagsByTitle(title).stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> (String) row[1]
+                ));
     }
 }

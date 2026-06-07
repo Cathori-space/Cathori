@@ -10,4 +10,5 @@ public interface TagRepository {
     Optional<Tag> findByIdAndUserId(Long tagId, Long userId);
     List<Tag> findAllByUserId(Long userId);
     void delete(Tag tag);
+    void deleteByUserId(Long userId);
 }

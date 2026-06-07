@@ -27,4 +27,6 @@ public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, L
     void incrementRetryForUsers(@Param("noticeId") Long noticeId, @Param("userIds") List<Long> userIds);
 
     Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
+
+    void deleteByUserId(Long userId);
 }

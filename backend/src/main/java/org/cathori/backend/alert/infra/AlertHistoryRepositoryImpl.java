@@ -53,4 +53,9 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     public Optional<AlertHistory> findByIdAndUserId(Long id, Long userId) {
         return jpaRepository.findByIdAndUserId(id, userId);
     }
+
+    @Override
+    public void deleteByUserId(Long userId) {
+        jpaRepository.deleteByUserId(userId);
+    }
 }

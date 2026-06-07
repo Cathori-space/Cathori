@@ -51,4 +51,9 @@ public class UserRepositoryImpl implements UserRepository {
                         row -> (String) row[1]
                 ));
     }
+
+    @Override
+    public void delete(User user) {
+        jpaRepository.delete(user);
+    }
 }

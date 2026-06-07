@@ -45,4 +45,9 @@ public class TagRepositoryImpl implements TagRepository {
     public void delete(Tag tag) {
         jpaRepository.delete(tag);
     }
+
+    @Override
+    public void deleteByUserId(Long userId) {
+        jpaRepository.deleteByUserId(userId);
+    }
 }

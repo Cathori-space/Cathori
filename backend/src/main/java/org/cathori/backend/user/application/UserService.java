@@ -1,6 +1,9 @@
 package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
+import org.cathori.backend.alert.application.AlertHistoryRepository;
+import org.cathori.backend.bookmark.domain.BookmarkRepository;
+import org.cathori.backend.tag.domain.TagRepository;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.domain.User;
@@ -16,10 +19,21 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TagRepository tagRepository;
+    private final BookmarkRepository bookmarkRepository;
+    private final AlertHistoryRepository alertHistoryRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       TagRepository tagRepository, BookmarkRepository bookmarkRepository,
+                       AlertHistoryRepository alertHistoryRepository,
+                       RefreshTokenRepository refreshTokenRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.tagRepository = tagRepository;
+        this.bookmarkRepository = bookmarkRepository;
+        this.alertHistoryRepository = alertHistoryRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     public boolean existsByEmail(String email) {
@@ -45,5 +59,17 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
         user.updateDeviceToken(deviceToken);
+    }
+
+    @Transactional
+    public void withdraw(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        tagRepository.deleteByUserId(userId);
+        bookmarkRepository.deleteByUserId(userId);
+        alertHistoryRepository.deleteByUserId(userId);
+        refreshTokenRepository.deleteByUserId(userId);
+        userRepository.delete(user);
     }
 }

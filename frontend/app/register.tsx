@@ -9,11 +9,13 @@
 
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -25,6 +27,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
+import { DEPARTMENTS } from '@/src/constants/departments';
 import { useEmailVerification, useRegister } from '@/src/features/auth/hooks';
 import { SubHeader } from '@/src/shared/components';
 
@@ -33,6 +36,9 @@ const GRADE_OPTIONS = [1, 2, 3, 4] as const;
 
 /** 재학 상태 옵션 */
 const STATUS_OPTIONS = ['재학', '휴학'] as const;
+
+const isValidPassword = (pw: string) =>
+  pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -46,9 +52,14 @@ export default function RegisterScreen() {
   const [major2, setMajor2] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<number>(1);
   const [selectedStatus, setSelectedStatus] = useState<string>('재학');
+  const [passwordError, setPasswordError] = useState('');
+  const [dropdownTarget, setDropdownTarget] = useState<'major1' | 'major2' | null>(null);
+
+  const flatListRef = useRef<FlatList<string>>(null);
+  const dropdownScrollIdx = useRef(0);
 
   // ── 훅 ──
-  const emailVerification = useEmailVerification(); // TODO: 구조 할당 분해 문법으로 변경 예정 
+  const emailVerification = useEmailVerification(); // TODO: 구조 할당 분해 문법으로 변경 예정
   const { register, isLoading: isRegistering, errorMessage: registerError, resetError: resetRegisterError } = useRegister();
 
   /** 인증번호 전송 핸들러 */
@@ -65,6 +76,39 @@ export default function RegisterScreen() {
     }
   };
 
+  /** 비밀번호 실시간 유효성 검증 핸들러 */
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (text.length > 0 && !isValidPassword(text)) {
+      setPasswordError('8자 이상, 영문·숫자·특수문자를 모두 포함해야 합니다.');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const openDropdown = (target: 'major1' | 'major2') => {
+    const list: string[] = target === 'major2'
+      ? ['선택 안 함', ...DEPARTMENTS]
+      : [...DEPARTMENTS];
+    const current = target === 'major1' ? major1 : major2;
+    const search = target === 'major2' && current === '' ? '선택 안 함' : current;
+    const idx = list.indexOf(search);
+    dropdownScrollIdx.current = Math.max(0, idx);
+    setDropdownTarget(target);
+  };
+
+  const closeDropdown = () => setDropdownTarget(null);
+
+  useEffect(() => {
+    if (dropdownTarget === null) return;
+    const idx = dropdownScrollIdx.current;
+    if (idx <= 0) return;
+    const timer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index: idx, animated: false });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [dropdownTarget]);
+
   /** 완료 버튼 — 회원가입 + 자동 로그인 */
   const handleComplete = () => {
     if (isRegistering) return;
@@ -72,8 +116,8 @@ export default function RegisterScreen() {
       Alert.alert('알림', '이메일 인증을 먼저 완료해주세요.');
       return;
     }
-    if (password.length < 8) {
-      Alert.alert('알림', '비밀번호는 8자 이상이어야 합니다.');
+    if (!isValidPassword(password)) {
+      Alert.alert('알림', '비밀번호는 8자 이상, 영문·숫자·특수문자를 모두 포함해야 합니다.');
       return;
     }
     if (!major1.trim()) {
@@ -95,7 +139,7 @@ export default function RegisterScreen() {
   /** 폼 전체 유효성 */
   const isFormValid =
     emailVerification.isVerified &&
-    password.length >= 8 &&
+    isValidPassword(password) &&
     major1.trim().length > 0;
 
   return (
@@ -242,9 +286,15 @@ export default function RegisterScreen() {
                   placeholderTextColor="#9CA3AF"
                   secureTextEntry
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={handlePasswordChange}
                 />
               </View>
+              {passwordError ? (
+                <View style={styles.errorContainer}>
+                  <Feather name="alert-circle" size={14} color="#EF4444" />
+                  <Text style={styles.errorText}>{passwordError}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* 4. 전공 선택 섹션 */}
@@ -254,15 +304,16 @@ export default function RegisterScreen() {
                 <View style={styles.labelContainer}>
                   <Text style={styles.sectionLabel}>전공 선택</Text>
                 </View>
-                <View style={styles.inputContainer}>
-                  <TextInput // TODO: 드롭다운 형식으로 변경 예정
-                    style={styles.textInput}
-                    placeholder="전공을 입력하세요 (예: 컴퓨터공학과)"
-                    placeholderTextColor="#9CA3AF"
-                    value={major1}
-                    onChangeText={setMajor1}
-                  />
-                </View>
+                <TouchableOpacity
+                  style={styles.selectButton}
+                  activeOpacity={0.7}
+                  onPress={() => openDropdown('major1')}
+                >
+                  <Text style={major1 ? styles.selectValue : styles.selectPlaceholder}>
+                    {major1 || '전공을 선택하세요'}
+                  </Text>
+                  <Feather name="chevron-down" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
               </View>
               {/* 복수/부전공 */}
               <View style={styles.subsection}>
@@ -271,15 +322,16 @@ export default function RegisterScreen() {
                     복수 · 부전공 선택 (선택사항)
                   </Text>
                 </View>
-                <View style={styles.inputContainer}>
-                  <TextInput // TODO: 드롭다운 형식으로 변경 예정
-                    style={styles.textInput}
-                    placeholder="선택안함/미확정시 비워주세요"
-                    placeholderTextColor="#9CA3AF"
-                    value={major2}
-                    onChangeText={setMajor2}
-                  />
-                </View>
+                <TouchableOpacity
+                  style={styles.selectButton}
+                  activeOpacity={0.7}
+                  onPress={() => openDropdown('major2')}
+                >
+                  <Text style={major2 ? styles.selectValue : styles.selectPlaceholder}>
+                    {major2 || '선택 안 함'}
+                  </Text>
+                  <Feather name="chevron-down" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
                 <View style={styles.helperContainer}>
                   <Text style={styles.helperText}>
                     추후 마이페이지에서 변경 가능합니다
@@ -362,6 +414,57 @@ export default function RegisterScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 전공 선택 드롭다운 모달 */}
+      <Modal
+        visible={dropdownTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDropdown}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeDropdown}
+        >
+          <View
+            style={styles.dropdownContainer}
+            onStartShouldSetResponder={() => true}
+          >
+            <FlatList
+              ref={flatListRef}
+              data={dropdownTarget === 'major2' ? ['선택 안 함', ...DEPARTMENTS] : [...DEPARTMENTS]}
+              keyExtractor={(item) => item}
+              getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
+              renderItem={({ item }) => {
+                const isSelected =
+                  dropdownTarget === 'major1'
+                    ? item === major1
+                    : item === '선택 안 함'
+                    ? major2 === ''
+                    : item === major2;
+                return (
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, isSelected && styles.dropdownItemSelected]}
+                    onPress={() => {
+                      if (dropdownTarget === 'major1') {
+                        setMajor1(item);
+                      } else {
+                        setMajor2(item === '선택 안 함' ? '' : item);
+                      }
+                      closeDropdown();
+                    }}
+                  >
+                    <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextSelected]}>
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── BottomNavBar (absolute) ── */}
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
@@ -724,5 +827,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+
+  // ─── 드롭다운 모달 (신규) ─────────────────────────────
+  selectValue: {
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  dropdownContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    maxHeight: 320,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    height: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#F0F4FF',
+  },
+  dropdownItemText: {
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  dropdownItemTextSelected: {
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });

@@ -9,6 +9,7 @@ Thumbs.db
 # forlder
 personal_docs/
 temp/
+secrets/
 
 # agent
 .agents/

@@ -22,7 +22,7 @@ services:
       dockerfile: backend/Dockerfile.prod
     container_name: cathori-backend
     env_file:
-      - backend/.env.prod
+      - .env.prod
     volumes:
       - ./secrets/cathori-firebase.json:/app/secrets/cathori-firebase.json:ro
     expose:
@@ -38,7 +38,7 @@ services:
     image: postgres:16-alpine
     container_name: cathori-db
     env_file:
-      - backend/.env.prod
+      - .env.prod
     environment:
       POSTGRES_DB:       ${DB_NAME}
       POSTGRES_USER:     ${DB_USERNAME}

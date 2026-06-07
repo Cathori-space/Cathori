@@ -1,0 +1,39 @@
+name: Deploy to NCP
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'nginx/**'
+      - 'docker-compose.prod.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH (Bastion → WAS)
+        uses: appleboy/ssh-action@v1
+        with:
+          host:           ${{ secrets.WAS_HOST }}
+          username:       ${{ secrets.WAS_USER }}
+          key:            ${{ secrets.WAS_SSH_KEY }}
+          proxy_host:     ${{ secrets.BASTION_HOST }}
+          proxy_username: ${{ secrets.BASTION_USER }}
+          proxy_key:      ${{ secrets.BASTION_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.WAS_USER }}/cathori
+            
+            # 최신 코드 받기
+            git pull origin main
+
+            # 컨테이너 재빌드 + 재시작
+            docker compose -f docker-compose.prod.yml up -d --build
+            
+            # 사용하지 않는 이미지 정리
+            docker image prune -f

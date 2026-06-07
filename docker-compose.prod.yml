@@ -6,6 +6,10 @@ services:
     container_name: cathori-nginx
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/ssl/cathori.crt:/etc/ssl/cathori.crt:ro
+      - /etc/ssl/cathori.key:/etc/ssl/cathori.key:ro
     depends_on:
       - backend
     restart: unless-stopped

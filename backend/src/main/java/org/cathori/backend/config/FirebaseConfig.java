@@ -6,9 +6,10 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
@@ -19,13 +20,16 @@ public class FirebaseConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(FirebaseConfig.class);
 
+    @Value("${firebase.credential.path}")
+    private String credentialPath;
+
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
         if (!FirebaseApp.getApps().isEmpty()) {
             logger.info("FirebaseApp이 이미 시작 되었습니다.");
             return FirebaseApp.getInstance();
         }
-        ClassPathResource resource = new ClassPathResource("cathori-firebase.json");
+        FileSystemResource resource = new FileSystemResource(credentialPath);
         
         try (InputStream serviceAccount = resource.getInputStream()) { // try-with-resources 사용
             GoogleCredentials credentials = GoogleCredentials.fromStream(serviceAccount)

@@ -18,7 +18,7 @@ import apiClient from './api';
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 
 /** true면 mock 데이터, false면 실제 백엔드 호출 */
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 interface FetchNotificationsParams {
   /** 직전 페이지의 nextCursor. 첫 페이지는 생략(null) */
@@ -35,6 +35,7 @@ async function fetchNotificationsReal(
     // cursor가 null/undefined면 파라미터 자체를 보내지 않음 → 첫 페이지
     params: { cursor: cursor ?? undefined, size },
   });
+
   return data;
 }
 

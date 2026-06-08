@@ -42,6 +42,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
+import { withdraw } from '@/src/services/auth';
 import { unregisterDeviceToken } from '@/src/services/pushToken';
 import { MainHeader } from '@/src/shared/components';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -158,9 +159,23 @@ const checkNotificationPermission = async () => {
     setWithdrawModalVisible(true);
   };
 
-  /** 회원탈퇴 확정 — TODO: 탈퇴 API 연동 */
-  const handleWithdrawConfirm = () => {
+  /** 회원탈퇴 확정 — DELETE /api/users/me → clearAuth → 로그인 화면 이동 */
+  const handleWithdrawConfirm = async () => {
     setWithdrawModalVisible(false);
+    try {
+      await withdraw();
+    } catch (e) {
+      console.warn('[withdraw] 탈퇴 API 실패:', e);
+      Alert.alert('탈퇴 실패', '회원탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    try {
+      await unregisterDeviceToken();
+    } catch (e) {
+      console.warn('[push] 토큰 반납 실패:', e);
+    }
+    clearAuth();
+    router.replace('/login');
   };
 
   /** 로그아웃 — 확인 다이얼로그 → clearAuth → 로그인 화면 이동 */

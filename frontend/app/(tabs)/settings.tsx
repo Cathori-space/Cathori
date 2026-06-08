@@ -30,6 +30,7 @@ import {
   Alert,
   AppState,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -81,6 +82,9 @@ export default function SettingsScreen() {
 
   // ── 알림 권한 상태 ──
   const [notificationPermitted, setNotificationPermitted] = useState(true);
+
+  // ── 회원탈퇴 모달 ──
+  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const appStateRef = useRef(AppState.currentState);
 
   /** OS 알림 권한 확인 */
@@ -147,6 +151,16 @@ const checkNotificationPermission = async () => {
   /** 알림 권한 배너 → OS 설정 이동 */
   const handleGoToPermissionSettings = () => {
     Linking.openSettings();
+  };
+
+  /** 회원탈퇴 확인 모달 열기 */
+  const handleWithdrawPress = () => {
+    setWithdrawModalVisible(true);
+  };
+
+  /** 회원탈퇴 확정 — TODO: 탈퇴 API 연동 */
+  const handleWithdrawConfirm = () => {
+    setWithdrawModalVisible(false);
   };
 
   /** 로그아웃 — 확인 다이얼로그 → clearAuth → 로그인 화면 이동 */
@@ -338,13 +352,25 @@ const checkNotificationPermission = async () => {
 
             {/* 로그아웃 */}
             <TouchableOpacity
-              style={styles.settingsRow}
+              style={[styles.settingsRow, styles.settingsRowBorder]}
               onPress={handleLogout}
               activeOpacity={0.7}
             >
               <View style={styles.settingsRowLeft}>
                 <Feather name="log-out" size={18} color="#BA1A1A" />
                 <Text style={styles.logoutText}>로그아웃</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* 회원탈퇴 */}
+            <TouchableOpacity
+              style={styles.settingsRow}
+              onPress={handleWithdrawPress}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsRowLeft}>
+                <Feather name="user-x" size={18} color="#BA1A1A" />
+                <Text style={styles.withdrawText}>회원탈퇴</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -357,6 +383,42 @@ const checkNotificationPermission = async () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* ── 회원탈퇴 확인 모달 ── */}
+      <Modal
+        visible={withdrawModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setWithdrawModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconWrapper}>
+              <Feather name="alert-triangle" size={28} color="#BA1A1A" />
+            </View>
+            <Text style={styles.modalTitle}>회원탈퇴</Text>
+            <Text style={styles.modalDescription}>
+              탈퇴 시 모든 데이터가 삭제되며{'\n'}복구할 수 없습니다.{'\n'}정말 탈퇴하시겠습니까?
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm]}
+                onPress={handleWithdrawConfirm}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalButtonConfirmText}>탈퇴하기</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => setWithdrawModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalButtonCancelText}>취소</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -571,6 +633,94 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#BA1A1A',
     letterSpacing: -0.375,
+  },
+  withdrawText: {
+    fontFamily: 'Pretendard',
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#BA1A1A',
+    letterSpacing: -0.375,
+  },
+
+  // ─── 회원탈퇴 모달 ───
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+    gap: 12,
+    ...Platform.select({
+      android: { elevation: 8 },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+    }),
+  },
+  modalIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(186, 26, 26, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontFamily: 'Pretendard',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#BA1A1A',
+    letterSpacing: -0.45,
+  },
+  modalDescription: {
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    fontWeight: '400',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#F2F2F2',
+  },
+  modalButtonConfirm: {
+    backgroundColor: '#BA1A1A',
+  },
+  modalButtonCancelText: {
+    fontFamily: 'Pretendard',
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+  },
+  modalButtonConfirmText: {
+    fontFamily: 'Pretendard',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 
   // ─── 푸터 ───

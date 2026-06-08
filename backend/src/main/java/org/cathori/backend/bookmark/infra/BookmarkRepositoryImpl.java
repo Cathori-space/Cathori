@@ -25,4 +25,9 @@ public class BookmarkRepositoryImpl implements BookmarkRepository {
     public void deleteByUserIdAndNoticeId(Long userId, Long noticeId) {
         jpaRepository.deleteByUserIdAndNoticeId(userId, noticeId);
     }
+
+    @Override
+    public void deleteByUserId(Long userId) {
+        jpaRepository.deleteByUserId(userId);
+    }
 }

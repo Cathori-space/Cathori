@@ -28,6 +28,9 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> withdraw(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        userService.withdraw(userDetails.getUserId());
     @DeleteMapping("/device-token")
     public ResponseEntity<Void> clearDeviceToken(
             @AuthenticationPrincipal CustomUserDetails userDetails) {

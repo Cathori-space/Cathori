@@ -11,6 +11,8 @@ public interface AlertHistoryRepository {
 
     List<AlertHistory> findFailedForRetry();
 
+    List<Long> findUserIdsByNoticeId(Long noticeId);
+
     AlertHistory save(AlertHistory log);
 
     void markSuccessForUsers(Long noticeId, List<Long> userIds);

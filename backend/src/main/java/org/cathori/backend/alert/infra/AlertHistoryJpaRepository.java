@@ -14,6 +14,9 @@ public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, L
     @Query("SELECT ah FROM AlertHistory ah WHERE ah.alarmStatus = 'FAILED' AND ah.retryCount < 3")
     List<AlertHistory> findFailedForRetry();
 
+    @Query("SELECT ah.userId FROM AlertHistory ah WHERE ah.noticeId = :noticeId")
+    List<Long> findUserIdsByNoticeId(@Param("noticeId") Long noticeId);
+
     @Modifying
     @Query("UPDATE AlertHistory ah SET ah.alarmStatus = 'SUCCESS' WHERE ah.noticeId = :noticeId AND ah.userId IN :userIds")
     void markSuccessForUsers(@Param("noticeId") Long noticeId, @Param("userIds") List<Long> userIds);

@@ -22,4 +22,6 @@ public interface AlertHistoryRepository {
     void incrementRetryForUsers(Long noticeId, List<Long> userIds);
 
     Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
+
+    void deleteByUserId(Long userId);
 }

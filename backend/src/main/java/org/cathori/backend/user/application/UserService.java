@@ -71,6 +71,8 @@ public class UserService {
         alertHistoryRepository.deleteByUserId(userId);
         refreshTokenRepository.deleteByUserId(userId);
         userRepository.delete(user);
+    }
+
     public void clearDeviceToken(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));

@@ -72,3 +72,10 @@ export async function verifyEmail(
   );
   return data;
 }
+
+/**
+ * 회원탈퇴 — 계정 및 관련 데이터(태그/북마크/알림/토큰) 전체 삭제
+ */
+export async function withdraw(): Promise<void> {
+  await apiClient.delete('/api/users/me');
+}

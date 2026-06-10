@@ -18,8 +18,7 @@ public class CrawlingScheduler {
 
     private final NoticeService noticeService;
 
-    // @Scheduled(cron = "0 0 0,12 * * *") // 12시간에 한번
-    @Scheduled(cron = "${crawler.dispatch.cron}") // 1시간에 한번
+    @Scheduled(cron = "${crawler.dispatch.cron}")
     public void scheduleCrawling() {
         log.info("크롤링 시작");
         int total = 0;

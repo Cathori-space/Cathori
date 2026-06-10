@@ -1,14 +1,15 @@
 package org.cathori.backend.notice.infra.crawler;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+
 import org.cathori.backend.notice.application.CrawledNotice;
 import org.cathori.backend.notice.application.NoticeService;
 import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -17,7 +18,7 @@ public class CrawlingScheduler {
 
     private final NoticeService noticeService;
 
-    @Scheduled(cron = "0 0 0,12 * * *") // 12시간에 한번
+    @Scheduled(cron = "${crawler.dispatch.cron}")
     public void scheduleCrawling() {
         log.info("크롤링 시작");
         int total = 0;

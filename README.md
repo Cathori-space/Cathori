@@ -10,7 +10,7 @@
 
 <br/>
 
-<img src="https://img.shields.io/badge/status-개발중-FABE00?style=flat-square"/> <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white"/> <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"/> </div>
+<img src="https://img.shields.io/badge/status-1차MVP완료-FABE00?style=flat-square"/> <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white"/>
 
 ---
 

@@ -105,8 +105,7 @@
 
 ## 🔄 어떻게 동작하나요?
 
-<details> 
-<summary><h3>📊 전체 데이터 흐름</h3></summary>
+### 📊 전체 데이터 흐름
 
 ```mermaid
 sequenceDiagram
@@ -145,8 +144,7 @@ sequenceDiagram
 
 </details>
 
-<details> 
-<summary><h3>🏗 처리 파이프라인 (5단계)</h3></summary>
+### 🏗 처리 파이프라인 (5단계)
 
 ```mermaid
 graph LR
@@ -171,9 +169,7 @@ graph LR
     D --> E
 ```
 
-</details>
-
-> 💡 더 자세한 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 확인할 수 있습니다.
+> 💡 기획, 시나리오, 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 자세히 확인할 수 있습니다.
 
 ---
 

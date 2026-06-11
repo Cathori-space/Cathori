@@ -6,7 +6,7 @@
 
 <h3>관심 공지를 편하게, 놓치지 않고 알람으로</h3> <p>가톨릭대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
 
-<a href="#">🚀 서비스 바로가기 (출시 후 업데이트 예정)</a> | <a href="https://github.com/tomass22/Cathori/wiki">📚 팀 Wiki</a>
+<a href="#">🚀 서비스 바로가기 (Play Store 심사 중)</a> | <a href="https://github.com/tomass22/Cathori/wiki">📚 팀 Wiki</a>
 
 <br/>
 
@@ -156,7 +156,7 @@ graph LR
 
 </details>
 
-> 💡 더 자세한 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 확인할 수 있습니다 _(추후 링크 추가 예정)_.
+> 💡 더 자세한 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 확인할 수 있습니다.
 
 ---
 
@@ -344,9 +344,11 @@ notification_logs
 
 ## 📄 라이선스
 
-이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE]() 파일을 참고해주세요.
+'Copyright (c) 2026 Lee Jung-hoon. All rights reserved.'
 
-<!-- 비고: 학교 공지 크롤링과 관련한 약관/저작권 표기는 추후 LEGAL.md로 분리하여 명시 예정 -->
+본 프로젝트의 코드는 Public으로 공개되어 누구나 자유롭게 열람하고 참고할 수 있습니다.
+다만, 본 코드를 기반으로 수정, 변경, 또는 추가 개발(디벨롭)을 하여 배포 및 사용할 경우, 반드시 Repo의 멤버가 아니라면 원저작자(이정훈)의 사전 서면 허락을 받아야 합니다. (상업적 이용이 아닐지라도 허락이 필요합니다. 단, 허락에 따른 비용은 요구하지 않습니다.)
+문의: dominanthat@gmail.com
 
 ---
 
@@ -354,7 +356,7 @@ notification_logs
 
 서비스 사용 중 불편한 점이나 제안하고 싶은 기능이 있다면 언제든 알려주세요.
 
-- **이메일**: 비고 <!-- 비고: 팀 대표 메일 추후 추가 -->
+- **이메일**: dominanthat@gmail.com
 - **사용자 피드백 폼**: 출시 후 앱 내 설정 화면에서 제공 예정
 
 <br/> 

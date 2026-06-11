@@ -128,7 +128,7 @@ sequenceDiagram
   G-->>S: 3줄 bullet + 마감일(YYYY-MM-DD)
   S->>DB: 요약 결과 저장
 
-  Note over S,F: 키워드 매칭 후 푸시 발송
+  Note over S,F: 키워드 매칭 후 아침 11시 푸시 발송
   S->>DB: 사용자 키워드 ↔ 신규 공지 매칭
   DB-->>S: 매칭 대상 사용자 목록
   S->>F: 매칭 사용자에게 푸시 발송 요청

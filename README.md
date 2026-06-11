@@ -345,7 +345,7 @@ notification_logs
 
 - **소속**: 가톨릭대학교 (Catholic University of Korea)
 - **과목**: 종합설계프로젝트 (캡스톤 디자인)
-- **진행 기간**: 2026.03 ~ 2026.06
+- **진행 기간**: 2026.03 ~
 - **타겟 사용자**: 가톨릭대학교 학부생
 - **첫 출시 플랫폼**: Android (Google Play Store, 심사 중)
 

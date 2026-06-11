@@ -2,7 +2,7 @@
 
 <!-- ============================================== --> <!-- 📌 비고: 여기에 Cathori 배너 이미지 추가 예정 --> <!-- 권장 크기: 1200 x 400 / DCU Blue + Ginkgo Yellow --> <!-- ============================================== --> <div align="center">
 
-![banner-placeholder](https://placehold.co/1200x400/00288C/FABE00?text=Cathori)
+<img width="863" height="443" alt="image" src="https://github.com/user-attachments/assets/0317e953-04c4-4bb2-957e-0ee4bed92ab5" />
 
 <h3>관심 공지를 편하게, 놓치지 않고 알람으로</h3> <p>가톨릭대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
 
@@ -44,45 +44,62 @@
 <!-- 권장 형식: Android 디바이스 프레임 + GIF/PNG --> 
 <!-- ============================================== --> 
 
-<h3 align="center">📝 이메일 인증 회원가입</h3> 
-<p align="center">비고 </p>
-<p align="center">가톨릭대학교 학생임을 이메일 인증으로 확인 후 가입</p> 
+<h3 align="center">🔐 1. 인증 및 시작</h3>
+<table align="center">
+  <tr align="center" valign="top">
+    <td width="50%">
+      <h4>📝 로그인</h4>
+      <img width="216" height="465" alt="1_로그인 화면" src="https://github.com/user-attachments/assets/6a918b92-6cc9-4fd7-89c3-00451e97b70a" />
+      <p><small>회원가입 한 경우 로그인 하는 첫 시작 화면</small></p>
+    </td>
+    <td width="50%">
+      <h4>📝 이메일 인증 회원가입</h4>
+      <img width="216" height="465" alt="image" src="https://github.com/user-attachments/assets/f201af6c-2494-4cb0-b7c7-70ad3e87324c" />
+      <p><small>가톨릭대학교 학생임을 이메일 인증으로 확인 후 가입</small></p>
+    </td>
+  </tr>
+</table>
 
-<br/> 
+<br/>
 
-<h3 align="center">🏠 메인 피드 · 카테고리/태그 필터</h3> 
-<p align="center">비고 </p>
-<p align="center">대분류(일반·장학·학사·취창업) + 사용자 태그 필터로 공지 골라 보기</p> 
+<h3 align="center">📢 2. 메인 피드 및 공지 조회</h3>
+<table align="center">
+  <tr align="center" valign="top">
+    <td width="50%">
+      <h4>🏠 메인 피드 · 필터</h4>
+      <img width="216" height="465" alt="2_메인화면" src="https://github.com/user-attachments/assets/5d9ca4dd-90b5-461b-8e2e-71df5d258be5" />
+      <p><small>대분류(일반·장학·학사·취창업) + 사용자 태그 필터로 공지 골라 보기</small></p>
+    </td>
+    <td width="50%">
+      <h4>📄 공지 AI 3줄 요약</h4>
+      <img width="216" height="465" alt="3_공지요약화면" src="https://github.com/user-attachments/assets/68ab9420-e436-4960-a4cc-f53b4fee6d20" />
+      <p><small>Gemini API가 본문·이미지를 분석해 핵심 3줄과 마감일을 자동 정리</small></p>
+    </td>
+  </tr>
+</table>
 
-<br/> 
+<br/>
 
-<h3 align="center">📄 공지 상세 · AI 3줄 요약</h3> 
-<p align="center">비고 </p>
-<p align="center">Gemini API가 본문·이미지를 분석해 핵심 3줄과 마감일을 자동 정리</p> 
-
-<br/> 
-
-<h3 align="center">🔍 키워드 검색</h3> 
-<p align="center">비고 </p>
-<p align="center">300ms debounce 검색 + 최근 검색어 자동 저장</p> 
-
-<br/> 
-
-<h3 align="center">🔔 키워드 매칭 푸시 알림</h3> 
-<p align="center">비고 </p>
-<p align="center">설정한 키워드와 매칭되는 새 공지가 올라오면 즉시 알림</p> 
-
-<br/> 
-
-<h3 align="center">⭐ 즐겨찾기 · 마이페이지</h3> 
-<p align="center">비고 </p>
-<p align="center">놓치고 싶지 않은 공지는 북마크해두고 마이페이지에서 한눈에</p> 
-
-<br/> 
-
-<h3 align="center">⚙️ 키워드 · 알림 설정</h3> 
-<p align="center">비고 </p>
-<p align="center">최대 20개 키워드 관리 · 알림 시간대 · 야간 알림 제한</p>
+<h3 align="center">🔍 3. 검색 및 맞춤 알림</h3>
+<table align="center">
+  <tr align="center" valign="top">
+    <td width="33%">
+      <h4>🔍 키워드 검색</h4>
+      <img width="216" height="465" alt="4_공지검색화면" src="https://github.com/user-attachments/assets/f20eb4e3-49d2-4ad8-9704-fdb1bcc8b1d5" />
+      <p><small>300ms debounce 검색 + 최근 검색어 자동 저장</small></p>
+    </td>
+    <td width="33%">
+      <h4>⚙️ 키워드 · 알림 설정</h4>
+      <img width="216" height="465" alt="6_관심키워드설정화면" src="https://github.com/user-attachments/assets/e3572073-aa03-4049-aaf0-1717e375be5e" />
+      <p><small>최대 20개 키워드 관리 · 알림 시간대 · 야간 알림 제한</small></p>
+    </td>
+    <td width="34%">
+      <h4>🔔 푸시 알림 리스트</h4>
+      <img width="216" height="465" alt="7_알림리스트화면" src="https://github.com/user-attachments/assets/83056d81-70a6-4f21-8d81-b10e939a8802" />
+      <p><small>설정한 키워드 매칭 시 즉시 알림 및 리스트 적재</small></p>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -347,7 +364,9 @@ notification_logs
 'Copyright (c) 2026 Lee Jung-hoon. All rights reserved.'
 
 본 프로젝트의 코드는 Public으로 공개되어 누구나 자유롭게 열람하고 참고할 수 있습니다.
-다만, 본 코드를 기반으로 수정, 변경, 또는 추가 개발(디벨롭)을 하여 배포 및 사용할 경우, 반드시 Repo의 멤버가 아니라면 원저작자(이정훈)의 사전 서면 허락을 받아야 합니다. (상업적 이용이 아닐지라도 허락이 필요합니다. 단, 허락에 따른 비용은 요구하지 않습니다.)
+다만, 본 코드를 기반으로 수정, 변경, 또는 추가 개발(디벨롭)을 하여 배포 및 사용할 경우, Repo의 멤버가 아니라면 반드시 프로젝트 팀장(이정훈/tomass22)의 사전 서면 허락을 받아야 합니다. 
+(상업적 이용이 아닐지라도 허락이 필요합니다. 단, 허락에 따른 비용은 요구하지 않습니다.)
+
 문의: dominanthat@gmail.com
 
 ---

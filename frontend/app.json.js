@@ -1,4 +1,4 @@
-{
+export default {
   "expo": {
     "name": "cathori",
     "slug": "cathori",
@@ -20,7 +20,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "site.cathori.cathori",
-      "googleServicesFile": "$GOOGLE_SERVICES_JSON",
+      "googleServicesFile": process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       "versionCode": 1
     },
     "web": {
@@ -60,4 +60,4 @@
       }
     }
   }
-}
+};

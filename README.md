@@ -37,7 +37,7 @@
 
 ---
 
-## 🎬 주요 기능
+## 🎬 주요 기능 (1차 MVP - 1.0.0 기준)
 
 <!-- ============================================== --> 
 <!-- 📌 비고: 각 기능별 스크린샷/GIF 추후 추가 예정 --> 
@@ -49,12 +49,12 @@
   <tr align="center" valign="top">
     <td width="50%">
       <h4>📝 로그인</h4>
-      <img width="216" height="465" alt="1_로그인 화면" src="https://github.com/user-attachments/assets/6a918b92-6cc9-4fd7-89c3-00451e97b70a" />
+      <img width="250" height="538" alt="1_로그인 화면" src="https://github.com/user-attachments/assets/6a918b92-6cc9-4fd7-89c3-00451e97b70a" />
       <p><small>회원가입 한 경우 로그인 하는 첫 시작 화면</small></p>
     </td>
     <td width="50%">
       <h4>📝 이메일 인증 회원가입</h4>
-      <img width="216" height="465" alt="image" src="https://github.com/user-attachments/assets/f201af6c-2494-4cb0-b7c7-70ad3e87324c" />
+      <img width="250" height="538" alt="image" src="https://github.com/user-attachments/assets/f201af6c-2494-4cb0-b7c7-70ad3e87324c" />
       <p><small>가톨릭대학교 학생임을 이메일 인증으로 확인 후 가입</small></p>
     </td>
   </tr>
@@ -67,12 +67,12 @@
   <tr align="center" valign="top">
     <td width="50%">
       <h4>🏠 메인 피드 · 필터</h4>
-      <img width="216" height="465" alt="2_메인화면" src="https://github.com/user-attachments/assets/5d9ca4dd-90b5-461b-8e2e-71df5d258be5" />
+      <img width="250" height="538" alt="2_메인화면" src="https://github.com/user-attachments/assets/5d9ca4dd-90b5-461b-8e2e-71df5d258be5" />
       <p><small>대분류(일반·장학·학사·취창업) + 사용자 태그 필터로 공지 골라 보기</small></p>
     </td>
     <td width="50%">
       <h4>📄 공지 AI 3줄 요약</h4>
-      <img width="216" height="465" alt="3_공지요약화면" src="https://github.com/user-attachments/assets/68ab9420-e436-4960-a4cc-f53b4fee6d20" />
+      <img width="250" height="538" alt="3_공지요약화면" src="https://github.com/user-attachments/assets/68ab9420-e436-4960-a4cc-f53b4fee6d20" />
       <p><small>Gemini API가 본문·이미지를 분석해 핵심 3줄과 마감일을 자동 정리</small></p>
     </td>
   </tr>
@@ -85,17 +85,17 @@
   <tr align="center" valign="top">
     <td width="33%">
       <h4>🔍 키워드 검색</h4>
-      <img width="216" height="465" alt="4_공지검색화면" src="https://github.com/user-attachments/assets/f20eb4e3-49d2-4ad8-9704-fdb1bcc8b1d5" />
+      <img width="250" height="538" alt="4_공지검색화면" src="https://github.com/user-attachments/assets/f20eb4e3-49d2-4ad8-9704-fdb1bcc8b1d5" />
       <p><small>300ms debounce 검색 + 최근 검색어 자동 저장</small></p>
     </td>
     <td width="33%">
       <h4>⚙️ 키워드 · 알림 설정</h4>
-      <img width="216" height="465" alt="6_관심키워드설정화면" src="https://github.com/user-attachments/assets/e3572073-aa03-4049-aaf0-1717e375be5e" />
+      <img width="250" height="538" alt="6_관심키워드설정화면" src="https://github.com/user-attachments/assets/e3572073-aa03-4049-aaf0-1717e375be5e" />
       <p><small>최대 20개 키워드 관리 · 알림 시간대 · 야간 알림 제한</small></p>
     </td>
     <td width="34%">
       <h4>🔔 푸시 알림 리스트</h4>
-      <img width="216" height="465" alt="7_알림리스트화면" src="https://github.com/user-attachments/assets/83056d81-70a6-4f21-8d81-b10e939a8802" />
+      <img width="250" height="538" alt="7_알림리스트화면" src="https://github.com/user-attachments/assets/83056d81-70a6-4f21-8d81-b10e939a8802" />
       <p><small>설정한 키워드 매칭 시 즉시 알림 및 리스트 적재</small></p>
     </td>
   </tr>

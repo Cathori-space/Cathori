@@ -46,6 +46,21 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
     onToggleBookmark?.(notice.id);
   };
 
+  // AI 요약 1줄만 가져오기
+  const getFirstSummaryLine = (aiSummary: string | null): string => {
+  if (!aiSummary) return '';
+  try {
+    const parsed = JSON.parse(aiSummary);
+    if (Array.isArray(parsed)) {
+      return parsed[0] || '';
+    }
+    return aiSummary;
+  } catch {
+    // 백엔드에서 간혹 일반 string으로 줄바꿈해서 줄 때를 위한 대비책
+    return aiSummary.replace(/•\s*/g, '').split('\n')[0] || '';
+  }
+};
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -54,7 +69,7 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
     >
       {/* 상단: 카테고리 뱃지 + D-day 뱃지 */}
       <View style={styles.badgeRow}>
-        <CategoryBadge category={notice.category} />
+        {notice?.category != null && <CategoryBadge category={notice.category} />}
         {notice.deadlineAt != null && (
           <DeadlineBadge deadlineAt={notice.deadlineAt} />
         )}
@@ -79,7 +94,7 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
             />
             <Text style={styles.summaryText} numberOfLines={2}>
               {/* 마크 제거하고 첫 줄만 가져오기 */}
-              {notice.aiSummary.replace(/•\s*/g, '').split('\n')[0]}
+              {getFirstSummaryLine(notice.aiSummary)}
             </Text>
           </View>
         </View>

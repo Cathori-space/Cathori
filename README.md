@@ -169,8 +169,8 @@ graph LR
     D --> E
 ```
 
-> [!note]
-> 💡 기획, 시나리오, 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 자세히 확인할 수 있습니다.
+
+### 💡 기획, 시나리오, 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 자세히 확인할 수 있습니다.
 
 ---
 

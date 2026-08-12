@@ -63,15 +63,30 @@ export default function RootLayout() {
   const [isRehydrated, setIsRehydrated] = useState(false);
 
   useEffect(() => {
+    let initializationStarted = false;
+
+    const initialize = () => {
+      if (initializationStarted) return;
+      initializationStarted = true;
+
+      void useAuthStore
+        .getState()
+        .initializeAuth()
+        .catch((error) => {
+          console.warn('[auth] Failed to restore tokens:', error);
+        })
+        .finally(() => {
+          setIsRehydrated(true);
+        });
+    };
+
     // Zustand persist rehydrate 완료 대기
     // useAuthStore.persist.onFinishHydration은 이미 hydrate 되었으면 즉시 호출 (휴대폰에서 영구 저장소에서 토큰 데이터 불러오게 되었을 때 호출)
-    const unsubscribe = useAuthStore.persist.onFinishHydration(() => {
-      setIsRehydrated(true);
-    });
+    const unsubscribe = useAuthStore.persist.onFinishHydration(initialize);
 
     // 이미 rehydrate가 완료된 경우를 대비
     if (useAuthStore.persist.hasHydrated()) {
-      setIsRehydrated(true);
+      initialize();
     }
 
     return unsubscribe;

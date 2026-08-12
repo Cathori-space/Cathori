@@ -37,6 +37,7 @@ export default {
         dark: { backgroundColor: "#000000" }
       }],
       ["expo-notifications", { color: "#00288C" }],
+      "expo-secure-store",
       "expo-font"
     ],
     experiments: {

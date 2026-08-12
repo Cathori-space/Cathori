@@ -2,7 +2,7 @@
  * 로그인 TanStack Query mutation 훅
  *
  * 성공 시:
- *  1. useAuthStore.setAuth(response) → 토큰+사용자+태그 영속 저장
+ *  1. useAuthStore.setAuth(response) → 토큰은 SecureStore, 사용자 정보는 AsyncStorage에 저장
  *  2. 라우팅 가드가 accessToken 감지 → 자동으로 (tabs)로 이동
  *
  * 에러 분기 (API 명세 기반):
@@ -59,10 +59,10 @@ export function useLogin() {
     LoginRequest
   >({
     mutationFn: login,
-    onSuccess: (response) => {
-      // 토큰 + 사용자 정보 + 태그 영속 저장
+    onSuccess: async (response) => {
+      // 토큰은 SecureStore, 사용자 정보와 태그는 AsyncStorage에 저장
       // _layout.tsx의 useProtectedRoute가 accessToken 변경 감지 → (tabs)로 자동 이동
-      setAuth(response);
+      await setAuth(response);
     },
   });
 

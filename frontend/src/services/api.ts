@@ -35,7 +35,7 @@ apiClient.interceptors.request.use(
 // ─── 응답 인터셉터 ─────────────────────────────────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     // 401 Unauthorized → 토큰 클리어 + 로그인 화면 리다이렉트
     // 1차 MVP: refreshToken 갱신 미구현, 단순 로그아웃 처리
     // (트랩 #9: accessToken 만료 + refreshToken 유효 케이스는 추후에 재검토)
@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
       // 이미 인증 토큰이 있었는데 401을 받은 경우에만 로그아웃 처리
       // (인증 불필요 API의 401은 무시 — 로그인/회원가입 API의 비밀번호 오답 등)
       if (accessToken) {
-        useAuthStore.getState().clearAuth();
+        await useAuthStore.getState().clearAuth();
         router.replace('/login' as never);
       }
     }

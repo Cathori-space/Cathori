@@ -1,13 +1,14 @@
 /**
- * 인증 상태 Zustand 스토어 (AsyncStorage 영속화)
+ * 인증 상태 Zustand 스토어
  *
  * 정책:
- *  - accessToken + refreshToken을 영속 저장 (앱 재실행 시 자동 로그인 기반)
- *  - user 정보 + tags도 영속 저장 (로그인 응답 한 번으로 채움, 별도 조회 불필요)
+ *  - accessToken + refreshToken은 OS 보안 저장소(SecureStore)에 저장
+ *  - user 정보 + tags는 AsyncStorage에 영속 저장
  *  - clearAuth() 호출 시 토큰·사용자·태그 모두 초기화 (로그아웃)
  *
  * 영속화:
- *  - zustand/middleware persist + createJSONStorage(() => AsyncStorage)
+ *  - persist 미들웨어는 user + tags만 AsyncStorage에 저장
+ *  - 앱 시작 시 SecureStore의 토큰을 메모리 상태로 복원
  *  - 키: 'cathori-auth'
  *  - 앱 재시작 후 자동 rehydrate
  *
@@ -18,6 +19,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import {
+  clearTokens,
+  getTokens,
+  saveTokens,
+} from '@/src/services/tokenStorage';
 import type { AuthUser, LoginResponse, UserTag } from '@/src/types/auth';
 
 interface AuthState {
@@ -34,13 +40,16 @@ interface AuthState {
    * 로그인 성공 시 호출 — 토큰 + 사용자 정보 + 태그를 한 번에 세팅
    * LoginResponse를 그대로 받아 필요한 필드를 추출
    */
-  setAuth: (response: LoginResponse) => void;
+  setAuth: (response: LoginResponse) => Promise<void>;
 
   /**
    * 로그아웃 시 호출 — 토큰·사용자·태그 모두 초기화
-   * AsyncStorage에서도 자동으로 삭제됨 (persist 미들웨어)
+   * SecureStore의 토큰과 AsyncStorage의 사용자 정보를 함께 삭제
    */
-  clearAuth: () => void;
+  clearAuth: () => Promise<void>;
+
+  /** SecureStore에 저장된 토큰을 앱 메모리로 복원합니다. */
+  initializeAuth: () => Promise<void>;
 
   /**
    * 태그 목록 갱신 — 태그 추가/삭제 후 클라이언트 낙관적 갱신용
@@ -56,12 +65,18 @@ const INITIAL_STATE = {
   tags: [] as UserTag[],
 };
 
+type PersistedAuthState = Pick<AuthState, 'user' | 'tags'>;
+
 export const useAuthStore = create<AuthState>()(
-  persist(
+  persist<AuthState, [], [], PersistedAuthState>(
     (set) => ({
       ...INITIAL_STATE, // 스토어 처음 켜졌을 시 세팅용 초기값
 
-      setAuth: (response) =>
+      setAuth: async (response) => {
+        await saveTokens({
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+        });
         set({
           accessToken: response.accessToken,
           refreshToken: response.refreshToken,
@@ -74,15 +89,31 @@ export const useAuthStore = create<AuthState>()(
             enrollmentStatus: response.enrollmentStatus,
           },
           tags: response.tags,
-        }),
+        });
+      },
 
-      clearAuth: () => set({ ...INITIAL_STATE }),
+      clearAuth: async () => {
+        await clearTokens();
+        set({ ...INITIAL_STATE });
+      },
+
+      initializeAuth: async () => {
+        const tokens = await getTokens();
+        set({
+          accessToken: tokens?.accessToken ?? null,
+          refreshToken: tokens?.refreshToken ?? null,
+        });
+      },
 
       updateTags: (tags) => set({ tags }),
     }),
     {
       name: 'cathori-auth', // 저장소 안의 아이템의 이름
-      storage: createJSONStorage(() => AsyncStorage), // AsyncStorage에 저장
+      storage: createJSONStorage(() => AsyncStorage), // 사용자 정보와 태그만 저장
+      partialize: (state) => ({
+        user: state.user,
+        tags: state.tags,
+      }),
     },
   ),
 );

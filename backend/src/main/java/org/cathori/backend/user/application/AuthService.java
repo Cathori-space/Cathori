@@ -2,6 +2,7 @@ package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.security.JwtUtil;
+import org.cathori.backend.security.TokenHasher;
 import org.cathori.backend.tag.application.TagService;
 import org.cathori.backend.tag.api.dto.TagDto;
 import org.cathori.backend.user.UserErrorCode;
@@ -27,6 +28,7 @@ public class AuthService {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final TokenHasher tokenHasher;
     private final TagService tagService;
     private final RefreshTokenRepository refreshTokenRepository;
 
@@ -34,12 +36,13 @@ public class AuthService {
     private long refreshTokenExpiry;
 
     public AuthService(VerifiedEmailStore verifiedEmailStore, UserService userService,
-                       PasswordEncoder passwordEncoder, JwtUtil jwtUtil, TagService tagService,
-                       RefreshTokenRepository refreshTokenRepository) {
+                       PasswordEncoder passwordEncoder, JwtUtil jwtUtil, TokenHasher tokenHasher,
+                       TagService tagService, RefreshTokenRepository refreshTokenRepository) {
         this.verifiedEmailStore = verifiedEmailStore;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.tokenHasher = tokenHasher;
         this.tagService = tagService;
         this.refreshTokenRepository = refreshTokenRepository;
     }
@@ -71,7 +74,7 @@ public class AuthService {
         String refreshTokenValue = jwtUtil.generateRefreshToken(user.getId());
 
         refreshTokenRepository.deleteByUserId(user.getId());
-        refreshTokenRepository.save(RefreshToken.create(user.getId(), refreshTokenValue, refreshTokenExpiry));
+        refreshTokenRepository.save(RefreshToken.create(user.getId(), tokenHasher.hash(refreshTokenValue), refreshTokenExpiry));
 
         List<TagDto> tags = tagService.getTagsByUserId(user.getId());
 
@@ -86,7 +89,13 @@ public class AuthService {
 
     @Transactional
     public ReissueResponse reissue(ReissueRequest request) {
-        RefreshToken stored = refreshTokenRepository.findByToken(request.refreshToken())
+        String refreshTokenValue = request.refreshToken();
+
+        if (!jwtUtil.isRefreshToken(refreshTokenValue)) {
+            throw new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID);
+        }
+
+        RefreshToken stored = refreshTokenRepository.findByToken(tokenHasher.hash(refreshTokenValue))
                 .orElseThrow(() -> new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID));
 
         if (stored.isExpired()) {
@@ -94,11 +103,14 @@ public class AuthService {
             throw new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID);
         }
 
-        String newAccessToken = jwtUtil.generateAccessToken(stored.getUserId());
-        String newRefreshTokenValue = jwtUtil.generateRefreshToken(stored.getUserId());
+        User user = userService.findById(stored.getUserId())
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
-        refreshTokenRepository.deleteByUserId(stored.getUserId());
-        refreshTokenRepository.save(RefreshToken.create(stored.getUserId(), newRefreshTokenValue, refreshTokenExpiry));
+        String newAccessToken = jwtUtil.generateAccessToken(user.getId());
+        String newRefreshTokenValue = jwtUtil.generateRefreshToken(user.getId());
+
+        refreshTokenRepository.deleteByUserId(user.getId());
+        refreshTokenRepository.save(RefreshToken.create(user.getId(), tokenHasher.hash(newRefreshTokenValue), refreshTokenExpiry));
 
         return new ReissueResponse(newAccessToken, newRefreshTokenValue);
     }

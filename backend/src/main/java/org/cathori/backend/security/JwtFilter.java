@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -28,8 +29,8 @@ public class JwtFilter extends OncePerRequestFilter {
      *
      * 1. 요청 헤더에서 "Authorization: Bearer {토큰}" 형식으로 토큰 추출
      * 2. 토큰이 없거나 형식이 맞지 않으면 검증 없이 다음 필터로 넘김 (인증 제외 경로 처리)
-     * 3. 토큰 유효성 검증 → userId 추출 → DB에서 사용자 조회
-     * 4. 조회한 사용자 정보를 SecurityContext에 등록
+     * 3. 액세스 토큰 유효성 검증 (형식/서명/알고리즘 -> type=access -> 만료기한) → userId 추출
+     * 4. subject가 유효한 사용자인지 DB 조회로 확인 → SecurityContext에 등록
      *    → 이후 컨트롤러에서 @AuthenticationPrincipal로 꺼내 쓸 수 있음
      * 5. 다음 필터로 넘김
      */
@@ -41,14 +42,19 @@ public class JwtFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
 
-            if (jwtUtil.validateToken(token)) {
+            if (jwtUtil.validateAccessToken(token)) {
                 Long userId = jwtUtil.extractUserId(token);
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(String.valueOf(userId));
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                try {
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(String.valueOf(userId));
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                } catch (UsernameNotFoundException e) {
+                    SecurityContextHolder.clearContext();
+                }
             }
         }
 

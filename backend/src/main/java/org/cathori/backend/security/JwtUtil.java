@@ -1,5 +1,7 @@
 package org.cathori.backend.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -12,6 +14,10 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
+
+    private static final String CLAIM_TYPE = "type";
+    private static final String TOKEN_TYPE_ACCESS = "access";
+    private static final String TOKEN_TYPE_REFRESH = "refresh";
 
     @Value("${jwt.secret-key}")
     private String secretKey;
@@ -40,6 +46,7 @@ public class JwtUtil {
     public String generateAccessToken(Long userId) {
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim(CLAIM_TYPE, TOKEN_TYPE_ACCESS)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiry))
                 .signWith(getSigningKey())
@@ -54,30 +61,60 @@ public class JwtUtil {
     public String generateRefreshToken(Long userId) {
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim(CLAIM_TYPE, TOKEN_TYPE_REFRESH)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiry))
                 .signWith(getSigningKey())
                 .compact();
     }
 
-
-    public boolean validateToken(String token) {
+    /**
+     * 서명/포맷/허용 알고리즘을 검증하고 claims를 반환한다.
+     * exp가 지났더라도 type 클레임은 먼저 확인할 수 있도록,
+     * 만료 예외는 잡아서 claims를 그대로 반환한다 (만료 여부는 호출부에서 별도 판단).
+     */
+    private Claims parseClaims(String token) {
         try {
-            Jwts.parser()
+            return Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
-                    .parseSignedClaims(token);
-            return true;
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        }
+    }
+
+    /**
+     * 액세스 토큰 검증: 형식/서명/알고리즘 -> type=access -> 만료기한 순으로 확인한다.
+     * (subject의 사용자 유효성은 JwtFilter에서 DB 조회로 별도 확인한다)
+     */
+    public boolean validateAccessToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            if (!TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TYPE, String.class))) {
+                return false;
+            }
+            Date expiration = claims.getExpiration();
+            return expiration != null && expiration.after(new Date());
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
     /**
-     * 토큰의 유효성을 검증한다. (로그인 이후 매 요청 시 JwtFilter에서 호출)
-     * 서명이 올바른지, 만료되지 않았는지 확인한다.
-     * 검증 실패 시 JwtException이 발생하며 false를 반환한다.
+     * 리프레시 토큰 여부 검증: 형식/서명/알고리즘 -> type=refresh 순으로 확인한다.
+     * DB 일치 여부, 만료기한(DB 기준), subject 사용자 유효성은 AuthService에서 확인한다.
      */
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return TOKEN_TYPE_REFRESH.equals(claims.get(CLAIM_TYPE, String.class));
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     public Long extractUserId(String token) {
         String subject = Jwts.parser()
                 .verifyWith(getSigningKey())

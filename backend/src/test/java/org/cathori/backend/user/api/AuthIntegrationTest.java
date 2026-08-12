@@ -1,12 +1,14 @@
 package org.cathori.backend.user.api;
 
 import org.cathori.backend.IntegrationTestBase;
+import org.cathori.backend.security.JwtUtil;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
 import org.cathori.backend.user.application.VerificationStore;
 import org.cathori.backend.user.application.VerifiedEmailStore;
 import org.cathori.backend.user.api.dto.LoginRequest;
 import org.cathori.backend.user.api.dto.RegisterRequest;
+import org.cathori.backend.user.api.dto.ReissueRequest;
 import org.cathori.backend.user.infra.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 
@@ -32,6 +36,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     @Autowired VerifiedEmailStore verifiedEmailStore;
     @Autowired VerificationStore verificationStore;
     @Autowired UserJpaRepository userJpaRepository;
+    @Autowired JwtUtil jwtUtil;
     @MockitoBean
     NotificationPort notificationPort;
 
@@ -130,5 +135,69 @@ class AuthIntegrationTest extends IntegrationTestBase {
                         .content(objectMapper.writeValueAsString(new LoginRequest("nobody@catholic.ac.kr", PASSWORD))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("A-7: 정상 refreshToken으로 재발급 요청 시 200과 새 accessToken/refreshToken 반환")
+    void reissue_success() throws Exception {
+        createVerifiedUser(EMAIL, PASSWORD);
+        String refreshToken = loginAndGetRefreshToken();
+
+        mockMvc.perform(post("/api/auth/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ReissueRequest(refreshToken))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isString())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("A-8: accessToken을 refreshToken 자리에 보내면 (type 불일치) 401 REFRESH_TOKEN_INVALID 반환")
+    void reissue_rejectsAccessTokenAsRefreshToken() throws Exception {
+        createVerifiedUser(EMAIL, PASSWORD);
+        String accessToken = loginAndGetAccessToken();
+
+        mockMvc.perform(post("/api/auth/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ReissueRequest(accessToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
+    }
+
+    @Test
+    @DisplayName("A-9: DB에 저장되지 않은 refreshToken으로 재발급 시도 시 401 REFRESH_TOKEN_INVALID 반환")
+    void reissue_rejectsUnknownRefreshToken() throws Exception {
+        createVerifiedUser(EMAIL, PASSWORD);
+        Long userId = userJpaRepository.findByEmail(EMAIL).orElseThrow().getId();
+        String unstoredRefreshToken = jwtUtil.generateRefreshToken(userId);
+
+        mockMvc.perform(post("/api/auth/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ReissueRequest(unstoredRefreshToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
+    }
+
+    private String loginAndGetRefreshToken() throws Exception {
+        return extractField(login(), "refreshToken");
+    }
+
+    private String loginAndGetAccessToken() throws Exception {
+        return extractField(login(), "accessToken");
+    }
+
+    private MvcResult login() throws Exception {
+        return mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
+                .andExpect(status().isOk())
+                .andReturn();
+    }
+
+    private String extractField(MvcResult result, String field) throws Exception {
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        return root.get(field).asText();
     }
 }

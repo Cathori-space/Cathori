@@ -44,6 +44,10 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
+    public Optional<User> findById(Long userId) {
+        return userRepository.findById(userId);
+    }
+
     @Transactional
     public User save(RegisterRequest request) {
         String encoded = passwordEncoder.encode(request.password());

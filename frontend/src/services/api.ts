@@ -9,6 +9,14 @@ import { router } from 'expo-router';
 
 import { API_BASE_URL, API_TIMEOUT } from '@/src/constants/api';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import type {
+  ReissueRequest,
+  ReissueResponse,
+} from '@/src/types/auth';
+
+interface RetryableRequestConfig {
+  _retry?: boolean;
+}
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -17,6 +25,8 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+let reissuePromise: Promise<string> | null = null;
 
 // ─── 요청 인터셉터 ─────────────────────────────────────────────────
 apiClient.interceptors.request.use(
@@ -36,20 +46,67 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // 401 Unauthorized → 토큰 클리어 + 로그인 화면 리다이렉트
-    // 1차 MVP: refreshToken 갱신 미구현, 단순 로그아웃 처리
-    // (트랩 #9: accessToken 만료 + refreshToken 유효 케이스는 추후에 재검토)
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      const { accessToken } = useAuthStore.getState();
-
-      // 이미 인증 토큰이 있었는데 401을 받은 경우에만 로그아웃 처리
-      // (인증 불필요 API의 401은 무시 — 로그인/회원가입 API의 비밀번호 오답 등)
-      if (accessToken) {
-        await useAuthStore.getState().clearAuth();
-        router.replace('/login' as never);
-      }
+    if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    const originalRequest = error.config as
+      | (NonNullable<typeof error.config> & RetryableRequestConfig)
+      | undefined;
+    const { accessToken, refreshToken } = useAuthStore.getState();
+
+    // 로그인 실패 등 인증 API의 401은 access token 만료로 처리하지 않는다.
+    if (
+      !originalRequest ||
+      originalRequest.url?.startsWith('/api/auth/') ||
+      !accessToken
+    ) {
+      return Promise.reject(error);
+    }
+
+    // 재발급 후에도 401이거나 refresh token이 없으면 인증을 종료한다.
+    if (originalRequest._retry || !refreshToken) {
+      await useAuthStore.getState().clearAuth();
+      router.replace('/login' as never);
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      // 여러 API가 동시에 401을 받아도 토큰 재발급 요청은 한 번만 보낸다.
+      // 먼저 시작된 재발급이 있다면 아래에서 같은 Promise의 완료를 함께 기다린다.
+      if (!reissuePromise) {
+        const request: ReissueRequest = { refreshToken };
+
+        // 재발급 요청에는 현재 응답 인터셉터가 적용되지 않는 기본 axios를 사용한다.
+        // apiClient를 사용하면 재발급 실패의 401까지 다시 재발급 처리할 수 있기 때문이다.
+        reissuePromise = axios
+          .post<ReissueResponse>(`${API_BASE_URL}/api/auth/reissue`, request, {
+            timeout: API_TIMEOUT,
+            headers: { 'Content-Type': 'application/json' },
+          })
+          .then(async ({ data }) => {
+            // 서버가 반환한 새 access/refresh token을 SecureStore와 Zustand에 반영한다.
+            await useAuthStore.getState().setTokens(data);
+            return data.accessToken;
+          })
+          .finally(() => {
+            // 성공과 실패에 관계없이 다음 401에서는 새 재발급 요청을 시작할 수 있게 한다.
+            reissuePromise = null;
+          });
+      }
+
+      // 재발급 완료 후 원래 실패했던 요청에 새 access token을 넣어 한 번 재시도한다.
+      const newAccessToken = await reissuePromise;
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      return apiClient(originalRequest);
+    } catch (reissueError) {
+      // refresh token도 유효하지 않거나 재발급에 실패하면 인증 상태를 종료한다.
+      await useAuthStore.getState().clearAuth();
+      router.replace('/login' as never);
+      return Promise.reject(reissueError);
+    }
   },
 );
 

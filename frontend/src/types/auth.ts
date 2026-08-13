@@ -40,6 +40,17 @@ export interface LoginResponse {
   tags: UserTag[];
 }
 
+/** 토큰 재발급 요청 */
+export interface ReissueRequest {
+  refreshToken: string;
+}
+
+/** 토큰 재발급 응답 */
+export interface ReissueResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
 // ─── 회원가입 ────────────────────────────────────────────────────────
 
 /** 회원가입 요청 */

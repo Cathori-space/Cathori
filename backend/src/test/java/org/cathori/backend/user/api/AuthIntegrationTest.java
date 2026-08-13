@@ -180,6 +180,32 @@ class AuthIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
     }
 
+    @Test
+    @DisplayName("A-10: 로그아웃 시 204를 반환하고 기존 refreshToken을 폐기")
+    void logout_success() throws Exception {
+        createVerifiedUser(EMAIL, PASSWORD);
+        MvcResult loginResult = login();
+        String accessToken = extractField(loginResult, "accessToken");
+        String refreshToken = extractField(loginResult, "refreshToken");
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/auth/reissue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ReissueRequest(refreshToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
+    }
+
+    @Test
+    @DisplayName("A-11: 인증 없이 로그아웃 요청 시 401 반환")
+    void logout_unauthorized() throws Exception {
+        mockMvc.perform(post("/api/auth/logout"))
+                .andExpect(status().isUnauthorized());
+    }
+
     private String loginAndGetRefreshToken() throws Exception {
         return extractField(login(), "refreshToken");
     }

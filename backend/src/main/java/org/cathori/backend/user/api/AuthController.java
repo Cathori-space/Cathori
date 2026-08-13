@@ -1,11 +1,13 @@
 package org.cathori.backend.user.api;
 
 import jakarta.validation.Valid;
+import org.cathori.backend.security.CustomUserDetails;
 import org.cathori.backend.user.api.dto.*;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.EmailVerificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -49,5 +51,11 @@ public class AuthController {
     @PostMapping("/reissue")
     public ResponseEntity<ReissueResponse> reissue(@RequestBody @Valid ReissueRequest request) {
         return ResponseEntity.ok(authService.reissue(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        authService.logout(userDetails.getUserId());
+        return ResponseEntity.noContent().build();
     }
 }

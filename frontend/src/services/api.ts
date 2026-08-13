@@ -18,6 +18,13 @@ interface RetryableRequestConfig {
   _retry?: boolean;
 }
 
+const PUBLIC_AUTH_ENDPOINTS = new Set([
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/email/send',
+  '/api/auth/email/verify',
+]);
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
@@ -55,10 +62,10 @@ apiClient.interceptors.response.use(
       | undefined;
     const { accessToken, refreshToken } = useAuthStore.getState();
 
-    // 로그인 실패 등 인증 API의 401은 access token 만료로 처리하지 않는다.
+    // 로그인 실패 등 공개 인증 API의 401은 access token 만료로 처리하지 않는다.
     if (
       !originalRequest ||
-      originalRequest.url?.startsWith('/api/auth/') ||
+      PUBLIC_AUTH_ENDPOINTS.has(originalRequest.url ?? '') ||
       !accessToken
     ) {
       return Promise.reject(error);

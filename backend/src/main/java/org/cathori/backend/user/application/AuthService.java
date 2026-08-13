@@ -114,4 +114,9 @@ public class AuthService {
 
         return new ReissueResponse(newAccessToken, newRefreshTokenValue);
     }
+
+    @Transactional
+    public void logout(Long userId) {
+        refreshTokenRepository.deleteByUserId(userId);
+    }
 }

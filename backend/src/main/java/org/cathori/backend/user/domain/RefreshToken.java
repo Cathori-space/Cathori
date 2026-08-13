@@ -20,6 +20,7 @@ public class RefreshToken {
     @Column(nullable = false)
     private Long userId;
 
+    /** raw refresh token의 SHA-256 해시값 (원문은 저장하지 않음) */
     @Column(nullable = false, unique = true, length = 500)
     private String token;
 

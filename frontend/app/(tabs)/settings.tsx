@@ -174,7 +174,7 @@ const checkNotificationPermission = async () => {
     } catch (e) {
       console.warn('[push] 토큰 반납 실패:', e);
     }
-    clearAuth();
+    await clearAuth();
     router.replace('/login');
   };
 
@@ -196,7 +196,7 @@ const checkNotificationPermission = async () => {
             } catch (e) {
               console.warn('[push] 토큰 반납 실패:', e);
             }
-            clearAuth();
+            await clearAuth();
             router.replace('/login');
           },
         },

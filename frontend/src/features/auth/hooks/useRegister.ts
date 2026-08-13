@@ -87,7 +87,7 @@ export function useRegister() {
           password: req.password,
         });
         // 토큰 + 사용자 정보 + 태그 영속 저장
-        setAuth(loginResponse);
+        await setAuth(loginResponse);
       } catch (autoLoginError) {
         // 가입은 성공했지만 자동 로그인 실패 — 별도 에러 코드로 처리
         throw {

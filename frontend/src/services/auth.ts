@@ -1,14 +1,15 @@
 /**
- * 인증 서비스 레이어 — /api/auth/* fetcher 4종
+ * 인증 서비스 레이어 — /api/auth/* fetcher
  *
  * 엔드포인트:
  *   POST /api/auth/login         — 이메일/비밀번호 로그인, JWT + 사용자 정보 반환
  *   POST /api/auth/register      — 회원가입 (JWT 미포함!)
  *   POST /api/auth/email/send    — 이메일 인증번호 발송
  *   POST /api/auth/email/verify  — 이메일 인증번호 검증
+ *   POST /api/auth/logout        — 서버에 저장된 refresh token 폐기
  *
  * 주의:
- *   - 인증 API 4종은 모두 공개 엔드포인트 (JWT 불필요)
+ *   - logout을 제외한 인증 API는 공개 엔드포인트 (JWT 불필요)
  *   - 회원가입 응답에 JWT가 없으므로 가입 후 자동 로그인은
  *     프론트에서 동일 자격증명으로 login을 별도 호출해야 함 (트랩 #7)
  */
@@ -71,6 +72,13 @@ export async function verifyEmail(
     req,
   );
   return data;
+}
+
+/**
+ * 로그아웃 — 서버에 저장된 refresh token 폐기
+ */
+export async function logout(): Promise<void> {
+  await apiClient.post('/api/auth/logout');
 }
 
 /**

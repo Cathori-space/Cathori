@@ -109,8 +109,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearAuth: async () => {
-        await clearTokens();
-        set({ ...INITIAL_STATE });
+        try {
+          await clearTokens();
+        } finally {
+          // SecureStore 삭제가 실패해도 현재 앱의 인증 상태는 반드시 초기화한다.
+          set({ ...INITIAL_STATE });
+        }
       },
 
       initializeAuth: async () => {

@@ -24,7 +24,12 @@ import {
   getTokens,
   saveTokens,
 } from '@/src/services/tokenStorage';
-import type { AuthUser, LoginResponse, UserTag } from '@/src/types/auth';
+import type {
+  AuthUser,
+  LoginResponse,
+  ReissueResponse,
+  UserTag,
+} from '@/src/types/auth';
 
 interface AuthState {
   /** JWT 액세스 토큰 (1시간 유효) */
@@ -41,6 +46,9 @@ interface AuthState {
    * LoginResponse를 그대로 받아 필요한 필드를 추출
    */
   setAuth: (response: LoginResponse) => Promise<void>;
+
+  /** 토큰 재발급 성공 시 새 토큰 쌍만 교체합니다. */
+  setTokens: (tokens: ReissueResponse) => Promise<void>;
 
   /**
    * 로그아웃 시 호출 — 토큰·사용자·태그 모두 초기화
@@ -92,9 +100,21 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
+      setTokens: async (tokens) => {
+        await saveTokens(tokens);
+        set({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        });
+      },
+
       clearAuth: async () => {
-        await clearTokens();
-        set({ ...INITIAL_STATE });
+        try {
+          await clearTokens();
+        } finally {
+          // SecureStore 삭제가 실패해도 현재 앱의 인증 상태는 반드시 초기화한다.
+          set({ ...INITIAL_STATE });
+        }
       },
 
       initializeAuth: async () => {

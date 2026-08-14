@@ -42,7 +42,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
-import { withdraw } from '@/src/services/auth';
+import { logout, withdraw } from '@/src/services/auth';
 import { unregisterDeviceToken } from '@/src/services/pushToken';
 import { MainHeader } from '@/src/shared/components';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -178,7 +178,7 @@ const checkNotificationPermission = async () => {
     router.replace('/login');
   };
 
-  /** 로그아웃 — 확인 다이얼로그 → clearAuth → 로그인 화면 이동 */
+  /** 로그아웃 — 서버 refresh token 폐기 → 로컬 인증 삭제 → 로그인 화면 이동 */
   const handleLogout = () => {
     Alert.alert(
       '로그아웃',
@@ -196,8 +196,20 @@ const checkNotificationPermission = async () => {
             } catch (e) {
               console.warn('[push] 토큰 반납 실패:', e);
             }
-            await clearAuth();
-            router.replace('/login');
+
+            try {
+              await logout();
+            } catch (e) {
+              // 네트워크 문제로 서버 로그아웃이 실패해도 로컬 로그아웃은 진행한다.
+              console.warn('[auth] 서버 로그아웃 실패:', e);
+            } finally {
+              try {
+                await clearAuth();
+              } catch (e) {
+                console.warn('[auth] 로컬 토큰 삭제 실패:', e);
+              }
+              router.replace('/login');
+            }
           },
         },
       ],

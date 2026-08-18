@@ -1,6 +1,24 @@
 # IDE
 .idea/
+.vscode/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# forlder
+personal_docs/
+temp/
+secrets/
+
+# agent
+.agents/
+claude.md
+CLAUDE.md
+DESIGN.md
+antigravity.md
+
+#
+.env
+
+

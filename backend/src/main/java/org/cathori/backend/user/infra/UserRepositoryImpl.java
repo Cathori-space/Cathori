@@ -1,0 +1,59 @@
+package org.cathori.backend.user.infra;
+
+import org.cathori.backend.user.domain.User;
+import org.cathori.backend.user.domain.UserRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Repository
+public class UserRepositoryImpl implements UserRepository {
+
+    private final UserJpaRepository jpaRepository;
+
+    public UserRepositoryImpl(UserJpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
+    }
+
+    @Override
+    public User save(User user) {
+        return jpaRepository.save(user);
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        return jpaRepository.existsByEmail(email);
+    }
+
+    @Override
+    public Optional<User> findByEmail(String email) {
+        return jpaRepository.findByEmail(email);
+    }
+
+    @Override
+    public Optional<User> findById(Long id) {
+        return jpaRepository.findById(id);
+    }
+
+    @Override
+    public List<User> findUsersWithTagMatchingTitle(String title) {
+        return jpaRepository.findUsersWithTagMatchingTitle(title);
+    }
+
+    @Override
+    public Map<Long, String> findFirstMatchedTagsByTitle(String title) {
+        return jpaRepository.findFirstMatchedTagsByTitle(title).stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> (String) row[1]
+                ));
+    }
+
+    @Override
+    public void delete(User user) {
+        jpaRepository.delete(user);
+    }
+}

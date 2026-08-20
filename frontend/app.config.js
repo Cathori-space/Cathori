@@ -9,7 +9,7 @@ export default {
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
-      supportsTablet: true,
+      supportsTablet: false,
       bundleIdentifier: "site.cathori.cathoriapp",
       googleServicesFile: process.env.GOOGLE_SERVICES_IOS_PLIST ?? "./GoogleService-Info.plist",
       infoPlist: {

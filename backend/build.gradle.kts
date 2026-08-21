@@ -53,7 +53,7 @@ tasks.withType<Test> {
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
-    val envFile = file(".env")
+    val envFile = file(".env.local")
     if (envFile.exists()) {
         envFile.readLines().forEach { line ->
             val trimmed = line.trim()

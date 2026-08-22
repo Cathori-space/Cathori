@@ -30,6 +30,10 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 /** 상단 브랜딩 영역 비율 (시안: 353.59 / 884 ≈ 40%) */
 const HEADER_HEIGHT = Math.round(SCREEN_HEIGHT * 0.4);
 
+// 게스트로 둘러보기 버튼 노출 여부 — 앱스토어 2.1 반려 대응으로 임시 비활성화 (#141).
+// 게스트 모드 구현 완료 후 true로 바꾸면 버튼이 바로 노출/동작됨.
+const SHOW_GUEST_BUTTON = false;
+
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -183,14 +187,16 @@ export default function LoginScreen() {
               <Text style={styles.registerButtonText}>회원가입</Text>
             </TouchableOpacity>
 
-            {/* 게스트 둘러보기
-            TODO : "준비 중입니다" 토스트 구현 필요 */}
-            <TouchableOpacity
-              style={styles.guestButton}
-              activeOpacity={0.5}
-            >
-              <Text style={styles.guestButtonText}>게스트로 둘러보기</Text>
-            </TouchableOpacity>
+            {SHOW_GUEST_BUTTON && (
+              /* 게스트 둘러보기
+              TODO : "준비 중입니다" 토스트 구현 필요 */
+              <TouchableOpacity
+                style={styles.guestButton}
+                activeOpacity={0.5}
+              >
+                <Text style={styles.guestButtonText}>게스트로 둘러보기</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

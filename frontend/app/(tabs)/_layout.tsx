@@ -11,6 +11,10 @@ type TabBarIconProps = { color: string; size: number };
 const TAB_BAR_BASE_HEIGHT = 72;
 const TAB_BAR_BASE_PADDING_BOTTOM = 8;
 
+// 꿀팁 탭 노출 여부 — 앱스토어 2.1 반려 대응으로 임시 숨김 처리 (#141).
+// 화면/API 구현 완료 후 true로 바꾸면 탭바에 바로 노출됨.
+const SHOW_TIPS_TAB = false;
+
 export default function TabLayout() {
   // OS 네비게이션 바 / 홈 인디케이터가 차지하는 하단 영역(픽셀).
   // 갤럭시 소프트웨어 네비바, 아이폰 홈 인디케이터 등 기기별로 자동 계산됨.
@@ -60,7 +64,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* 꿀팁 탭 — 1차 MVP 이후에 구현 */}
+      {/* 꿀팁 탭 — 1차 MVP 이후에 구현, 그 전까지 탭바에서 숨김 */}
       <Tabs.Screen
         name="tips"
         options={{
@@ -68,6 +72,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }: TabBarIconProps) => (
             <Feather name="star" size={size} color={color} />
           ),
+          href: SHOW_TIPS_TAB ? undefined : null,
         }}
       />
       {/* 설정 탭 — Sprint 2에서 구현 */}

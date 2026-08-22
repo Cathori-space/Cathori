@@ -49,7 +49,15 @@ import { useAuthStore } from '@/src/store/useAuthStore';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 
-const APP_VERSION = '0.1.0-beta';
+const APP_VERSION = '1.0.0';
+
+// 관심 태그/이벤트 알림 수신 토글 노출 여부 — 앱스토어 2.1 반려 대응으로 임시 비활성화 (#141).
+// API 연동 완료 후 true로 바꾸면 토글이 바로 노출/동작됨.
+const SHOW_NOTIFICATION_TOGGLES = false;
+
+// 프로필 편집 버튼 노출 여부 — 앱스토어 2.1 반려 대응으로 임시 비활성화 (#141).
+// 편집 기능 구현 완료 후 true로 바꾸면 버튼이 바로 노출/동작됨.
+const SHOW_PROFILE_EDIT_BUTTON = false;
 
 // ─── 알림 권한 확인 유틸 (expo-notifications) ────────────────────────
 // expo-notifications 미설치 시 fallback 처리
@@ -255,10 +263,12 @@ const checkNotificationPermission = async () => {
             )}
           </View>
 
-          {/* TODO: 프로필 옆 편집 기능 추후에 구현 예정 */}
-          <TouchableOpacity onPress={handleToggleProfileEdit}>
-            <Feather name="edit" size={24} color={Colors.primary} />
-          </TouchableOpacity>
+          {SHOW_PROFILE_EDIT_BUTTON && (
+            /* TODO: 프로필 옆 편집 기능 추후에 구현 예정 */
+            <TouchableOpacity onPress={handleToggleProfileEdit}>
+              <Feather name="edit" size={24} color={Colors.primary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── 알림 권한 배너 (조건부) ── */}
@@ -317,37 +327,41 @@ const checkNotificationPermission = async () => {
         <View style={styles.sectionGroup}>
           <Text style={styles.sectionTitle}>알림 설정</Text>
           <View style={styles.sectionCard}>
-            {/* 키워드 알림 수신 */}
-            <View style={styles.settingsRow}>
-              <View style={styles.settingsRowLeft}>
-                <Feather name="bell" size={18} color={Colors.primary} />
-                <Text style={styles.settingsRowText}>관심 태그 알림 수신</Text>
-              </View>
-              <Switch
-                value={false}
-                onValueChange={handleToggleKeywordNotification}
-                trackColor={{ false: Colors.divider, true: Colors.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
+            {SHOW_NOTIFICATION_TOGGLES && (
+              <>
+                {/* 키워드 알림 수신 */}
+                <View style={styles.settingsRow}>
+                  <View style={styles.settingsRowLeft}>
+                    <Feather name="bell" size={18} color={Colors.primary} />
+                    <Text style={styles.settingsRowText}>관심 태그 알림 수신</Text>
+                  </View>
+                  <Switch
+                    value={false}
+                    onValueChange={handleToggleKeywordNotification}
+                    trackColor={{ false: Colors.divider, true: Colors.primary }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
 
-            <View style={styles.divider} />
+                <View style={styles.divider} />
 
-            {/* 이벤트 알림 수신 */}
-            <View style={styles.settingsRow}>
-              <View style={styles.settingsRowLeft}>
-                <Feather name="calendar" size={18} color={Colors.primary} />
-                <Text style={styles.settingsRowText}>이벤트 알림 수신</Text>
-              </View>
-              <Switch
-                value={false}
-                onValueChange={handleToggleEventNotification}
-                trackColor={{ false: Colors.divider, true: Colors.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
+                {/* 이벤트 알림 수신 */}
+                <View style={styles.settingsRow}>
+                  <View style={styles.settingsRowLeft}>
+                    <Feather name="calendar" size={18} color={Colors.primary} />
+                    <Text style={styles.settingsRowText}>이벤트 알림 수신</Text>
+                  </View>
+                  <Switch
+                    value={false}
+                    onValueChange={handleToggleEventNotification}
+                    trackColor={{ false: Colors.divider, true: Colors.primary }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
 
-            <View style={styles.divider} />
+                <View style={styles.divider} />
+              </>
+            )}
 
             {/* 시스템 알림 설정 */}
             <TouchableOpacity

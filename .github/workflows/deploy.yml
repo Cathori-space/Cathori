@@ -25,7 +25,8 @@ jobs:
           username: ${{ secrets.WAS_USER }}
           key:      ${{ secrets.WAS_SSH_KEY }}
           script: |
-            cd /home/${{ secrets.WAS_USER }}/cathori
+            set -e
+            cd /home/${{ secrets.WAS_USER }}/Cathori
 
             # 최신 코드 받기
             git pull origin main

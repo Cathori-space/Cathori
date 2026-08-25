@@ -46,10 +46,7 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Map<Long, String> findFirstMatchedTagsByTitle(String title) {
         return jpaRepository.findFirstMatchedTagsByTitle(title).stream()
-                .collect(Collectors.toMap(
-                        row -> ((Number) row[0]).longValue(),
-                        row -> (String) row[1]
-                ));
+                .collect(Collectors.toMap(UserTagMatch::getUserId, UserTagMatch::getMatchedTag));
     }
 
     @Override

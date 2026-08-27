@@ -1,6 +1,4 @@
-package org.cathori.backend.alert.application;
-
-import org.cathori.backend.alert.domain.AlertHistory;
+package org.cathori.backend.alert.domain;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,6 +1,7 @@
 package org.cathori.backend.alert.application;
 
 import lombok.RequiredArgsConstructor;
+import org.cathori.backend.alert.domain.AlertHistoryRepository;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.springframework.stereotype.Service;

@@ -5,6 +5,7 @@ import org.cathori.backend.alert.AlertErrorCode;
 import org.cathori.backend.alert.api.dto.NotificationItem;
 import org.cathori.backend.alert.api.dto.NotificationListResponse;
 import org.cathori.backend.alert.domain.AlertHistory;
+import org.cathori.backend.alert.domain.AlertHistoryRepository;
 import org.cathori.backend.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

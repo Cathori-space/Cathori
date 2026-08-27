@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.cathori.backend.alert.domain.AlertHistory;
+import org.cathori.backend.alert.domain.AlertHistoryRepository;
 import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;

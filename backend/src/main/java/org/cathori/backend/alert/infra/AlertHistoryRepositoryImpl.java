@@ -1,6 +1,6 @@
 package org.cathori.backend.alert.infra;
 
-import org.cathori.backend.alert.application.AlertHistoryRepository;
+import org.cathori.backend.alert.domain.AlertHistoryRepository;
 import org.cathori.backend.alert.domain.AlertHistory;
 import org.springframework.stereotype.Repository;
 

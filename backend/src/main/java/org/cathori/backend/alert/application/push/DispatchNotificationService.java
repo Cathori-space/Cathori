@@ -1,4 +1,4 @@
-package org.cathori.backend.alert.application;
+package org.cathori.backend.alert.application.push;
 
 import java.util.HashSet;
 import java.util.List;
@@ -26,7 +26,7 @@ public class DispatchNotificationService {
     private final AlertResultWriter alertResultWriter;
     private final NoticeRepository noticeRepository;
     private final UserRepository userRepository;
-    private final FcmPort fcmPort;
+    private final PushNotificationPort pushNotificationPort;
 
     public void dispatchAlerts() {
         List<Notice> unsentNotices = noticeRepository.findByAlertDispatchedFalse();
@@ -71,7 +71,7 @@ public class DispatchNotificationService {
         // 4. @Transactional 범위 밖에서 FCM HTTP 호출
         List<UserFcmResult> results;
         try {
-            results = fcmPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), notice.getId());
+            results = pushNotificationPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), notice.getId());
         } catch (Exception e) {
             log.error("FCM 발송 실패. noticeId={}", notice.getId(), e);
             List<Long> allUserIds = targets.stream().map(UserToken::userId).toList();

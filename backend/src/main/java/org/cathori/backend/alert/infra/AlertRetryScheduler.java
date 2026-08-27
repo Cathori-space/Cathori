@@ -1,7 +1,7 @@
 package org.cathori.backend.alert.infra;
 
 import lombok.RequiredArgsConstructor;
-import org.cathori.backend.alert.application.RetryDispatchNotificationService;
+import org.cathori.backend.alert.application.push.RetryDispatchNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

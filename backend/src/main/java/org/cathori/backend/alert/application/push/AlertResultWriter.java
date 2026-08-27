@@ -1,4 +1,4 @@
-package org.cathori.backend.alert.application;
+package org.cathori.backend.alert.application.push;
 
 import lombok.RequiredArgsConstructor;
 import org.cathori.backend.alert.domain.AlertHistoryRepository;

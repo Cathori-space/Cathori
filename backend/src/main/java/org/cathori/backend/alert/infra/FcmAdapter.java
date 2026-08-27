@@ -3,9 +3,9 @@ package org.cathori.backend.alert.infra;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.cathori.backend.alert.application.FcmPort;
-import org.cathori.backend.alert.application.UserFcmResult;
-import org.cathori.backend.alert.application.UserToken;
+import org.cathori.backend.alert.application.push.PushNotificationPort;
+import org.cathori.backend.alert.application.push.UserFcmResult;
+import org.cathori.backend.alert.application.push.UserToken;
 import org.springframework.stereotype.Component;
 
 import com.google.firebase.messaging.BatchResponse;
@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
-public class FcmAdapter implements FcmPort {
+public class FcmAdapter implements PushNotificationPort {
 
     @Override
     public List<UserFcmResult> sendMulticast(List<UserToken> targets, String title, String body, Long noticeId) {

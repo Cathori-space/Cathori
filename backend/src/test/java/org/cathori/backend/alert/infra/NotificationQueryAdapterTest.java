@@ -1,8 +1,8 @@
 package org.cathori.backend.alert.infra;
 
 import org.cathori.backend.IntegrationTestBase;
-import org.cathori.backend.alert.application.NotificationQueryPort;
-import org.cathori.backend.alert.application.NotificationRow;
+import org.cathori.backend.alert.application.notification.NotificationQueryPort;
+import org.cathori.backend.alert.application.notification.NotificationRow;
 import org.cathori.backend.notice.application.CrawledNotice;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;

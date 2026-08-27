@@ -3,12 +3,13 @@ package org.cathori.backend.alert.application;
 import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.alert.AlertErrorCode;
 import org.cathori.backend.alert.api.dto.NotificationListResponse;
+import org.cathori.backend.alert.application.notification.NotificationService;
 import org.cathori.backend.alert.infra.AlertHistoryJpaRepository;
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.notice.application.CrawledNotice;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
-import org.cathori.backend.alert.application.FcmPort;
+import org.cathori.backend.alert.application.push.PushNotificationPort;
 import org.cathori.backend.user.application.NotificationPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,12 +28,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("NotificationService 통합 테스트")
 class NotificationServiceTest extends IntegrationTestBase {
 
-    @Autowired NotificationService notificationService;
+    @Autowired
+    NotificationService notificationService;
     @Autowired AlertHistoryJpaRepository alertHistoryJpaRepository;
     @Autowired NoticeRepository noticeRepository;
     @Autowired JdbcTemplate jdbcTemplate;
 
-    @MockitoBean FcmPort fcmPort;
+    @MockitoBean
+    PushNotificationPort pushNotificationPort;
     @MockitoBean NotificationPort notificationPort;
 
     private static final Long USER_ID = 100L;

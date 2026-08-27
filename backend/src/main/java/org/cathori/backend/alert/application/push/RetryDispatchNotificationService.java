@@ -1,4 +1,4 @@
-package org.cathori.backend.alert.application;
+package org.cathori.backend.alert.application.push;
 
 import java.util.List;
 import java.util.Map;
@@ -25,7 +25,7 @@ public class RetryDispatchNotificationService {
     private final AlertResultWriter alertResultWriter;
     private final NoticeRepository noticeRepository;
     private final UserRepository userRepository;
-    private final FcmPort fcmPort;
+    private final PushNotificationPort pushNotificationPort;
 
     public void retryFailedAlerts() {
         List<AlertHistory> failedLogs = alertHistoryRepository.findFailedForRetry();
@@ -58,7 +58,7 @@ public class RetryDispatchNotificationService {
 
         List<UserFcmResult> results;
         try {
-            results = fcmPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), noticeId);
+            results = pushNotificationPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), noticeId);
         } catch (Exception e) {
             log.error("FCM 재시도 실패. noticeId={}", noticeId, e);
             List<Long> userIds = targets.stream().map(UserToken::userId).toList();

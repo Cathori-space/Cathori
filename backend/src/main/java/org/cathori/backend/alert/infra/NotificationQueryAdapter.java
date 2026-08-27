@@ -1,7 +1,7 @@
 package org.cathori.backend.alert.infra;
 
-import org.cathori.backend.alert.application.NotificationQueryPort;
-import org.cathori.backend.alert.application.NotificationRow;
+import org.cathori.backend.alert.application.notification.NotificationQueryPort;
+import org.cathori.backend.alert.application.notification.NotificationRow;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

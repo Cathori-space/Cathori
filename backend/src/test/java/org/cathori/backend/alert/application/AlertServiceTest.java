@@ -1,6 +1,7 @@
 package org.cathori.backend.alert.application;
 
 import org.cathori.backend.IntegrationTestBase;
+import org.cathori.backend.alert.application.push.*;
 import org.cathori.backend.alert.domain.AlertHistory;
 import org.cathori.backend.alert.infra.AlertHistoryJpaRepository;
 import org.cathori.backend.notice.application.CrawledNotice;
@@ -34,14 +35,16 @@ class AlertServiceTest extends IntegrationTestBase {
 
     @Autowired
     DispatchNotificationService dispatchNotificationService;
-    @Autowired RetryDispatchNotificationService retryDispatchNotificationService;
+    @Autowired
+    RetryDispatchNotificationService retryDispatchNotificationService;
     @Autowired AlertHistoryJpaRepository alertHistoryJpaRepository;
     @Autowired NoticeRepository noticeRepository;
     @Autowired UserJpaRepository userJpaRepository;
     @Autowired TagJpaRepository tagJpaRepository;
     @Autowired JdbcTemplate jdbcTemplate;
 
-    @MockitoBean FcmPort fcmPort;
+    @MockitoBean
+    PushNotificationPort pushNotificationPort;
     @MockitoBean NotificationPort notificationPort;
 
     @AfterEach
@@ -60,7 +63,7 @@ class AlertServiceTest extends IntegrationTestBase {
         Notice notice = saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+        given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
         dispatchNotificationService.dispatchAlerts();
@@ -76,7 +79,7 @@ class AlertServiceTest extends IntegrationTestBase {
         saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+        given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), false)));
 
         dispatchNotificationService.dispatchAlerts();
@@ -95,7 +98,7 @@ class AlertServiceTest extends IntegrationTestBase {
 
         dispatchNotificationService.dispatchAlerts();
 
-        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
+        verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
         assertThat(alertHistoryJpaRepository.findAll()).isEmpty();
     }
 
@@ -108,7 +111,7 @@ class AlertServiceTest extends IntegrationTestBase {
 
         dispatchNotificationService.dispatchAlerts();
 
-        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
+        verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
         assertThat(alertHistoryJpaRepository.findAll()).isEmpty();
     }
 
@@ -133,7 +136,7 @@ class AlertServiceTest extends IntegrationTestBase {
 
         dispatchNotificationService.dispatchAlerts();
 
-        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
+        verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
 
     @Test
@@ -142,7 +145,7 @@ class AlertServiceTest extends IntegrationTestBase {
         Notice notice = saveNotice("장학금 안내");
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+        given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
         dispatchNotificationService.dispatchAlerts();
@@ -173,13 +176,13 @@ class AlertServiceTest extends IntegrationTestBase {
         saveTag(matching.getId(), "장학금");
         User nonMatching = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", null);
         saveTag(nonMatching.getId(), "장학금");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+        given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(matching.getId(), true)));
 
         dispatchNotificationService.dispatchAlerts();
 
         ArgumentCaptor<List<UserToken>> captor = ArgumentCaptor.forClass(List.class);
-        verify(fcmPort).sendMulticast(captor.capture(), anyString(), anyString(), anyLong());
+        verify(pushNotificationPort).sendMulticast(captor.capture(), anyString(), anyString(), anyLong());
         assertThat(captor.getValue()).hasSize(1);
         assertThat(captor.getValue().getFirst().userId()).isEqualTo(matching.getId());
     }
@@ -194,7 +197,7 @@ class AlertServiceTest extends IntegrationTestBase {
 
         dispatchNotificationService.dispatchAlerts();
 
-        verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
+        verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
 
     @Test
@@ -204,7 +207,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학");
         saveTag(user.getId(), "국가장학");
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+        given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
         dispatchNotificationService.dispatchAlerts();
@@ -223,7 +226,7 @@ class AlertServiceTest extends IntegrationTestBase {
         AlertHistory failed = AlertHistory.create(user.getId(), notice.getId(), null);
         failed.markFailed();
         AlertHistory saved = alertHistoryJpaRepository.save(failed);
-        given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
+        given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
         retryDispatchNotificationService.retryFailedAlerts();

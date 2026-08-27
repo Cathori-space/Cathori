@@ -1,6 +1,6 @@
 package org.cathori.backend.alert.infra;
 
-import org.cathori.backend.alert.application.DispatchNotificationService;
+import org.cathori.backend.alert.application.push.DispatchNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

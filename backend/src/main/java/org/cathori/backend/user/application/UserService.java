@@ -1,7 +1,7 @@
 package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
-import org.cathori.backend.alert.domain.AlertHistoryRepository;
+import org.cathori.backend.notification.domain.AlertHistoryRepository;
 import org.cathori.backend.bookmark.domain.BookmarkRepository;
 import org.cathori.backend.tag.domain.TagRepository;
 import org.cathori.backend.user.UserErrorCode;

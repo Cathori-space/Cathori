@@ -1,8 +1,8 @@
 package org.cathori.backend.user.api;
 
 import org.cathori.backend.IntegrationTestBase;
-import org.cathori.backend.alert.domain.AlertHistory;
-import org.cathori.backend.alert.infra.AlertHistoryJpaRepository;
+import org.cathori.backend.notification.domain.AlertHistory;
+import org.cathori.backend.notification.infra.AlertHistoryJpaRepository;
 import org.cathori.backend.bookmark.domain.Bookmark;
 import org.cathori.backend.bookmark.infra.BookmarkJpaRepository;
 import org.cathori.backend.notice.application.CrawledNotice;

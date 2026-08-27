@@ -32,7 +32,9 @@ import static org.mockito.Mockito.verify;
 @DisplayName("AlertService 통합 테스트")
 class AlertServiceTest extends IntegrationTestBase {
 
-    @Autowired AlertService alertService;
+    @Autowired
+    DispatchNotificationService dispatchNotificationService;
+    @Autowired RetryDispatchNotificationService retryDispatchNotificationService;
     @Autowired AlertHistoryJpaRepository alertHistoryJpaRepository;
     @Autowired NoticeRepository noticeRepository;
     @Autowired UserJpaRepository userJpaRepository;
@@ -61,7 +63,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
         assertThat(histories).hasSize(1);
@@ -77,7 +79,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), false)));
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
         assertThat(histories).hasSize(1);
@@ -91,7 +93,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "취업");
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
         assertThat(alertHistoryJpaRepository.findAll()).isEmpty();
@@ -104,7 +106,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithoutToken("user1@test.com");
         saveTag(user.getId(), "장학금");
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
         assertThat(alertHistoryJpaRepository.findAll()).isEmpty();
@@ -129,7 +131,7 @@ class AlertServiceTest extends IntegrationTestBase {
         notice.markAlertDispatched();
         noticeRepository.save(notice);
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
@@ -143,7 +145,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         Notice reloaded = noticeRepository.findById(notice.getId()).orElseThrow();
         assertThat(reloaded.isAlertDispatched()).isTrue();
@@ -155,7 +157,7 @@ class AlertServiceTest extends IntegrationTestBase {
         Notice notice = saveNotice("장학금 안내");
         saveUserWithoutToken("user1@test.com");  // 태그 없는 사용자 (매칭 안 됨)
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         Notice reloaded = noticeRepository.findById(notice.getId()).orElseThrow();
         assertThat(reloaded.isAlertDispatched()).isTrue();
@@ -174,7 +176,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(matching.getId(), true)));
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         ArgumentCaptor<List<UserToken>> captor = ArgumentCaptor.forClass(List.class);
         verify(fcmPort).sendMulticast(captor.capture(), anyString(), anyString(), anyLong());
@@ -190,7 +192,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", "전공심화");
         saveTag(user.getId(), "장학금");
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         verify(fcmPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
@@ -205,7 +207,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
 
         AlertHistory history = alertHistoryJpaRepository.findAll().getFirst();
         assertThat(history.getMatchedTag()).isEqualTo("국가장학");
@@ -224,7 +226,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(fcmPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        alertService.retryFailedAlerts();
+        retryDispatchNotificationService.retryFailedAlerts();
 
         AlertHistory updated = alertHistoryJpaRepository.findById(saved.getId()).orElseThrow();
         assertThat(updated.getAlarmStatus()).isEqualTo("SUCCESS");

@@ -1,6 +1,6 @@
 package org.cathori.backend.alert.infra;
 
-import org.cathori.backend.alert.application.AlertService;
+import org.cathori.backend.alert.application.DispatchNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class AlertScheduler {
 
-    private final AlertService alertService;
+    private final DispatchNotificationService dispatchNotificationService;
 
     /**
      * 새 공지 알림을 일괄 발송합니다. (기본: 매일 오전 11시)
@@ -29,6 +29,6 @@ public class AlertScheduler {
     @Scheduled(cron = "${alert.dispatch.cron:0 0 11 * * *}")
     public void dispatchAlerts() {
         log.info("알림 발송 스케줄러 시작");
-        alertService.dispatchAlerts();
+        dispatchNotificationService.dispatchAlerts();
     }
 }

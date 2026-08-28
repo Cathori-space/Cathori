@@ -23,7 +23,7 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      package: "site.cathori.cathori",
+      package: "site.cathori.cathoriapp",
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       versionCode: 1
     },

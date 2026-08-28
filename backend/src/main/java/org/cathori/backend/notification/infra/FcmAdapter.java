@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.cathori.backend.notification.application.push.PushNotificationPort;
-import org.cathori.backend.notification.application.push.UserFcmResult;
+import org.cathori.backend.notification.application.push.UserPushResult;
 import org.cathori.backend.notification.application.push.UserToken;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FcmAdapter implements PushNotificationPort {
 
     @Override
-    public List<UserFcmResult> sendMulticast(List<UserToken> targets, String title, String body, Long noticeId) {
+    public List<UserPushResult> sendMulticast(List<UserToken> targets, String title, String body, Long noticeId) {
         List<String> tokens = targets.stream().map(UserToken::token).toList();
 
         MulticastMessage message = MulticastMessage.builder()
@@ -40,7 +40,7 @@ public class FcmAdapter implements PushNotificationPort {
             log.info("FCM 멀티캐스트 응답. 전체={}, 성공={}, 실패={}",
                     responses.size(), response.getSuccessCount(), response.getFailureCount());
 
-            List<UserFcmResult> results = new ArrayList<>(responses.size());
+            List<UserPushResult> results = new ArrayList<>(responses.size());
             for (int i = 0; i < responses.size(); i++) {
                 SendResponse sr = responses.get(i);
                 if (!sr.isSuccessful()) {
@@ -54,7 +54,7 @@ public class FcmAdapter implements PushNotificationPort {
                                 ex != null ? ex.getMessage() : "no exception detail",
                                 ex);  // ← 마지막에 ex 추가
                 }
-                results.add(new UserFcmResult(targets.get(i).userId(), sr.isSuccessful()));
+                results.add(new UserPushResult(targets.get(i).userId(), sr.isSuccessful()));
             }
             return results;
         } catch (FirebaseMessagingException e) {

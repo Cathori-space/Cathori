@@ -71,7 +71,7 @@ public class PushNotificationService {
         }
 
         // 4. @Transactional 범위 밖에서 FCM HTTP 호출
-        List<UserFcmResult> results;
+        List<UserPushResult> results;
         try {
             results = pushNotificationPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), notice.getId());
         } catch (Exception e) {
@@ -84,8 +84,8 @@ public class PushNotificationService {
         }
 
         // FCM예외와 무관하게 성공 실패는 한 번에 기록
-        List<Long> successIds = results.stream().filter(UserFcmResult::success).map(UserFcmResult::userId).toList();
-        List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserFcmResult::userId).toList();
+        List<Long> successIds = results.stream().filter(UserPushResult::success).map(UserPushResult::userId).toList();
+        List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserPushResult::userId).toList();
         notificationResultWriter.persistDispatchResult(notice, successIds, failedIds);
         
         log.info("FCM 발송 완료. noticeId={}, success={}, fail={}", notice.getId(), successIds.size(), failedIds.size());
@@ -140,7 +140,7 @@ public class PushNotificationService {
 
         if (targets.isEmpty()) return;
 
-        List<UserFcmResult> results;
+        List<UserPushResult> results;
         try {
             results = pushNotificationPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), noticeId);
         } catch (Exception e) {
@@ -150,8 +150,8 @@ public class PushNotificationService {
             return;
         }
 
-        List<Long> successIds = results.stream().filter(UserFcmResult::success).map(UserFcmResult::userId).toList();
-        List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserFcmResult::userId).toList();
+        List<Long> successIds = results.stream().filter(UserPushResult::success).map(UserPushResult::userId).toList();
+        List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserPushResult::userId).toList();
         notificationResultWriter.persistRetryResult(noticeId, successIds, failedIds);
     }
 }

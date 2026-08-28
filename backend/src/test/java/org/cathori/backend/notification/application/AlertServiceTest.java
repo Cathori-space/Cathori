@@ -62,7 +62,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
+                .willReturn(List.of(new UserPushResult(user.getId(), true)));
 
         pushNotificationService.dispatchAlerts();
 
@@ -78,7 +78,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(List.of(new UserFcmResult(user.getId(), false)));
+                .willReturn(List.of(new UserPushResult(user.getId(), false)));
 
         pushNotificationService.dispatchAlerts();
 
@@ -144,7 +144,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "장학금");
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
+                .willReturn(List.of(new UserPushResult(user.getId(), true)));
 
         pushNotificationService.dispatchAlerts();
 
@@ -175,7 +175,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User nonMatching = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", null);
         saveTag(nonMatching.getId(), "장학금");
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(List.of(new UserFcmResult(matching.getId(), true)));
+                .willReturn(List.of(new UserPushResult(matching.getId(), true)));
 
         pushNotificationService.dispatchAlerts();
 
@@ -206,7 +206,7 @@ class AlertServiceTest extends IntegrationTestBase {
         saveTag(user.getId(), "장학");
         saveTag(user.getId(), "국가장학");
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
+                .willReturn(List.of(new UserPushResult(user.getId(), true)));
 
         pushNotificationService.dispatchAlerts();
 
@@ -225,7 +225,7 @@ class AlertServiceTest extends IntegrationTestBase {
         failed.markFailed();
         AlertHistory saved = alertHistoryJpaRepository.save(failed);
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
-                .willReturn(List.of(new UserFcmResult(user.getId(), true)));
+                .willReturn(List.of(new UserPushResult(user.getId(), true)));
 
         pushNotificationService.retryFailedAlerts();
 

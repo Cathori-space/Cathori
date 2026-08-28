@@ -35,8 +35,6 @@ class AlertServiceTest extends IntegrationTestBase {
 
     @Autowired
     PushNotificationService pushNotificationService;
-    @Autowired
-    RePushNotificationService retryPushNotificationService;
     @Autowired AlertHistoryJpaRepository alertHistoryJpaRepository;
     @Autowired NoticeRepository noticeRepository;
     @Autowired UserJpaRepository userJpaRepository;
@@ -229,7 +227,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        retryPushNotificationService.retryFailedAlerts();
+        pushNotificationService.retryFailedAlerts();
 
         AlertHistory updated = alertHistoryJpaRepository.findById(saved.getId()).orElseThrow();
         assertThat(updated.getAlarmStatus()).isEqualTo("SUCCESS");

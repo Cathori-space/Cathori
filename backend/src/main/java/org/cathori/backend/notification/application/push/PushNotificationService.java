@@ -3,7 +3,9 @@ package org.cathori.backend.notification.application.push;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.cathori.backend.notification.domain.AlertHistory;
 import org.cathori.backend.notification.domain.AlertHistoryRepository;
@@ -107,5 +109,49 @@ public class PushNotificationService {
         if (secondMajor == null || "전공심화".equals(secondMajor)) return false;
         String secondMajorCode = DepartmentSource.findEnumNameByDisplayName(secondMajor);
         return sourceId.equals(secondMajorCode);
+    }
+
+    public void retryFailedAlerts() {
+        List<AlertHistory> failedLogs = alertHistoryRepository.findFailedForRetry();
+        if (failedLogs.isEmpty()) return;
+
+        log.info("FCM 재시도 {}건", failedLogs.size());
+
+        Map<Long, List<AlertHistory>> byNotice = failedLogs.stream()
+                .collect(Collectors.groupingBy(AlertHistory::getNoticeId));
+
+        for (Map.Entry<Long, List<AlertHistory>> entry : byNotice.entrySet()) {
+            retryForNotice(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private void retryForNotice(Long noticeId, List<AlertHistory> logs) {
+        Notice notice = noticeRepository.findById(noticeId).orElse(null);
+        if (notice == null) return;
+
+        List<UserToken> targets = logs.stream()
+                .map(l -> {
+                    User user = userRepository.findById(l.getUserId()).orElse(null);
+                    if (user == null || user.getDeviceToken() == null) return null;
+                    return new UserToken(l.getUserId(), user.getDeviceToken());
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (targets.isEmpty()) return;
+
+        List<UserFcmResult> results;
+        try {
+            results = pushNotificationPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), noticeId);
+        } catch (Exception e) {
+            log.error("FCM 재시도 실패. noticeId={}", noticeId, e);
+            List<Long> userIds = targets.stream().map(UserToken::userId).toList();
+            notificationResultWriter.persistRetryFailure(noticeId, userIds);
+            return;
+        }
+
+        List<Long> successIds = results.stream().filter(UserFcmResult::success).map(UserFcmResult::userId).toList();
+        List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserFcmResult::userId).toList();
+        notificationResultWriter.persistRetryResult(noticeId, successIds, failedIds);
     }
 }

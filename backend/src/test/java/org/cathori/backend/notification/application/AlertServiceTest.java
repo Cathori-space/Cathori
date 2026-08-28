@@ -34,9 +34,9 @@ import static org.mockito.Mockito.verify;
 class AlertServiceTest extends IntegrationTestBase {
 
     @Autowired
-    DispatchNotificationService dispatchNotificationService;
+    PushNotificationService pushNotificationService;
     @Autowired
-    RetryDispatchNotificationService retryDispatchNotificationService;
+    RePushNotificationService retryPushNotificationService;
     @Autowired AlertHistoryJpaRepository alertHistoryJpaRepository;
     @Autowired NoticeRepository noticeRepository;
     @Autowired UserJpaRepository userJpaRepository;
@@ -66,7 +66,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
         assertThat(histories).hasSize(1);
@@ -82,7 +82,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), false)));
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         List<AlertHistory> histories = alertHistoryJpaRepository.findAll();
         assertThat(histories).hasSize(1);
@@ -96,7 +96,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithToken("user1@test.com", "token-abc");
         saveTag(user.getId(), "취업");
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
         assertThat(alertHistoryJpaRepository.findAll()).isEmpty();
@@ -109,7 +109,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithoutToken("user1@test.com");
         saveTag(user.getId(), "장학금");
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
         assertThat(alertHistoryJpaRepository.findAll()).isEmpty();
@@ -134,7 +134,7 @@ class AlertServiceTest extends IntegrationTestBase {
         notice.markAlertDispatched();
         noticeRepository.save(notice);
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
@@ -148,7 +148,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         Notice reloaded = noticeRepository.findById(notice.getId()).orElseThrow();
         assertThat(reloaded.isAlertDispatched()).isTrue();
@@ -160,7 +160,7 @@ class AlertServiceTest extends IntegrationTestBase {
         Notice notice = saveNotice("장학금 안내");
         saveUserWithoutToken("user1@test.com");  // 태그 없는 사용자 (매칭 안 됨)
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         Notice reloaded = noticeRepository.findById(notice.getId()).orElseThrow();
         assertThat(reloaded.isAlertDispatched()).isTrue();
@@ -179,7 +179,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(matching.getId(), true)));
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         ArgumentCaptor<List<UserToken>> captor = ArgumentCaptor.forClass(List.class);
         verify(pushNotificationPort).sendMulticast(captor.capture(), anyString(), anyString(), anyLong());
@@ -195,7 +195,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", "전공심화");
         saveTag(user.getId(), "장학금");
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         verify(pushNotificationPort, never()).sendMulticast(anyList(), anyString(), anyString(), anyLong());
     }
@@ -210,7 +210,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
 
         AlertHistory history = alertHistoryJpaRepository.findAll().getFirst();
         assertThat(history.getMatchedTag()).isEqualTo("국가장학");
@@ -229,7 +229,7 @@ class AlertServiceTest extends IntegrationTestBase {
         given(pushNotificationPort.sendMulticast(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserFcmResult(user.getId(), true)));
 
-        retryDispatchNotificationService.retryFailedAlerts();
+        retryPushNotificationService.retryFailedAlerts();
 
         AlertHistory updated = alertHistoryJpaRepository.findById(saved.getId()).orElseThrow();
         assertThat(updated.getAlarmStatus()).isEqualTo("SUCCESS");

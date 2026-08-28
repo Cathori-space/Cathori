@@ -11,7 +11,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class AlertResultWriter {
+public class NotificationResultWriter {
 
     private final AlertHistoryRepository alertHistoryRepository;
     private final NoticeRepository noticeRepository;

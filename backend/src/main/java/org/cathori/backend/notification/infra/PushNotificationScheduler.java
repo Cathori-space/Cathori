@@ -1,6 +1,7 @@
 package org.cathori.backend.notification.infra;
 
-import org.cathori.backend.notification.application.push.DispatchNotificationService;
+import org.cathori.backend.notification.application.push.PushNotificationService;
+import org.cathori.backend.notification.application.push.RePushNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AlertScheduler {
+public class PushNotificationScheduler {
 
-    private final DispatchNotificationService dispatchNotificationService;
-
+    private final PushNotificationService pushNotificationService;
+    private final RePushNotificationService retryPushNotificationService;
     /**
      * 새 공지 알림을 일괄 발송합니다. (기본: 매일 오전 11시)
      *
@@ -29,6 +30,13 @@ public class AlertScheduler {
     @Scheduled(cron = "${alert.dispatch.cron:0 0 11 * * *}")
     public void dispatchAlerts() {
         log.info("알림 발송 스케줄러 시작");
-        dispatchNotificationService.dispatchAlerts();
+        pushNotificationService.dispatchAlerts();
     }
+
+    /** 20분마다 실패한 알림 발송을 재시도합니다. */
+    @Scheduled(cron = "0 0/20 * * * *")
+    public void retryFailedAlerts() {
+        retryPushNotificationService.retryFailedAlerts();
+    }
+
 }

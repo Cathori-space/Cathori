@@ -20,10 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DispatchNotificationService {
+public class PushNotificationService {
 
     private final AlertHistoryRepository alertHistoryRepository;
-    private final AlertResultWriter alertResultWriter;
+    private final NotificationResultWriter notificationResultWriter;
     private final NoticeRepository noticeRepository;
     private final UserRepository userRepository;
     private final PushNotificationPort pushNotificationPort;
@@ -77,14 +77,14 @@ public class DispatchNotificationService {
             List<Long> allUserIds = targets.stream().map(UserToken::userId).toList();
 
             // 여기서 발송 실패는 UPDATE 라서 괜찮음
-            alertResultWriter.persistDispatchFailure(notice, allUserIds);
+            notificationResultWriter.persistDispatchFailure(notice, allUserIds);
             return;
         }
 
         // FCM예외와 무관하게 성공 실패는 한 번에 기록
         List<Long> successIds = results.stream().filter(UserFcmResult::success).map(UserFcmResult::userId).toList();
         List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserFcmResult::userId).toList();
-        alertResultWriter.persistDispatchResult(notice, successIds, failedIds);
+        notificationResultWriter.persistDispatchResult(notice, successIds, failedIds);
         
         log.info("FCM 발송 완료. noticeId={}, success={}, fail={}", notice.getId(), successIds.size(), failedIds.size());
     }

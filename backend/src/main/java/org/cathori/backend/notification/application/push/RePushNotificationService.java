@@ -19,10 +19,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class RetryDispatchNotificationService {
+public class RePushNotificationService {
 
     private final AlertHistoryRepository alertHistoryRepository;
-    private final AlertResultWriter alertResultWriter;
+    private final NotificationResultWriter notificationResultWriter;
     private final NoticeRepository noticeRepository;
     private final UserRepository userRepository;
     private final PushNotificationPort pushNotificationPort;
@@ -62,12 +62,12 @@ public class RetryDispatchNotificationService {
         } catch (Exception e) {
             log.error("FCM 재시도 실패. noticeId={}", noticeId, e);
             List<Long> userIds = targets.stream().map(UserToken::userId).toList();
-            alertResultWriter.persistRetryFailure(noticeId, userIds);
+            notificationResultWriter.persistRetryFailure(noticeId, userIds);
             return;
         }
 
         List<Long> successIds = results.stream().filter(UserFcmResult::success).map(UserFcmResult::userId).toList();
         List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserFcmResult::userId).toList();
-        alertResultWriter.persistRetryResult(noticeId, successIds, failedIds);
+        notificationResultWriter.persistRetryResult(noticeId, successIds, failedIds);
     }
 }

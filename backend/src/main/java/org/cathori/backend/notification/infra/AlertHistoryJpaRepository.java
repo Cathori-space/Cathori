@@ -17,6 +17,9 @@ public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, L
     @Query("SELECT ah.userId FROM AlertHistory ah WHERE ah.noticeId = :noticeId")
     List<Long> findUserIdsByNoticeId(@Param("noticeId") Long noticeId);
 
+    @Query("SELECT ah.userId FROM AlertHistory ah WHERE ah.noticeId = :noticeId AND ah.alarmStatus = 'PENDING'")
+    List<Long> findPendingUserIdsByNoticeId(@Param("noticeId") Long noticeId);
+
     @Modifying
     @Query("UPDATE AlertHistory ah SET ah.alarmStatus = 'SUCCESS' WHERE ah.noticeId = :noticeId AND ah.userId IN :userIds")
     void markSuccessForUsers(@Param("noticeId") Long noticeId, @Param("userIds") List<Long> userIds);

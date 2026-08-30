@@ -15,8 +15,9 @@ public interface UserJpaRepository extends JpaRepository<User, Long> {
     @Query(value = "SELECT DISTINCT u.* FROM users u JOIN user_tag t ON t.user_id = u.id WHERE :title LIKE '%' || t.name || '%'", nativeQuery = true)
     List<User> findUsersWithTagMatchingTitle(@Param("title") String title);
 
-    @Query(value = "SELECT t.user_id, MIN(t.name) AS matched_tag FROM user_tag t WHERE :title LIKE '%' || t.name || '%' GROUP BY t.user_id", nativeQuery = true)
-    List<Object[]> findFirstMatchedTagsByTitle(@Param("title") String title);
+    @Query(value = "SELECT t.user_id AS userId, MIN(t.name) AS matchedTag FROM user_tag t WHERE :title LIKE '%' || t.name || '%' GROUP BY t.user_id", nativeQuery = true)
+    List<UserMatchedTagView> findFirstMatchedTagsByTitle(@Param("title") String title);
+
     @Query("SELECT u.id AS id, u.deviceToken AS deviceToken FROM User u WHERE u.id IN :userIds AND u.deviceToken IS NOT NULL")
     List<UserDeviceTokenView> findDeviceTokensByIds(@Param("userIds") List<Long> userIds);
 }

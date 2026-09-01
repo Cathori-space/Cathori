@@ -10,6 +10,11 @@
  */
 
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import {
+  getMessaging,
+  getToken,
+} from '@react-native-firebase/messaging';
 
 // 앱이 포그라운드일 때도 OS 알림 배너를 표시한다.
 Notifications.setNotificationHandler({
@@ -42,6 +47,11 @@ export async function requestNotificationPermission(): Promise<boolean> {
  */
 export async function getDevicePushToken(): Promise<string | null> {
   try {
+    if (Platform.OS === 'ios') {
+      const messaging = getMessaging();
+      return await getToken(messaging);
+    }
+
     const { data } = await Notifications.getDevicePushTokenAsync();
     return data;
   } catch (e) {

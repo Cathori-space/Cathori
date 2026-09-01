@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FcmAdapter implements PushNotificationPort {
 
     @Override
-    public List<UserPushResult> sendMulticast(List<UserToken> targets, String title, String body, Long noticeId) {
+    public List<UserPushResult> send(List<UserToken> targets, String title, String body, Long noticeId) {
         List<String> tokens = targets.stream().map(UserToken::token).toList();
 
         MulticastMessage message = MulticastMessage.builder()

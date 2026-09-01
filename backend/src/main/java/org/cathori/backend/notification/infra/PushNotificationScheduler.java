@@ -29,14 +29,13 @@ public class PushNotificationScheduler {
     @Scheduled(cron = "${alert.dispatch.cron:0 0 11 * * *}")
     public void sendNoticeNotifications() {
         log.info("알림 발송 스케줄러 시작");
-        pushNotificationService.dispatchAlerts();
+        pushNotificationService.sendNoticeNotifications();
     }
 
     /** 20분마다 실패한 알림 발송을 재시도합니다. */
     @Scheduled(cron = "0 0/20 * * * *")
-    public void retryFailedAlerts() {
-        pushNotificationService.retryFailedAlerts();
     public void retryFailedNotifications() {
+        pushNotificationService.retryFailedNotifications();
     }
 
 }

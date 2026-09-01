@@ -30,7 +30,7 @@ public class PushNotificationService {
     private final UserRepository userRepository;
     private final PushNotificationPort pushNotificationPort;
 
-    public void dispatchAlerts() {
+    public void sendNoticeNotifications() {
         List<Notice> unsentNotices = noticeRepository.findByAlertDispatchedFalse();
         if (unsentNotices.isEmpty()) {
             log.info("미발송 공지 없음");
@@ -39,11 +39,11 @@ public class PushNotificationService {
         log.info("미발송 공지 {}건 발송 시작", unsentNotices.size());
         for (Notice notice : unsentNotices) {
             log.info("공지id {} 제목 {} 발송 시작", notice.getId(), notice.getTitle());
-            dispatchForNotice(notice);
+            sendNoticeNotification(notice);
         }
     }
 
-    private void dispatchForNotice(Notice notice) {
+    private void sendNoticeNotification(Notice notice) {
         boolean hasRecipients = registerRecipients(notice);
         if (!hasRecipients) return;
         sendToRecipients(notice);
@@ -52,30 +52,29 @@ public class PushNotificationService {
     // 발송 대상을 계산해 AlertHistory PENDING row로 원자적으로 저장한다.
     // 이후 sendToRecipients는 이 결과를 신뢰의 원천으로 삼아 DB에서 다시 읽어 발송한다.
     private boolean registerRecipients(Notice notice) {
-        List<UserToken> targets = buildTargets(notice);
-        log.info("noticeId={} 발송 대상 {}명", notice.getId(), targets.size());
+        List<UserToken> recipients = selectEligibleRecipients(notice);
+        log.info("noticeId={} 발송 대상 {}명", notice.getId(), recipients.size());
 
-        if (targets.isEmpty()) {
+        if (recipients.isEmpty()) {
             notice.markAlertDispatched();
             noticeRepository.save(notice);
             return false;
         }
-        // (user_id, notice_id)는 유니크 제약이므로, 이미 이력이 있는 사용자에게는 새 PENDING row를 INSERT X
-        // 발송 자체는 전체 대상에게 하고, 기존 row는 persistDispatchResult의 UPDATE로 갱신된다.
 
-        // 1. 일단 AlertHistory에 저장된 user_id를 가져옴
-        Set<Long> alreadyLogged = new HashSet<>(alertHistoryRepository.findUserIdsByNoticeId(notice.getId()));
+        // 발송 절차가 중단된 후 재실행되더라도, 이미 커밋된 (회원, 공지) 이력을 중복 INSERT하지 않도록 기존 이력이 있는 사용자를 제외한다.
+        Set<Long> userIdsWithHistory = new HashSet<>(alertHistoryRepository.findUserIdsByNoticeId(notice.getId()));
 
-        // 2. AlertHistory에 저장된 user_id를 제외한 나머지 user_id에 대해서만 AlertHistory를 생성
-        Map<Long, String> matchedTags = userRepository.findFirstMatchedTagsByTitle(notice.getTitle());
-        List<AlertHistory> pendingLogs = targets.stream()
-                .filter(t -> !alreadyLogged.contains(t.userId()))
-                .map(t -> AlertHistory.create(t.userId(), notice.getId(), matchedTags.get(t.userId())))
+        // AlertHistory에 저장된 user_id를 제외한 나머지 user_id에 대해서만 AlertHistory를 생성
+        Map<Long, String> matchedTagsByUserId = userRepository.findFirstMatchedTagsByTitle(notice.getTitle());
+        List<AlertHistory> newPendingHistories = recipients.stream()
+                .filter(recipient -> !userIdsWithHistory.contains(recipient.userId()))
+                .map(recipient -> AlertHistory.create(
+                        recipient.userId(), notice.getId(), matchedTagsByUserId.get(recipient.userId())))
                 .toList();
 
-        // 3. 기존 AlertHistory에 없을 경우 PENDING 로그를 추가
-        if (!pendingLogs.isEmpty()) {
-            alertHistoryRepository.saveAll(pendingLogs);
+        // 기존 AlertHistory에 없을 경우 PENDING 로그를 추가
+        if (!newPendingHistories.isEmpty()) {
+            alertHistoryRepository.saveAll(newPendingHistories);
         }
         return true;
     }
@@ -86,47 +85,47 @@ public class PushNotificationService {
         if (recipients.isEmpty()) return;
 
         // @Transactional 범위 밖에서 FCM HTTP 호출
-        List<UserPushResult> results;
+        List<UserPushResult> pushResults;
         try {
-            results = pushNotificationPort.sendMulticast(recipients, "Cathori 새 공지", notice.getTitle(), notice.getId());
+            pushResults = pushNotificationPort.send(recipients, "Cathori 새 공지", notice.getTitle(), notice.getId());
         } catch (Exception e) {
             log.error("FCM 발송 실패. noticeId={}", notice.getId(), e);
-            List<Long> allUserIds = recipients.stream().map(UserToken::userId).toList();
+            List<Long> recipientIds = recipients.stream().map(UserToken::userId).toList();
 
             // 여기서 발송 실패는 UPDATE 라서 괜찮음
-            notificationResultWriter.persistDispatchFailure(notice, allUserIds);
+            notificationResultWriter.persistDispatchFailure(notice, recipientIds);
             return;
         }
 
         // FCM예외와 무관하게 성공 실패는 한 번에 기록
-        List<Long> successIds = results.stream().filter(UserPushResult::success).map(UserPushResult::userId).toList();
-        List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserPushResult::userId).toList();
-        notificationResultWriter.persistDispatchResult(notice, successIds, failedIds);
+        List<Long> successfulUserIds = pushResults.stream().filter(UserPushResult::success).map(UserPushResult::userId).toList();
+        List<Long> failedUserIds = pushResults.stream().filter(r -> !r.success()).map(UserPushResult::userId).toList();
+        notificationResultWriter.persistDispatchResult(notice, successfulUserIds, failedUserIds);
 
-        log.info("FCM 발송 완료. noticeId={}, success={}, fail={}", notice.getId(), successIds.size(), failedIds.size());
+        log.info("FCM 발송 완료. noticeId={}, success={}, fail={}", notice.getId(), successfulUserIds.size(), failedUserIds.size());
     }
 
     private List<UserToken> loadPendingRecipients(Long noticeId) {
-        List<Long> recipients = alertHistoryRepository.findPendingUserIdsByNoticeId(noticeId);
-        if (recipients.isEmpty()) return List.of();
+        List<Long> recipientIds = alertHistoryRepository.findPendingUserIdsByNoticeId(noticeId);
+        if (recipientIds.isEmpty()) return List.of();
 
-        Map<Long, String> deviceTokens = userRepository.findDeviceTokensByIds(recipients);
-        return recipients.stream()
-                .filter(deviceTokens::containsKey)
-                .map(id -> new UserToken(id, deviceTokens.get(id)))
+        Map<Long, String> deviceTokensByUserId = userRepository.findDeviceTokensByIds(recipientIds);
+        return recipientIds.stream()
+                .filter(deviceTokensByUserId::containsKey)
+                .map(userId -> new UserToken(userId, deviceTokensByUserId.get(userId)))
                 .toList();
     }
 
-    private List<UserToken> buildTargets(Notice notice) {
+    private List<UserToken> selectEligibleRecipients(Notice notice) {
         return userRepository.findUsersWithTagMatchingTitle(notice.getTitle())
                 .stream()
-                .filter(u -> isEligibleForNotice(u, notice))
-                .filter(u -> u.getDeviceToken() != null)
-                .map(u -> new UserToken(u.getId(), u.getDeviceToken()))
+                .filter(user -> matchesNoticeScope(user, notice))
+                .filter(user -> user.getDeviceToken() != null)
+                .map(user -> new UserToken(user.getId(), user.getDeviceToken()))
                 .toList();
     }
 
-    private boolean isEligibleForNotice(User user, Notice notice) {
+    private boolean matchesNoticeScope(User user, Notice notice) {
         if ("MAIN".equals(notice.getSourceType())) return true;
         String sourceId = notice.getSourceId();
         String majorCode = DepartmentSource.findEnumNameByDisplayName(user.getMajor());
@@ -137,47 +136,47 @@ public class PushNotificationService {
         return sourceId.equals(secondMajorCode);
     }
 
-    public void retryFailedAlerts() {
-        List<AlertHistory> failedLogs = alertHistoryRepository.findFailedForRetry();
-        if (failedLogs.isEmpty()) return;
+    public void retryFailedNotifications() {
+        List<AlertHistory> failedHistories = alertHistoryRepository.findFailedForRetry();
+        if (failedHistories.isEmpty()) return;
 
-        log.info("FCM 재시도 {}건", failedLogs.size());
+        log.info("FCM 재시도 {}건", failedHistories.size());
 
-        Map<Long, List<AlertHistory>> byNotice = failedLogs.stream()
+        Map<Long, List<AlertHistory>> failedHistoriesByNoticeId = failedHistories.stream()
                 .collect(Collectors.groupingBy(AlertHistory::getNoticeId));
 
-        for (Map.Entry<Long, List<AlertHistory>> entry : byNotice.entrySet()) {
-            retryForNotice(entry.getKey(), entry.getValue());
+        for (Map.Entry<Long, List<AlertHistory>> entry : failedHistoriesByNoticeId.entrySet()) {
+            retryNotificationsForNotice(entry.getKey(), entry.getValue());
         }
     }
 
-    private void retryForNotice(Long noticeId, List<AlertHistory> logs) {
+    private void retryNotificationsForNotice(Long noticeId, List<AlertHistory> failedHistories) {
         Notice notice = noticeRepository.findById(noticeId).orElse(null);
         if (notice == null) return;
 
-        List<UserToken> targets = logs.stream()
-                .map(l -> {
-                    User user = userRepository.findById(l.getUserId()).orElse(null);
+        List<UserToken> recipients = failedHistories.stream()
+                .map(history -> {
+                    User user = userRepository.findById(history.getUserId()).orElse(null);
                     if (user == null || user.getDeviceToken() == null) return null;
-                    return new UserToken(l.getUserId(), user.getDeviceToken());
+                    return new UserToken(history.getUserId(), user.getDeviceToken());
                 })
                 .filter(Objects::nonNull)
                 .toList();
 
-        if (targets.isEmpty()) return;
+        if (recipients.isEmpty()) return;
 
-        List<UserPushResult> results;
+        List<UserPushResult> pushResults;
         try {
-            results = pushNotificationPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), noticeId);
+            pushResults = pushNotificationPort.send(recipients, "Cathori 새 공지", notice.getTitle(), noticeId);
         } catch (Exception e) {
             log.error("FCM 재시도 실패. noticeId={}", noticeId, e);
-            List<Long> userIds = targets.stream().map(UserToken::userId).toList();
-            notificationResultWriter.persistRetryFailure(noticeId, userIds);
+            List<Long> recipientIds = recipients.stream().map(UserToken::userId).toList();
+            notificationResultWriter.persistRetryFailure(noticeId, recipientIds);
             return;
         }
 
-        List<Long> successIds = results.stream().filter(UserPushResult::success).map(UserPushResult::userId).toList();
-        List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserPushResult::userId).toList();
-        notificationResultWriter.persistRetryResult(noticeId, successIds, failedIds);
+        List<Long> successfulUserIds = pushResults.stream().filter(UserPushResult::success).map(UserPushResult::userId).toList();
+        List<Long> failedUserIds = pushResults.stream().filter(r -> !r.success()).map(UserPushResult::userId).toList();
+        notificationResultWriter.persistRetryResult(noticeId, successfulUserIds, failedUserIds);
     }
 }

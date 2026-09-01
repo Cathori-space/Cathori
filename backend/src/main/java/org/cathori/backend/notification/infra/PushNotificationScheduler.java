@@ -27,7 +27,7 @@ public class PushNotificationScheduler {
      * 코드 변경 없이 발송 주기를 짧게 덮어쓸 수 있습니다.
      */
     @Scheduled(cron = "${alert.dispatch.cron:0 0 11 * * *}")
-    public void dispatchAlerts() {
+    public void sendNoticeNotifications() {
         log.info("알림 발송 스케줄러 시작");
         pushNotificationService.dispatchAlerts();
     }
@@ -36,6 +36,7 @@ public class PushNotificationScheduler {
     @Scheduled(cron = "0 0/20 * * * *")
     public void retryFailedAlerts() {
         pushNotificationService.retryFailedAlerts();
+    public void retryFailedNotifications() {
     }
 
 }

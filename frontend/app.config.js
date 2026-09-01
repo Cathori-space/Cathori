@@ -12,8 +12,12 @@ export default {
       supportsTablet: false,
       bundleIdentifier: "site.cathori.cathoriapp",
       googleServicesFile: process.env.GOOGLE_SERVICES_IOS_PLIST ?? "./GoogleService-Info.plist",
+      entitlements: {
+        "aps-environment": "production"
+      },
       infoPlist: {
-        ITSAppUsesNonExemptEncryption: false
+        ITSAppUsesNonExemptEncryption: false,
+        UIBackgroundModes: ["remote-notification"]
       }
     },
     android: {
@@ -41,6 +45,13 @@ export default {
         dark: { backgroundColor: "#000000" }
       }],
       ["expo-notifications", { color: "#00288C" }],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      ["expo-build-properties", {
+        ios: {
+          useFrameworks: "dynamic"
+        }
+      }],
       "expo-secure-store",
       "expo-font"
     ],

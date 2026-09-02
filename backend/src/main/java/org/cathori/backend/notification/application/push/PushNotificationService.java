@@ -44,13 +44,21 @@ public class PushNotificationService {
     }
 
     private void dispatchForNotice(Notice notice) {
+        boolean hasRecipients = registerRecipients(notice);
+        if (!hasRecipients) return;
+        sendToRecipients(notice);
+    }
+
+    // 발송 대상을 계산해 AlertHistory PENDING row로 원자적으로 저장한다.
+    // 이후 sendToRecipients는 이 결과를 신뢰의 원천으로 삼아 DB에서 다시 읽어 발송한다.
+    private boolean registerRecipients(Notice notice) {
         List<UserToken> targets = buildTargets(notice);
         log.info("noticeId={} 발송 대상 {}명", notice.getId(), targets.size());
 
         if (targets.isEmpty()) {
             notice.markAlertDispatched();
             noticeRepository.save(notice);
-            return;
+            return false;
         }
         // (user_id, notice_id)는 유니크 제약이므로, 이미 이력이 있는 사용자에게는 새 PENDING row를 INSERT X
         // 발송 자체는 전체 대상에게 하고, 기존 row는 persistDispatchResult의 UPDATE로 갱신된다.
@@ -69,14 +77,21 @@ public class PushNotificationService {
         if (!pendingLogs.isEmpty()) {
             alertHistoryRepository.saveAll(pendingLogs);
         }
+        return true;
+    }
 
-        // 4. @Transactional 범위 밖에서 FCM HTTP 호출
+    // registerRecipients가 저장한 PENDING 대상을 DB에서 다시 읽어와 발송한다.
+    private void sendToRecipients(Notice notice) {
+        List<UserToken> recipients = loadPendingRecipients(notice.getId());
+        if (recipients.isEmpty()) return;
+
+        // @Transactional 범위 밖에서 FCM HTTP 호출
         List<UserPushResult> results;
         try {
-            results = pushNotificationPort.sendMulticast(targets, "Cathori 새 공지", notice.getTitle(), notice.getId());
+            results = pushNotificationPort.sendMulticast(recipients, "Cathori 새 공지", notice.getTitle(), notice.getId());
         } catch (Exception e) {
             log.error("FCM 발송 실패. noticeId={}", notice.getId(), e);
-            List<Long> allUserIds = targets.stream().map(UserToken::userId).toList();
+            List<Long> allUserIds = recipients.stream().map(UserToken::userId).toList();
 
             // 여기서 발송 실패는 UPDATE 라서 괜찮음
             notificationResultWriter.persistDispatchFailure(notice, allUserIds);
@@ -87,8 +102,19 @@ public class PushNotificationService {
         List<Long> successIds = results.stream().filter(UserPushResult::success).map(UserPushResult::userId).toList();
         List<Long> failedIds = results.stream().filter(r -> !r.success()).map(UserPushResult::userId).toList();
         notificationResultWriter.persistDispatchResult(notice, successIds, failedIds);
-        
+
         log.info("FCM 발송 완료. noticeId={}, success={}, fail={}", notice.getId(), successIds.size(), failedIds.size());
+    }
+
+    private List<UserToken> loadPendingRecipients(Long noticeId) {
+        List<Long> recipients = alertHistoryRepository.findPendingUserIdsByNoticeId(noticeId);
+        if (recipients.isEmpty()) return List.of();
+
+        Map<Long, String> deviceTokens = userRepository.findDeviceTokensByIds(recipients);
+        return recipients.stream()
+                .filter(deviceTokens::containsKey)
+                .map(id -> new UserToken(id, deviceTokens.get(id)))
+                .toList();
     }
 
     private List<UserToken> buildTargets(Notice notice) {

@@ -65,6 +65,8 @@ export const Colors = {
   separator: '#C5C5D4',
   /** 즐겨찾기 미선택 아이콘 */
   bookmarkInactive: '#CBD5E1',
+  /** 즐겨찾기 선택 아이콘 */
+  bookmarkActive: '#F59E0B',
 
   // ─── 네비게이션 바 ─────────────────────────────────────
   /** 하단 NavBar 배경 (80% 흰색) */

@@ -127,7 +127,7 @@ export default function NoticeDetailScreen() {
             disabled={isBookmarkPending}
           >
             {notice.isBookmarked ? (
-              <FontAwesome name="bookmark" size={21} color={Colors.primary} />
+              <FontAwesome name="bookmark" size={21} color={Colors.bookmarkActive} />
             ) : (
               <Feather name="bookmark" size={22} color={Colors.bookmarkInactive} />
             )}

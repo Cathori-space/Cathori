@@ -82,7 +82,7 @@ function SearchResultItemComponent({
           disabled={isBookmarkDisabled}
         >
           {notice.isBookmarked ? (
-            <FontAwesome name="bookmark" size={17} color={Colors.primary} />
+            <FontAwesome name="bookmark" size={17} color={Colors.bookmarkActive} />
           ) : (
             <Feather name="bookmark" size={18} color={Colors.bookmarkInactive} />
           )}

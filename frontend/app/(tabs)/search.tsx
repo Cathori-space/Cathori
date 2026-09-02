@@ -38,6 +38,7 @@ import {
   SearchResultItem,
   useSearchNotices,
 } from '@/src/features/search';
+import { useToggleBookmark } from '@/src/features/notices';
 import { EmptyState, MainHeader } from '@/src/shared/components';
 import { useDebounce } from '@/src/shared/hooks';
 import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
@@ -66,6 +67,11 @@ export default function SearchScreen() {
     hasNextPage,           // ← 다음 페이지 있는지?
     isFetchingNextPage,    // ← 다음 페이지 로딩 중인지?
   } = useSearchNotices(debouncedQuery);
+  const {
+    mutate: toggleBookmarkMutate,
+    isPending: isBookmarkPending,
+    variables: pendingBookmarkId,
+  } = useToggleBookmark();
 
   // 모든 페이지의 content를 평탄화 — 검색 슬림 페이로드(SearchNoticeListItem)
   const results: SearchNoticeListItem[] = data?.pages.flatMap((p) => p.content) ?? [];
@@ -89,10 +95,20 @@ export default function SearchScreen() {
     }
   };
 
+  const handleToggleBookmark = (noticeId: string) => {
+    if (isBookmarkPending) return;
+    toggleBookmarkMutate(noticeId);
+  };
+
   // FlatList 콜백 — 인라인 화살표 함수 방지 (Global Rules)
   // debouncedQuery를 prop으로 넘겨 매칭 부분 하이라이트에 사용
   const renderItem = ({ item }: { item: SearchNoticeListItem }) => (
-    <SearchResultItem notice={item} query={debouncedQuery} />
+    <SearchResultItem
+      notice={item}
+      query={debouncedQuery}
+      onToggleBookmark={handleToggleBookmark}
+      isBookmarkDisabled={isBookmarkPending && pendingBookmarkId === item.id}
+    />
   );
   const keyExtractor = (item: SearchNoticeListItem) => item.id;
   const getItemLayout = (_: unknown, index: number) => ({

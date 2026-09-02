@@ -15,7 +15,7 @@
  * padding 20, gap 8, cornerRadius 12, fill #FFFFFF
  */
 
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -31,9 +31,15 @@ interface NoticeCardProps {
   notice: Notice;
   /** 즐겨찾기 토글 콜백 */
   onToggleBookmark?: (noticeId: string) => void;
+  /** 즐겨찾기 요청 중 중복 클릭 방지 */
+  isBookmarkDisabled?: boolean;
 }
 
-function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
+function NoticeCardComponent({
+  notice,
+  onToggleBookmark,
+  isBookmarkDisabled = false,
+}: NoticeCardProps) {
   const router = useRouter();
 
   // 카드 탭 → 공지 상세로 이동
@@ -43,23 +49,24 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
 
   // 즐겨찾기 토글
   const handleBookmarkPress = () => {
+    if (isBookmarkDisabled) return;
     onToggleBookmark?.(notice.id);
   };
 
   // AI 요약 1줄만 가져오기
   const getFirstSummaryLine = (aiSummary: string | null): string => {
-  if (!aiSummary) return '';
-  try {
-    const parsed = JSON.parse(aiSummary);
-    if (Array.isArray(parsed)) {
-      return parsed[0] || '';
+    if (!aiSummary) return '';
+    try {
+      const parsed = JSON.parse(aiSummary);
+      if (Array.isArray(parsed)) {
+        return parsed[0] || '';
+      }
+      return aiSummary;
+    } catch {
+      // 백엔드에서 간혹 일반 string으로 줄바꿈해서 줄 때를 위한 대비책
+      return aiSummary.replace(/•\s*/g, '').split('\n')[0] || '';
     }
-    return aiSummary;
-  } catch {
-    // 백엔드에서 간혹 일반 string으로 줄바꿈해서 줄 때를 위한 대비책
-    return aiSummary.replace(/•\s*/g, '').split('\n')[0] || '';
-  }
-};
+  };
 
   return (
     <TouchableOpacity
@@ -107,14 +114,19 @@ function NoticeCardComponent({ notice, onToggleBookmark }: NoticeCardProps) {
           <View style={styles.metaDot} />
           <Text style={styles.metaText}>{notice.department}</Text>
         </View>
-        <TouchableOpacity onPress={handleBookmarkPress} hitSlop={8}>
-          <Feather
-            name="bookmark"
-            size={18}
-            color={
-              notice.isBookmarked ? Colors.primary : Colors.bookmarkInactive
-            }
-          />
+        <TouchableOpacity
+          onPress={(event) => {
+            event.stopPropagation();
+            handleBookmarkPress();
+          }}
+          hitSlop={8}
+          disabled={isBookmarkDisabled}
+        >
+          {notice.isBookmarked ? (
+            <FontAwesome name="bookmark" size={17} color={Colors.primary} />
+          ) : (
+            <Feather name="bookmark" size={18} color={Colors.bookmarkInactive} />
+          )}
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

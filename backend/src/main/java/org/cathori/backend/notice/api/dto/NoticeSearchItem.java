@@ -12,5 +12,6 @@ public record NoticeSearchItem(
         @Schema(example = "2026학년도 1학기 국가장학금 신청 안내") String title,
         @Schema(example = "학생지원팀") String department,
         @Schema(example = "2026-03-28") LocalDate publishedAt,
-        @Schema(example = "2026-04-30") String deadlineAt
+        @Schema(example = "2026-04-30") String deadlineAt,
+        boolean isBookmarked
 ) {}

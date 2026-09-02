@@ -1,6 +1,7 @@
 package org.cathori.backend.notice.infra;
 
 import lombok.RequiredArgsConstructor;
+import org.cathori.backend.notice.application.BookmarkedNoticeQuery;
 import org.cathori.backend.notice.application.NoticeFeedPort;
 import org.cathori.backend.notice.application.NoticeFeedQuery;
 import org.cathori.backend.notice.application.NoticeRow;
@@ -55,6 +56,23 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
 
         return jdbcTemplate.query(qp.sql(), ROW_MAPPER, qp.params().toArray());
 
+    }
+
+    @Override
+    public List<NoticeRow> findBookmarked(BookmarkedNoticeQuery q) {
+        List<Object> params = new ArrayList<>();
+        params.add(q.userId());
+        params.add(q.size() + 1);
+        params.add((long) q.page() * q.size());
+
+        String sql =
+                "SELECT n.*, true AS is_bookmarked " +
+                "FROM bookmark b " +
+                "JOIN notices n ON n.id = b.notice_id " +
+                "WHERE b.user_id = ? " +
+                "ORDER BY n.posted_at DESC, n.title ASC LIMIT ? OFFSET ?";
+
+        return jdbcTemplate.query(sql, ROW_MAPPER, params.toArray());
     }
 
     // Case1: category도 없고 tags도 없음 — MAIN + 제1전공 + 제2전공(전공심화 제외)
@@ -194,11 +212,14 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         List<Object> params = new ArrayList<>();
 
         StringBuilder sql = new StringBuilder(
-                "SELECT n.id, n.category, n.title, n.department, n.posted_at, n.deadline_at " +
+                "SELECT n.id, n.category, n.title, n.department, n.posted_at, n.deadline_at, " +
+                "       CASE WHEN b.id IS NOT NULL THEN true ELSE false END AS is_bookmarked " +
                 "FROM notices n " +
+                "LEFT JOIN bookmark b ON b.notice_id = n.id AND b.user_id = ? " +
                 "WHERE n.title LIKE '%' || ? || '%' " +
                 "AND (n.source_type = 'MAIN'"
         );
+        params.add(q.userId());
         params.add(q.keyword());
 
         sql.append(" OR (n.source_type = 'DEPARTMENT' AND n.source_id = ?)");
@@ -219,7 +240,8 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
                 rs.getString("title"),
                 rs.getString("department"),
                 rs.getObject("posted_at", LocalDate.class),
-                rs.getObject("deadline_at", LocalDate.class)
+                rs.getObject("deadline_at", LocalDate.class),
+                rs.getBoolean("is_bookmarked")
         );
 
         return jdbcTemplate.query(sql.toString(), mapper, params.toArray());

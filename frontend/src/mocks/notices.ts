@@ -156,7 +156,7 @@ export function getMockSearchNotices(params: {
   );
 
   const start = (params.page - 1) * params.size;
-  // 실제 API 응답과 동일한 슬림 페이로드로 매핑 — aiSummary/url/isBookmarked/tags 제외
+  // 실제 API 응답과 동일한 슬림 페이로드로 매핑 — aiSummary/url/tags 제외
   const content: SearchNoticeListItem[] = filtered
     .slice(start, start + params.size)
     .map((n) => ({
@@ -166,6 +166,7 @@ export function getMockSearchNotices(params: {
       department: n.department,
       postedAt: n.postedAt,
       deadlineAt: n.deadlineAt ?? null,
+      isBookmarked: n.isBookmarked,
     }));
 
   return {

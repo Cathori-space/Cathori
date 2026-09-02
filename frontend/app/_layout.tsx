@@ -131,6 +131,11 @@ function RootLayoutNav() {
             name="notification/index"
             options={{ headerShown: false, animation: 'slide_from_right' }}
           />
+          {/* 북마크 목록 화면 */}
+          <Stack.Screen
+            name="bookmark/index"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
           {/* 인증 화면 — 로그인 */}
           <Stack.Screen
             name="login"

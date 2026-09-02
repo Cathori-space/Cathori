@@ -128,15 +128,24 @@ export default function HomeScreen() {
   const highlightNotice = null;
 
   // 즐겨찾기 토글 mutation
-  const { mutate: toggleBookmarkMutate } = useToggleBookmark();
+  const {
+    mutate: toggleBookmarkMutate,
+    isPending: isBookmarkPending,
+    variables: pendingBookmarkId,
+  } = useToggleBookmark();
 
   const handleToggleBookmark = (noticeId: string) => {
+    if (isBookmarkPending) return;
     toggleBookmarkMutate(noticeId);
   };
 
   // FlatList renderItem — 인라인 화살표 함수 방지 (Global Rules)
   const renderNoticeCard = ({ item }: { item: Notice }) => (
-    <NoticeCard notice={item} onToggleBookmark={handleToggleBookmark} />
+    <NoticeCard
+      notice={item}
+      onToggleBookmark={handleToggleBookmark}
+      isBookmarkDisabled={isBookmarkPending && pendingBookmarkId === item.id}
+    />
   );
 
   // FlatList keyExtractor

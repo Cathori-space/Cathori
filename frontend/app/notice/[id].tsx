@@ -21,7 +21,7 @@
  * 기기별 insets 수동 계산 불필요.
  */
 
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
@@ -76,10 +76,10 @@ export default function NoticeDetailScreen() {
   };
 
   // 즐겨찾기 토글 mutation
-  const { mutate: toggleBookmarkMutate } = useToggleBookmark(); // mutate함수명을 변경함 (toggleBookmark)
+  const { mutate: toggleBookmarkMutate, isPending: isBookmarkPending } = useToggleBookmark(); // mutate함수명을 변경함 (toggleBookmark)
 
   const handleBookmark = () => {
-    if (notice) {
+    if (notice && !isBookmarkPending) {
       toggleBookmarkMutate(notice.id);
     }
   };
@@ -121,14 +121,16 @@ export default function NoticeDetailScreen() {
           <Feather name="arrow-left" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleBookmark} hitSlop={8}>
-            <Feather
-              name="bookmark"
-              size={22}
-              color={
-                notice.isBookmarked ? Colors.primary : Colors.bookmarkInactive
-              }
-            />
+          <TouchableOpacity
+            onPress={handleBookmark}
+            hitSlop={8}
+            disabled={isBookmarkPending}
+          >
+            {notice.isBookmarked ? (
+              <FontAwesome name="bookmark" size={21} color={Colors.bookmarkActive} />
+            ) : (
+              <Feather name="bookmark" size={22} color={Colors.bookmarkInactive} />
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} hitSlop={8}>
             <Feather name="share-2" size={22} color={Colors.textSecondary} />

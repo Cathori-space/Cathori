@@ -53,7 +53,7 @@ public class NoticeController {
         return ResponseEntity.ok(noticeFeedService.search(userDetails.getUserId(), q, page, size));
     }
 
-    @GetMapping("/{noticeId}")
+    @GetMapping("/{noticeId:\\d+}")
     public ResponseEntity<NoticeDetailResponse> getDetail(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long noticeId) {

@@ -67,7 +67,7 @@ export interface Notice {
  */
 export type SearchNoticeListItem = Pick<
   Notice,
-  'id' | 'category' | 'title' | 'department' | 'postedAt' | 'deadlineAt'
+  'id' | 'category' | 'title' | 'department' | 'postedAt' | 'deadlineAt' | 'isBookmarked'
 >;
 
 /** 공지 목록 API 요청 파라미터 */
@@ -81,6 +81,12 @@ export interface NoticeListParams {
 /** 공지 검색 API 요청 파라미터 */
 export interface NoticeSearchParams {
   q: string;
+  page: number;
+  size: number;
+}
+
+/** 북마크 공지 목록 API 요청 파라미터 */
+export interface BookmarkedNoticeListParams {
   page: number;
   size: number;
 }

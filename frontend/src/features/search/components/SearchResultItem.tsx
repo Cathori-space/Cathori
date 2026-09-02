@@ -9,15 +9,16 @@
  *
  *  - 좌측: CategoryBadge (small)
  *  - 중앙: 제목 1줄 (검색어 매칭 부분 하이라이트) + 부서·날짜 1줄
- *  - 우측: DeadlineBadge (deadlineAt이 있을 때만)
+ *  - 우측: DeadlineBadge (deadlineAt이 있을 때만) + 북마크
  *
  * 카드(NoticeCard) 대신 검색 결과에서만 쓰는 행 컴포넌트. AI 요약 미리보기는
  * 스캔 효율을 위해 제거하고, 빠르게 훑어 원하는 공지로 진입하는 흐름에 최적화.
  */
 
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
 import { CategoryBadge, DeadlineBadge } from '@/src/features/notices';
@@ -25,17 +26,31 @@ import { formatDate } from '@/src/shared/utils/date';
 import type { SearchNoticeListItem } from '@/src/types/api';
 
 interface SearchResultItemProps {
-  // 슬림 페이로드 — aiSummary/url/isBookmarked/tags는 검색 응답에 미포함
+  // 슬림 페이로드 — aiSummary/url/tags는 검색 응답에 미포함
   notice: SearchNoticeListItem;
   /** 검색어 — 제목 내 매칭 부분 하이라이트용. 빈 문자열이면 하이라이트 없이 표시 */
   query: string;
+  /** 즐겨찾기 토글 콜백 */
+  onToggleBookmark?: (noticeId: string) => void;
+  /** 즐겨찾기 요청 중 중복 클릭 방지 */
+  isBookmarkDisabled?: boolean;
 }
 
-function SearchResultItemComponent({ notice, query }: SearchResultItemProps) {
+function SearchResultItemComponent({
+  notice,
+  query,
+  onToggleBookmark,
+  isBookmarkDisabled = false,
+}: SearchResultItemProps) {
   const router = useRouter();
 
   const handlePress = () => {
     router.push(`/notice/${notice.id}` as Href);
+  };
+
+  const handleBookmarkPress = () => {
+    if (isBookmarkDisabled) return;
+    onToggleBookmark?.(notice.id);
   };
 
   return (
@@ -54,9 +69,25 @@ function SearchResultItemComponent({ notice, query }: SearchResultItemProps) {
         </View>
       </View>
 
-      {notice.deadlineAt != null && (
-        <DeadlineBadge deadlineAt={notice.deadlineAt} />
-      )}
+      <View style={styles.rightActions}>
+        {notice.deadlineAt != null && (
+          <DeadlineBadge deadlineAt={notice.deadlineAt} />
+        )}
+        <TouchableOpacity
+          onPress={(event) => {
+            event.stopPropagation();
+            handleBookmarkPress();
+          }}
+          hitSlop={8}
+          disabled={isBookmarkDisabled}
+        >
+          {notice.isBookmarked ? (
+            <FontAwesome name="bookmark" size={17} color={Colors.bookmarkActive} />
+          ) : (
+            <Feather name="bookmark" size={18} color={Colors.bookmarkInactive} />
+          )}
+        </TouchableOpacity>
+      </View>
     </Pressable>
   );
 }
@@ -139,5 +170,9 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 9999,
     backgroundColor: Colors.separator,
+  },
+  rightActions: {
+    alignItems: 'center',
+    gap: 8,
   },
 });

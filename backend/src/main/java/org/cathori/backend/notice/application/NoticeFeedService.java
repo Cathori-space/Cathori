@@ -77,6 +77,28 @@ public class NoticeFeedService {
     }
 
     @Transactional(readOnly = true)
+    public NoticeFeedResponse getBookmarked(Long userId, int page, int size) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        List<String> userTags = tagRepository.findAllByUserId(user.getId()).stream()
+                .map(Tag::getName)
+                .toList();
+        List<NoticeRow> rows = noticeFeedPort.findBookmarked(
+                new BookmarkedNoticeQuery(user.getId(), page, size)
+        );
+
+        boolean hasNext = rows.size() > size;
+        List<NoticeRow> pageRows = hasNext ? rows.subList(0, size) : rows;
+
+        List<NoticeFeedItem> content = pageRows.stream()
+                .map(r -> toItem(r, userTags))
+                .toList();
+
+        return new NoticeFeedResponse(content, page, size, hasNext);
+    }
+
+    @Transactional(readOnly = true)
     public NoticeSearchResponse search(Long userId, String keyword, int page, int size) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
@@ -101,7 +123,8 @@ public class NoticeFeedService {
     private NoticeSearchItem toSearchItem(NoticeSearchRow row) {
         String deadlineAt = row.deadlineAt() != null ? row.deadlineAt().toString() : null;
         return new NoticeSearchItem(
-                String.valueOf(row.id()), row.category(), row.title(), row.department(), row.postedAt(), deadlineAt
+                String.valueOf(row.id()), row.category(), row.title(), row.department(), row.postedAt(), deadlineAt,
+                row.isBookmarked()
         );
     }
 

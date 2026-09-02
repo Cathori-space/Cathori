@@ -11,5 +11,6 @@ public record NoticeSearchRow(
         String title,
         String department,
         LocalDate postedAt,
-        LocalDate deadlineAt
+        LocalDate deadlineAt,
+        boolean isBookmarked
 ) {}

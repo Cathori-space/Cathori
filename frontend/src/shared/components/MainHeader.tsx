@@ -6,12 +6,12 @@
  *
  * 구조:
  * ┌─────────────────────────────┐
- * │ 🏫 Cathori              🔔  │
+ * │ 🏫 Cathori           🔖 🔔  │
  * └─────────────────────────────┘
  *
  * fill #00175B (DCU Blue), height 64, padding [0, 24]
  * 로고: Pretendard 20 / 900 / white, letterSpacing -1
- * 알림 아이콘: 16x20 흰색 + 노란 dot (#FCC006)
+ * 북마크/알림 아이콘: 20x20 흰색, 알림 dot (#FCC006)
  */
 
 import { Feather } from '@expo/vector-icons';
@@ -22,7 +22,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
 
-function MainHeaderComponent() {
+interface MainHeaderProps {
+  /** 필요 시 특정 화면에서만 북마크 목록 진입 버튼을 숨긴다. */
+  showBookmark?: boolean;
+}
+
+function MainHeaderComponent({ showBookmark = true }: MainHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -35,17 +40,31 @@ function MainHeaderComponent() {
           <Text style={styles.logoText}>Cathori</Text>
         </View>
 
-        {/* 알림 아이콘 + dot — 탭 시 알림 리스트로 이동 */}
-        <TouchableOpacity
-          style={styles.bellSection}
-          onPress={() => router.push('/notification' as Href)}
-          hitSlop={8}
-          activeOpacity={0.7}
-        >
-          <Feather name="bell" size={20} color="#FFFFFF" />
-          {/* 알림 dot — #FCC006, 10x10, border #00288C 2px */}
-          <View style={styles.notificationDot} />
-        </TouchableOpacity>
+        <View style={styles.actionSection}>
+          {/* 북마크 아이콘 — 탭 시 북마크 목록으로 이동 */}
+          {showBookmark && (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => router.push('/bookmark' as Href)}
+              hitSlop={8}
+              activeOpacity={0.7}
+            >
+              <Feather name="bookmark" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
+
+          {/* 알림 아이콘 + dot — 탭 시 알림 리스트로 이동 */}
+          <TouchableOpacity
+            style={[styles.iconButton, styles.bellSection]}
+            onPress={() => router.push('/notification' as Href)}
+            hitSlop={8}
+            activeOpacity={0.7}
+          >
+            <Feather name="bell" size={20} color="#FFFFFF" />
+            {/* 알림 dot — #FCC006, 10x10, border #00288C 2px */}
+            <View style={styles.notificationDot} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -77,6 +96,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -1,
     lineHeight: 28,
+  },
+  actionSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  iconButton: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   // 알림 아이콘
   bellSection: {

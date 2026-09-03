@@ -11,8 +11,10 @@
  */
 
 import * as Notifications from 'expo-notifications';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useRef } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { getDevicePushToken, requestNotificationPermission } from '@/src/services/notification';
 import { registerDeviceToken } from '@/src/services/pushToken';
@@ -30,8 +32,10 @@ function navigateToNotice(router: ReturnType<typeof useRouter>, data: unknown) {
 
 export function usePushNotifications() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const accessToken = useAuthStore((state) => state.accessToken);
   const registeredRef = useRef(false); // 등록여부 확인 플래그
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // 1) 로그인 직후 디바이스 토큰 등록
   useEffect(() => {
@@ -58,24 +62,51 @@ export function usePushNotifications() {
     })();
   }, [accessToken]);
 
-  // 2) 알림 탭 → 공지 상세 이동 (포그라운드/백그라운드)
+  // 2) 포그라운드 푸시 수신 → 알림 목록/헤더 상태 갱신
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener(() => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    });
+    return () => sub.remove();
+  }, [queryClient]);
+
+  // 3) 백그라운드에서 돌아오면 알림 목록/헤더 상태 갱신
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextAppState) => {
+      const previousAppState = appStateRef.current;
+      appStateRef.current = nextAppState;
+
+      if (
+        previousAppState.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      }
+    });
+
+    return () => sub.remove();
+  }, [queryClient]);
+
+  // 4) 알림 탭 → 공지 상세 이동 (포그라운드/백그라운드)
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       navigateToNotice(router, response.notification.request.content.data);
     });
     return () => sub.remove();
-  }, [router]);
+  }, [queryClient, router]);
 
-  // 2-b) cold start: 종료 상태에서 알림 탭으로 진입한 경우
+  // 4-b) cold start: 종료 상태에서 알림 탭으로 진입한 경우
   useEffect(() => {
     let cancelled = false;
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (!cancelled && response) {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
         navigateToNotice(router, response.notification.request.content.data);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [queryClient, router]);
 }

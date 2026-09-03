@@ -50,4 +50,11 @@ public class NotificationService {
         alertHistory.markRead();
         alertHistoryRepository.save(alertHistory);
     }
+
+    @Transactional
+    public void deleteNotification(Long userId, Long alertHistoryId) {
+        AlertHistory alertHistory = alertHistoryRepository.findByIdAndUserId(alertHistoryId, userId)
+                .orElseThrow(() -> new BusinessException(AlertErrorCode.ALERT_NOT_FOUND));
+        alertHistoryRepository.delete(alertHistory);
+    }
 }

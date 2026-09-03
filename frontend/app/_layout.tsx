@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -117,44 +118,46 @@ function RootLayoutNav() {
   // 트리 상단에 Provider가 없으면 useSafeAreaInsets() - SafeAreaView가 inset을 0으로
   // 계산하여 갤럭시(Android)의 OS 네비바 영역을 침범한다.
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          {/* 공지 상세 화면 */}
-          <Stack.Screen
-            name="notice/[id]"
-            options={{ headerShown: false, animation: 'slide_from_right' }}
-          />
-          {/* 알림 리스트 화면 */}
-          <Stack.Screen
-            name="notification/index"
-            options={{ headerShown: false, animation: 'slide_from_right' }}
-          />
-          {/* 북마크 목록 화면 */}
-          <Stack.Screen
-            name="bookmark/index"
-            options={{ headerShown: false, animation: 'slide_from_right' }}
-          />
-          {/* 인증 화면 — 로그인 */}
-          <Stack.Screen
-            name="login"
-            options={{ headerShown: false, animation: 'fade' }}
-          />
-          {/* 인증 화면 — 회원가입 */}
-          <Stack.Screen
-            name="register"
-            options={{ headerShown: false, animation: 'slide_from_right' }}
-          />
-          {/* 설정 — 관심 키워드 화면 */}
-          <Stack.Screen
-            name="settings/keywords"
-            options={{ headerShown: false, animation: 'slide_from_right' }}
-          />
-        </Stack>
-        {/* Android only: 상태바 스타일 */}
-        <StatusBar style="light" backgroundColor="transparent" translucent />
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            {/* 공지 상세 화면 */}
+            <Stack.Screen
+              name="notice/[id]"
+              options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+            {/* 알림 리스트 화면 */}
+            <Stack.Screen
+              name="notification/index"
+              options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+            {/* 북마크 목록 화면 */}
+            <Stack.Screen
+              name="bookmark/index"
+              options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+            {/* 인증 화면 — 로그인 */}
+            <Stack.Screen
+              name="login"
+              options={{ headerShown: false, animation: 'fade' }}
+            />
+            {/* 인증 화면 — 회원가입 */}
+            <Stack.Screen
+              name="register"
+              options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+            {/* 설정 — 관심 키워드 화면 */}
+            <Stack.Screen
+              name="settings/keywords"
+              options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+          </Stack>
+          {/* Android only: 상태바 스타일 */}
+          <StatusBar style="light" backgroundColor="transparent" translucent />
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

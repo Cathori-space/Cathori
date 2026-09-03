@@ -34,4 +34,14 @@ public class NotificationController {
         notificationService.markRead(userDetails.getUserId(), alertHistoryId);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{alertHistoryId}")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long alertHistoryId
+    ) {
+        notificationService.deleteNotification(userDetails.getUserId(), alertHistoryId);
+        return ResponseEntity.noContent().build();
+    }
+
 }

@@ -18,12 +18,17 @@
  */
 
 import React from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
-import { NotificationItem, useNotifications } from '@/src/features/notifications';
+import {
+  NotificationItem,
+  useDeleteNotification,
+  useNotifications,
+} from '@/src/features/notifications';
 import { EmptyState, SubHeader } from '@/src/shared/components';
+import type { NotificationListItem } from '@/src/types/notifications';
 
 export default function NotificationScreen() {
   const insets = useSafeAreaInsets();
@@ -37,6 +42,7 @@ export default function NotificationScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useNotifications();
+  const deleteNotificationMutation = useDeleteNotification();
 
   // 커서 페이지네이션 응답(pages)을 단일 목록으로 평탄화
   const notifications = data?.pages.flatMap((page) => page.alerts) ?? [];
@@ -50,6 +56,32 @@ export default function NotificationScreen() {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
+  };
+
+  const handleDeleteNotification = (notification: NotificationListItem) => {
+    if (deleteNotificationMutation.isPending) return;
+
+    Alert.alert(
+      '알림 삭제',
+      '이 알림을 삭제할까요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            deleteNotificationMutation.mutate(notification.alertHistoryId, {
+              onError: () => {
+                Alert.alert(
+                  '삭제 실패',
+                  '알림 삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+                );
+              },
+            });
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -71,7 +103,16 @@ export default function NotificationScreen() {
         <FlatList
           data={notifications}
           keyExtractor={(item) => String(item.alertHistoryId)}
-          renderItem={({ item }) => <NotificationItem notification={item} />}
+          renderItem={({ item }) => (
+            <NotificationItem
+              notification={item}
+              onDelete={handleDeleteNotification}
+              isDeleteDisabled={
+                deleteNotificationMutation.isPending &&
+                deleteNotificationMutation.variables === item.alertHistoryId
+              }
+            />
+          )}
           contentContainerStyle={[styles.listContent, contentPadding]}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}

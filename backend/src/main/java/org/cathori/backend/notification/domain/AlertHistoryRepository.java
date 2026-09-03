@@ -23,5 +23,7 @@ public interface AlertHistoryRepository {
 
     Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
 
+    void delete(AlertHistory alertHistory);
+
     void deleteByUserId(Long userId);
 }

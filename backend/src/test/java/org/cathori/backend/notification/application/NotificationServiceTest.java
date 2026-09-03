@@ -174,6 +174,40 @@ class NotificationServiceTest extends IntegrationTestBase {
                         .isEqualTo(AlertErrorCode.ALERT_NOT_FOUND));
     }
 
+    // --- deleteNotification ---
+
+    @Test
+    @DisplayName("NS-11: 내 알림 삭제 → 이력 삭제")
+    void deleteNotification_myAlert_deletesAlert() {
+        Notice notice = saveNotice("공지");
+        Long historyId = insertAlertHistory(USER_ID, notice.getId(), "SUCCESS", null);
+
+        notificationService.deleteNotification(USER_ID, historyId);
+
+        assertThat(alertHistoryJpaRepository.findById(historyId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("NS-12: 존재하지 않는 alertHistoryId 삭제 → ALERT_NOT_FOUND 예외")
+    void deleteNotification_notExistingId_throwsAlertNotFound() {
+        assertThatThrownBy(() -> notificationService.deleteNotification(USER_ID, 99999L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(AlertErrorCode.ALERT_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("NS-13: 타인 알림 삭제 → ALERT_NOT_FOUND 예외")
+    void deleteNotification_othersAlert_throwsAlertNotFound() {
+        Notice notice = saveNotice("공지");
+        Long historyId = insertAlertHistory(OTHER_USER_ID, notice.getId(), "SUCCESS", null);
+
+        assertThatThrownBy(() -> notificationService.deleteNotification(USER_ID, historyId))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(AlertErrorCode.ALERT_NOT_FOUND));
+    }
+
     private Notice saveNotice(String title) {
         return noticeRepository.save(Notice.from(CrawledNotice.builder()
                 .articleNo("NS-" + title.hashCode())

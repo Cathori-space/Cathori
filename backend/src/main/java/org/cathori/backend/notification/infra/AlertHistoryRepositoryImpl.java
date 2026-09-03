@@ -65,6 +65,11 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     }
 
     @Override
+    public void delete(AlertHistory alertHistory) {
+        jpaRepository.delete(alertHistory);
+    }
+
+    @Override
     public void deleteByUserId(Long userId) {
         jpaRepository.deleteByUserId(userId);
     }

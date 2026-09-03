@@ -21,6 +21,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
+import { useHasNotifications } from '@/src/features/notifications';
 
 interface MainHeaderProps {
   /** 필요 시 특정 화면에서만 북마크 목록 진입 버튼을 숨긴다. */
@@ -30,6 +31,7 @@ interface MainHeaderProps {
 function MainHeaderComponent({ showBookmark = true }: MainHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { data: hasNotifications = false } = useHasNotifications();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -62,7 +64,7 @@ function MainHeaderComponent({ showBookmark = true }: MainHeaderProps) {
           >
             <Feather name="bell" size={20} color="#FFFFFF" />
             {/* 알림 dot — #FCC006, 10x10, border #00288C 2px */}
-            <View style={styles.notificationDot} />
+            {hasNotifications && <View style={styles.notificationDot} />}
           </TouchableOpacity>
         </View>
       </View>

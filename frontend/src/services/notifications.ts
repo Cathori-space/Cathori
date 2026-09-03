@@ -4,6 +4,8 @@
  * 백엔드 API 명세(정본: personal_docs/api/API_알림이력조회.md):
  *  - GET /api/notifications?cursor={마지막 alert_history.id}&size={개수}
  *    → { alerts, nextCursor, hasNext } (커서 페이지네이션, 최신순)
+ *  - DELETE /api/notifications/{alertHistoryId}
+ *    → 204 No Content
  *
  * ⚠️ 백엔드 GET /api/notifications가 아직 미구현이라 현재는 mock으로 동작한다.
  *    실제 연동 시 아래 USE_MOCK 플래그만 false로 바꾸면 된다. (호출부 수정 불필요)
@@ -47,4 +49,12 @@ export async function fetchNotifications(
   params: FetchNotificationsParams = {},
 ): Promise<NotificationPage> {
   return USE_MOCK ? fetchNotificationsMock(params) : fetchNotificationsReal(params);
+}
+
+/**
+ * 인증 사용자의 특정 알림 삭제
+ * DELETE /api/notifications/{alertHistoryId}
+ */
+export async function deleteNotification(alertHistoryId: number): Promise<void> {
+  await apiClient.delete(`/api/notifications/${alertHistoryId}`);
 }

@@ -8,6 +8,10 @@ import org.cathori.backend.notification.application.push.UserPushResult;
 import org.cathori.backend.notification.application.push.UserToken;
 import org.springframework.stereotype.Component;
 
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.ApnsConfig;
+import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
@@ -30,6 +34,17 @@ public class FcmAdapter implements PushNotificationPort {
                 .setNotification(Notification.builder()
                         .setTitle(title)
                         .setBody(body)
+                        .build())
+                // Android/iOS 모두 sound를 명시하지 않으면 백그라운드·종료 상태에서 무음으로 표시된다.
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setNotification(AndroidNotification.builder()
+                                .setSound("default")
+                                .build())
+                        .build())
+                .setApnsConfig(ApnsConfig.builder()
+                        .setAps(Aps.builder()
+                                .setSound("default")
+                                .build())
                         .build())
                 .putData("noticeId", String.valueOf(noticeId))
                 .build();

@@ -36,9 +36,12 @@ public class FcmAdapter implements PushNotificationPort {
                         .setBody(body)
                         .build())
                 // Android/iOS 모두 sound를 명시하지 않으면 백그라운드·종료 상태에서 무음으로 표시된다.
+                // channelId는 프론트(notification.ts)가 생성하는 "notice" 채널과 반드시 일치해야 한다.
+                // 채널 미지정 시 OS/라이브러리가 쓰는 fallback 채널은 기기별로 과거 상태(무음)에 고정돼 있을 수 있다.
                 .setAndroidConfig(AndroidConfig.builder()
                         .setNotification(AndroidNotification.builder()
                                 .setSound("default")
+                                .setChannelId("notice")
                                 .build())
                         .build())
                 .setApnsConfig(ApnsConfig.builder()

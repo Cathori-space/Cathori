@@ -26,6 +26,22 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/**
+ * Android 8+(API 26+)는 알림 채널이 최초 생성 시점 설정(사운드 포함)으로 고정되며 코드로 재변경할 수 없다.
+ * expo-notifications가 채널 ID 없이 쓰는 fallback 채널에 기대면 과거에 사운드 없이 생성된 채널이
+ * 남아있는 기기에서 계속 무음이 되므로, 우리가 소유하는 채널을 명시적으로 만들어 사운드를 보장한다.
+ * (백엔드 FcmAdapter도 이 채널 ID를 지정해야 실제로 이 채널이 쓰인다.)
+ */
+export const ANDROID_NOTIFICATION_CHANNEL_ID = 'notice';
+
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync(ANDROID_NOTIFICATION_CHANNEL_ID, {
+    name: '공지 알림',
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'default',
+  });
+}
+
 /** OS 알림 권한을 확인하고, 미허용 시 요청한다. 최종 허용 여부를 반환. */
 export async function requestNotificationPermission(): Promise<boolean> {
   const { status: existing } = await Notifications.getPermissionsAsync();

@@ -8,6 +8,10 @@ import org.cathori.backend.notification.application.push.UserPushResult;
 import org.cathori.backend.notification.application.push.UserToken;
 import org.springframework.stereotype.Component;
 
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.ApnsConfig;
+import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
@@ -22,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FcmAdapter implements PushNotificationPort {
 
     @Override
-    public List<UserPushResult> sendMulticast(List<UserToken> targets, String title, String body, Long noticeId) {
+    public List<UserPushResult> send(List<UserToken> targets, String title, String body, Long noticeId) {
         List<String> tokens = targets.stream().map(UserToken::token).toList();
 
         MulticastMessage message = MulticastMessage.builder()
@@ -30,6 +34,20 @@ public class FcmAdapter implements PushNotificationPort {
                 .setNotification(Notification.builder()
                         .setTitle(title)
                         .setBody(body)
+                        .build())
+                // Android/iOS 모두 sound를 명시하지 않으면 백그라운드·종료 상태에서 무음으로 표시된다.
+                // channelId는 프론트(notification.ts)가 생성하는 "notice" 채널과 반드시 일치해야 한다.
+                // 채널 미지정 시 OS/라이브러리가 쓰는 fallback 채널은 기기별로 과거 상태(무음)에 고정돼 있을 수 있다.
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setNotification(AndroidNotification.builder()
+                                .setSound("default")
+                                .setChannelId("notice")
+                                .build())
+                        .build())
+                .setApnsConfig(ApnsConfig.builder()
+                        .setAps(Aps.builder()
+                                .setSound("default")
+                                .build())
                         .build())
                 .putData("noticeId", String.valueOf(noticeId))
                 .build();

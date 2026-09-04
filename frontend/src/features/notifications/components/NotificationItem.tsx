@@ -12,9 +12,14 @@
  * - deadlineAt이 있을 때만 date.ts로 D-day를 연산해 뱃지 표시
  */
 
+import { Feather } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { SharedValue } from 'react-native-reanimated';
 
 import { Colors } from '@/src/constants/colors';
 import {
@@ -27,9 +32,15 @@ import type { NotificationListItem } from '@/src/types/notifications';
 
 interface NotificationItemProps {
   notification: NotificationListItem;
+  onDelete?: (notification: NotificationListItem) => void;
+  isDeleteDisabled?: boolean;
 }
 
-function NotificationItemComponent({ notification }: NotificationItemProps) {
+function NotificationItemComponent({
+  notification,
+  onDelete,
+  isDeleteDisabled = false,
+}: NotificationItemProps) {
   const router = useRouter();
 
   // 카드 탭 → 공지 상세로 이동 (NoticeCard와 동일 패턴)
@@ -43,62 +54,119 @@ function NotificationItemComponent({ notification }: NotificationItemProps) {
       : null;
   const urgent = dday != null && isDdayUrgent(dday);
 
+  const renderRightActions = (
+    _progress: SharedValue<number>,
+    _translation: SharedValue<number>,
+    swipeableMethods: SwipeableMethods,
+  ) => (
+    <View style={styles.deleteActionWrapper}>
+      <TouchableOpacity
+        style={[
+          styles.deleteAction,
+          isDeleteDisabled && styles.deleteActionDisabled,
+        ]}
+        onPress={() => {
+          swipeableMethods.close();
+          onDelete?.(notification);
+        }}
+        activeOpacity={0.8}
+        disabled={isDeleteDisabled}
+      >
+        <Feather name="trash-2" size={18} color="#FFFFFF" />
+        <Text style={styles.deleteActionText}>삭제</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={handlePress}
-      activeOpacity={0.7}
+    <ReanimatedSwipeable
+      containerStyle={styles.swipeableContainer}
+      renderRightActions={renderRightActions}
+      rightThreshold={36}
+      friction={2}
+      overshootRight={false}
     >
-      {/* 상단: 매칭 태그 칩 + D-day 뱃지 */}
-      <View style={styles.topRow}>
-        {notification.matchedTag ? (
-          <View style={styles.tagChip}>
-            <Text style={styles.tagChipText} numberOfLines={1}>
-              #{notification.matchedTag}
-            </Text>
-          </View>
-        ) : (
-          // 태그가 없는 경우에도 space-between 정렬 유지를 위한 빈 자리
-          <View />
-        )}
-        {dday != null && (
-          <View
-            style={[
-              styles.ddayBadge,
-              urgent ? styles.ddayUrgent : styles.ddayNormal,
-            ]}
-          >
-            <Text
+      <TouchableOpacity
+        style={styles.container}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
+        {/* 상단: 매칭 태그 칩 + D-day 뱃지 */}
+        <View style={styles.topRow}>
+          {notification.matchedTag ? (
+            <View style={styles.tagChip}>
+              <Text style={styles.tagChipText} numberOfLines={1}>
+                #{notification.matchedTag}
+              </Text>
+            </View>
+          ) : (
+            // 태그가 없는 경우에도 space-between 정렬 유지를 위한 빈 자리
+            <View />
+          )}
+          {dday != null && (
+            <View
               style={[
-                styles.ddayText,
-                urgent ? styles.ddayTextUrgent : styles.ddayTextNormal,
+                styles.ddayBadge,
+                urgent ? styles.ddayUrgent : styles.ddayNormal,
               ]}
             >
-              {formatDday(dday)}
-            </Text>
-          </View>
-        )}
-      </View>
+              <Text
+                style={[
+                  styles.ddayText,
+                  urgent ? styles.ddayTextUrgent : styles.ddayTextNormal,
+                ]}
+              >
+                {formatDday(dday)}
+              </Text>
+            </View>
+          )}
+        </View>
 
-      {/* 제목 */}
-      <Text style={styles.title} numberOfLines={2}>
-        {notification.title}
-      </Text>
+        {/* 제목 */}
+        <Text style={styles.title} numberOfLines={2}>
+          {notification.title}
+        </Text>
 
-      {/* 발송 시각 */}
-      <Text style={styles.date}>{formatDate(notification.createdAt)}</Text>
-    </TouchableOpacity>
+        {/* 발송 시각 */}
+        <Text style={styles.date}>{formatDate(notification.createdAt)}</Text>
+      </TouchableOpacity>
+    </ReanimatedSwipeable>
   );
 }
 
 export const NotificationItem = NotificationItemComponent;
 
 const styles = StyleSheet.create({
+  swipeableContainer: {
+    borderRadius: 12,
+  },
   container: {
     backgroundColor: Colors.cardBg,
     borderRadius: 12,
     padding: 20,
     gap: 8,
+  },
+  deleteActionWrapper: {
+    width: 88,
+    marginLeft: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  deleteAction: {
+    flex: 1,
+    backgroundColor: '#D92D20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  deleteActionDisabled: {
+    backgroundColor: '#F97066',
+  },
+  deleteActionText: {
+    fontFamily: 'Pretendard',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   topRow: {
     flexDirection: 'row',

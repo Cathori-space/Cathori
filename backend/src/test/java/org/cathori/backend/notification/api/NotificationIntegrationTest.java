@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -166,6 +167,60 @@ class NotificationIntegrationTest extends IntegrationTestBase {
     @DisplayName("NI-8: PATCH JWT 없음 → 401")
     void markRead_withoutJwt_returns401() throws Exception {
         mockMvc.perform(patch("/api/notifications/1/read"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("NI-9: DELETE /{id} → 204 No Content")
+    void deleteNotification_validAlert_returns204() throws Exception {
+        Notice notice = saveNotice();
+        Long historyId = insertAlertHistory(userAId, notice.getId(), "SUCCESS", null);
+
+        mockMvc.perform(delete("/api/notifications/" + historyId)
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("NI-10: DELETE /{id} → 내 알림 삭제")
+    void deleteNotification_validAlert_deletesAlert() throws Exception {
+        Notice notice = saveNotice();
+        Long historyId = insertAlertHistory(userAId, notice.getId(), "SUCCESS", null);
+
+        mockMvc.perform(delete("/api/notifications/" + historyId)
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/notifications")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alerts").isEmpty());
+    }
+
+    @Test
+    @DisplayName("NI-11: DELETE /{없는id} → 404 + ALERT_NOT_FOUND")
+    void deleteNotification_notExistingId_returns404() throws Exception {
+        mockMvc.perform(delete("/api/notifications/99999")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ALERT_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("NI-12: DELETE /{타인id} → 404")
+    void deleteNotification_othersAlert_returns404() throws Exception {
+        Notice notice = saveNotice();
+        Long historyId = insertAlertHistory(userBId, notice.getId(), "SUCCESS", null);
+
+        mockMvc.perform(delete("/api/notifications/" + historyId)
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("NI-13: DELETE JWT 없음 → 401")
+    void deleteNotification_withoutJwt_returns401() throws Exception {
+        mockMvc.perform(delete("/api/notifications/1"))
                 .andExpect(status().isUnauthorized());
     }
 

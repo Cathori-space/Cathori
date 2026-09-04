@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -73,14 +74,18 @@ class BookmarkIntegrationTest extends IntegrationTestBase {
     }
 
     private Notice saveNotice() {
+        return saveNotice("테스트 공지", LocalDate.now());
+    }
+
+    private Notice saveNotice(String title, LocalDate postedAt) {
         CrawledNotice crawled = CrawledNotice.builder()
                 .articleNo(UUID.randomUUID().toString().replace("-", "").substring(0, 10))
                 .sourceType("MAIN")
                 .sourceId(null)
                 .category("장학")
-                .title("테스트 공지")
+                .title(title)
                 .department("학생처")
-                .postedAt(LocalDate.now().toString())
+                .postedAt(postedAt.toString())
                 .url("https://test.catholic.ac.kr")
                 .bodyText("")
                 .imageUrls(List.of())
@@ -139,5 +144,47 @@ class BookmarkIntegrationTest extends IntegrationTestBase {
                         .header("Authorization", "Bearer " + tokenB))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isBookmarked").value(true));
+    }
+
+    @Test
+    @DisplayName("B-6: 북마크 목록 조회 시 로그인 사용자가 북마크한 공지만 반환")
+    void listBookmarks_onlyCurrentUserBookmarks() throws Exception {
+        Notice userANotice = saveNotice("유저A 북마크 공지", LocalDate.now());
+        Notice userBNotice = saveNotice("유저B 북마크 공지", LocalDate.now().minusDays(1));
+        bookmarkJpaRepository.save(Bookmark.create(userAId, userANotice.getId()));
+        bookmarkJpaRepository.save(Bookmark.create(userBId, userBNotice.getId()));
+
+        mockMvc.perform(get("/api/notices/bookmarks")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].noticeId").value(String.valueOf(userANotice.getId())))
+                .andExpect(jsonPath("$.content[0].isBookmarked").value(true));
+    }
+
+    @Test
+    @DisplayName("B-7: 북마크 목록이 없으면 빈 content 반환")
+    void listBookmarks_empty() throws Exception {
+        mockMvc.perform(get("/api/notices/bookmarks")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("B-8: 북마크 목록은 공지 피드 정렬 기준으로 반환")
+    void listBookmarks_sortedByNoticeFeedOrder() throws Exception {
+        Notice oldNotice = saveNotice("오래된 공지", LocalDate.now().minusDays(3));
+        Notice recentNotice = saveNotice("최신 공지", LocalDate.now());
+        bookmarkJpaRepository.save(Bookmark.create(userAId, oldNotice.getId()));
+        bookmarkJpaRepository.save(Bookmark.create(userAId, recentNotice.getId()));
+
+        mockMvc.perform(get("/api/notices/bookmarks")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].noticeId").value(String.valueOf(recentNotice.getId())))
+                .andExpect(jsonPath("$.content[1].noticeId").value(String.valueOf(oldNotice.getId())));
     }
 }

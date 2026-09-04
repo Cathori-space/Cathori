@@ -11,6 +11,8 @@ public interface AlertHistoryRepository {
 
     List<Long> findUserIdsByNoticeId(Long noticeId);
 
+    List<Long> findPendingUserIdsByNoticeId(Long noticeId);
+
     AlertHistory save(AlertHistory log);
 
     void markSuccessForUsers(Long noticeId, List<Long> userIds);
@@ -20,6 +22,8 @@ public interface AlertHistoryRepository {
     void incrementRetryForUsers(Long noticeId, List<Long> userIds);
 
     Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
+
+    void delete(AlertHistory alertHistory);
 
     void deleteByUserId(Long userId);
 }

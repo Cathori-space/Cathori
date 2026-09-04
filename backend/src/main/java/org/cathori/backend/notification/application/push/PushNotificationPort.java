@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface PushNotificationPort {
 
-    List<UserPushResult> sendMulticast(List<UserToken> targets, String title, String body, Long noticeId);
+    List<UserPushResult> send(List<UserToken> recipients, String title, String body, Long noticeId);
 }

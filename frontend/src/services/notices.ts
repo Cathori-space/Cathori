@@ -22,6 +22,7 @@
 import apiClient from '@/src/services/api';
 import type {
   BookmarkToggleResponse,
+  BookmarkedNoticeListParams,
   Notice,
   NoticeCategory,
   NoticeListParams,
@@ -60,7 +61,7 @@ interface BackendNoticeListItem {
 
 /**
  * 백엔드 공지 검색 응답의 슬림 아이템
- * 목록/상세보다 적은 6필드만 — aiSummary/url/isBookmarked/tags 미포함
+ * 목록/상세보다 적은 슬림 아이템 — aiSummary/url/tags 미포함
  * (검색 결과는 행 단위 빠른 스캔 UX, 행 탭 시 상세에서 재조회)
  */
 interface BackendSearchListItem {
@@ -70,6 +71,7 @@ interface BackendSearchListItem {
   department: string;
   publishedAt: string;
   deadlineAt?: string | null;
+  isBookmarked: boolean;
 }
 
 /** 백엔드 공지 상세 응답 */
@@ -125,6 +127,7 @@ function mapSearchItem(item: BackendSearchListItem): SearchNoticeListItem {
     department: item.department,
     postedAt: item.publishedAt,
     deadlineAt: item.deadlineAt ?? null,
+    isBookmarked: item.isBookmarked,
   };
 }
 
@@ -170,6 +173,31 @@ export async function fetchNotices(
   return {
     content: data.content.map(mapListItemToNotice),
     page: data.page + 1, // 백엔드 0-based → 프론트 1-based로 복원
+    size: data.size,
+    hasNext: data.hasNext,
+  };
+}
+
+/**
+ * 로그인 사용자의 북마크 공지 목록 조회 fetcher
+ * 프론트 page는 1-based → API 호출 시 0-based로 변환
+ */
+export async function fetchBookmarkedNotices(
+  params: BookmarkedNoticeListParams,
+): Promise<PageResponse<Notice>> {
+  const { data } = await apiClient.get<BackendPageResponse<BackendNoticeListItem>>(
+    '/api/notices/bookmarks',
+    {
+      params: {
+        page: params.page - 1,
+        size: params.size,
+      },
+    },
+  );
+
+  return {
+    content: data.content.map(mapListItemToNotice),
+    page: data.page + 1,
     size: data.size,
     hasNext: data.hasNext,
   };

@@ -11,5 +11,6 @@ public interface UserRepository {
     Optional<User> findById(Long id);
     List<User> findUsersWithTagMatchingTitle(String title);
     Map<Long, String> findFirstMatchedTagsByTitle(String title);
+    Map<Long, String> findDeviceTokensByIds(List<Long> userIds);
     void delete(User user);
 }

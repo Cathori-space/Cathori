@@ -32,6 +32,11 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     }
 
     @Override
+    public List<Long> findPendingUserIdsByNoticeId(Long noticeId) {
+        return jpaRepository.findPendingUserIdsByNoticeId(noticeId);
+    }
+
+    @Override
     public AlertHistory save(AlertHistory log) {
         return jpaRepository.save(log);
     }
@@ -57,6 +62,11 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     @Override
     public Optional<AlertHistory> findByIdAndUserId(Long id, Long userId) {
         return jpaRepository.findByIdAndUserId(id, userId);
+    }
+
+    @Override
+    public void delete(AlertHistory alertHistory) {
+        jpaRepository.delete(alertHistory);
     }
 
     @Override

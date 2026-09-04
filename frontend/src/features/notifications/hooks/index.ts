@@ -1,2 +1,6 @@
-export { useNotifications } from './useNotifications';
+export {
+  useDeleteNotification,
+  useHasNotifications,
+  useNotifications,
+} from './useNotifications';
 export { usePushNotifications } from './usePushNotifications';

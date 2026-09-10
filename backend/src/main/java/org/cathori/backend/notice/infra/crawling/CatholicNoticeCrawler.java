@@ -66,18 +66,18 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      */
     @Override
     public CrawledNotice crawlDetail(String sourceType, String sourceId, NoticeCandidate candidate) {
-        NoticeDetails detail = crawlNoticeDetail(candidate.getDetailUrl());
+        NoticeDetails detail = crawlNoticeDetail(candidate.detailUrl());
 
         log.debug("본문 수집 - articleNo: {}, 본문길이: {}, 이미지수: {}",
-                candidate.getArticleNo(), detail.bodyText().length(), detail.imageUrls().size());
+                candidate.articleNo(), detail.bodyText().length(), detail.imageUrls().size());
 
         return CrawledNotice.builder()
-                .articleNo(candidate.getArticleNo())
-                .category(candidate.getCategory())
-                .title(candidate.getTitle())
-                .department(candidate.getDepartment())
-                .postedAt(candidate.getPostedAt())
-                .url(candidate.getDetailUrl())
+                .articleNo(candidate.articleNo())
+                .category(candidate.category())
+                .title(candidate.title())
+                .department(candidate.department())
+                .postedAt(candidate.postedAt())
+                .url(candidate.detailUrl())
                 .bodyText(detail.bodyText())
                 .imageUrls(detail.imageUrls())
                 .sourceType(sourceType)

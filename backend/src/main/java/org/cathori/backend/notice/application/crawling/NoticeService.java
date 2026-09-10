@@ -29,12 +29,12 @@ public class NoticeService {
         if (candidates.isEmpty()) return List.of();
 
         List<String> articleNos = candidates.stream()
-                .map(NoticeCandidate::getArticleNo)
+                .map(NoticeCandidate::articleNo)
                 .toList();
         Set<String> existingArticleNos = noticeRepository.findExistingArticleNos(sourceType, sourceId, articleNos);
 
         return candidates.stream()
-                .filter(candidate -> !existingArticleNos.contains(candidate.getArticleNo()))
+                .filter(candidate -> !existingArticleNos.contains(candidate.articleNo()))
                 .map(candidate -> crawlerPort.crawlDetail(sourceType, sourceId, candidate))
                 .toList();
     }

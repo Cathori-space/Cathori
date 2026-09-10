@@ -6,7 +6,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.cathori.backend.notice.application.crawling.CrawledNotice;
-import org.cathori.backend.notice.infra.summarization.AiSummaryResult;
+import org.cathori.backend.notice.application.AiSummaryResult;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -113,17 +113,17 @@ public class Notice {
 
     public static Notice from(CrawledNotice crawled) {
         Notice notice = new Notice();
-        notice.articleNo = crawled.getArticleNo();
-        notice.sourceType = crawled.getSourceType();
-        notice.sourceId = crawled.getSourceId();
-        notice.category = crawled.getCategory();
-        notice.title = crawled.getTitle();
-        notice.department = crawled.getDepartment();
-        notice.postedAt = LocalDate.parse(crawled.getPostedAt());
-        notice.url = crawled.getUrl();
-        notice.bodyText = crawled.getBodyText();
+        notice.articleNo = crawled.articleNo();
+        notice.sourceType = crawled.sourceType();
+        notice.sourceId = crawled.sourceId();
+        notice.category = crawled.category();
+        notice.title = crawled.title();
+        notice.department = crawled.department();
+        notice.postedAt = LocalDate.parse(crawled.postedAt());
+        notice.url = crawled.url();
+        notice.bodyText = crawled.bodyText();
         try {
-            notice.imageUrlsJson = MAPPER.writeValueAsString(crawled.getImageUrls());
+            notice.imageUrlsJson = MAPPER.writeValueAsString(crawled.imageUrls());
         } catch (JacksonException e) {
             notice.imageUrlsJson = "[]";
         }

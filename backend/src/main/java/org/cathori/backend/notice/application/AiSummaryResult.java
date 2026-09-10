@@ -1,4 +1,4 @@
-package org.cathori.backend.notice.infra.summarization;
+package org.cathori.backend.notice.application;
 
 import java.util.List;
 

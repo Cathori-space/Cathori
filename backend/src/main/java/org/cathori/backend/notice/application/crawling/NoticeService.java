@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.cathori.backend.notice.application.AiPort;
 import org.cathori.backend.notice.infra.summarization.NoticeSummaryUpdater;
-import org.cathori.backend.notice.infra.summarization.AiSummaryResult;
+import org.cathori.backend.notice.application.AiSummaryResult;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.springframework.data.domain.PageRequest;
@@ -25,16 +25,16 @@ public class NoticeService {
     private final NoticeSummaryUpdater noticeSummaryUpdater;
 
     public List<CrawledNotice> crawl(String sourceType, String sourceId) {
-        List<NoticeCandidate> candidates = crawlerPort.listCandidates(sourceType, sourceId);
+        List<NewNoticeCandidate> candidates = crawlerPort.listCandidates(sourceType, sourceId);
         if (candidates.isEmpty()) return List.of();
 
         List<String> articleNos = candidates.stream()
-                .map(NoticeCandidate::getArticleNo)
+                .map(NewNoticeCandidate::articleNo)
                 .toList();
         Set<String> existingArticleNos = noticeRepository.findExistingArticleNos(sourceType, sourceId, articleNos);
 
         return candidates.stream()
-                .filter(candidate -> !existingArticleNos.contains(candidate.getArticleNo()))
+                .filter(candidate -> !existingArticleNos.contains(candidate.articleNo()))
                 .map(candidate -> crawlerPort.crawlDetail(sourceType, sourceId, candidate))
                 .toList();
     }

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.cathori.backend.notice.application.AiPort;
 import org.cathori.backend.notice.infra.summarization.NoticeSummaryUpdater;
-import org.cathori.backend.notice.infra.summarization.AiSummaryResult;
+import org.cathori.backend.notice.application.AiSummaryResult;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.springframework.data.domain.PageRequest;

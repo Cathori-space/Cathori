@@ -32,12 +32,14 @@ import type { NotificationListItem } from '@/src/types/notifications';
 
 interface NotificationItemProps {
   notification: NotificationListItem;
+  onPress?: (notification: NotificationListItem) => void;
   onDelete?: (notification: NotificationListItem) => void;
   isDeleteDisabled?: boolean;
 }
 
 function NotificationItemComponent({
   notification,
+  onPress,
   onDelete,
   isDeleteDisabled = false,
 }: NotificationItemProps) {
@@ -45,6 +47,10 @@ function NotificationItemComponent({
 
   // 카드 탭 → 공지 상세로 이동 (NoticeCard와 동일 패턴)
   const handlePress = () => {
+    if (onPress) {
+      onPress(notification);
+      return;
+    }
     router.push(`/notice/${notification.noticeId}` as Href);
   };
 

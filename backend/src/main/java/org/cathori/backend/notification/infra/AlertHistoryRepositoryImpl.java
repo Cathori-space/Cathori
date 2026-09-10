@@ -65,6 +65,11 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     }
 
     @Override
+    public boolean existsUnreadSuccessByUserId(Long userId) {
+        return jpaRepository.existsByUserIdAndAlarmStatusAndIsReadFalse(userId, "SUCCESS");
+    }
+
+    @Override
     public void delete(AlertHistory alertHistory) {
         jpaRepository.delete(alertHistory);
     }

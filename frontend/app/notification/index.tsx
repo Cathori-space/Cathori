@@ -20,11 +20,13 @@
 import React from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter, type Href } from 'expo-router';
 
 import { Colors } from '@/src/constants/colors';
 import {
   NotificationItem,
   useDeleteNotification,
+  useMarkNotificationRead,
   useNotifications,
 } from '@/src/features/notifications';
 import { EmptyState, SubHeader } from '@/src/shared/components';
@@ -32,6 +34,7 @@ import type { NotificationListItem } from '@/src/types/notifications';
 
 export default function NotificationScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const {
     data,
     isLoading,
@@ -43,6 +46,7 @@ export default function NotificationScreen() {
     isFetchingNextPage,
   } = useNotifications();
   const deleteNotificationMutation = useDeleteNotification();
+  const markNotificationReadMutation = useMarkNotificationRead();
 
   // 커서 페이지네이션 응답(pages)을 단일 목록으로 평탄화
   const notifications = data?.pages.flatMap((page) => page.alerts) ?? [];
@@ -84,6 +88,13 @@ export default function NotificationScreen() {
     );
   };
 
+  const handlePressNotification = (notification: NotificationListItem) => {
+    if (!notification.isRead) {
+      markNotificationReadMutation.mutate(notification.alertHistoryId);
+    }
+    router.push(`/notice/${notification.noticeId}` as Href);
+  };
+
   return (
     <View style={styles.screen}>
       <SubHeader title="알림" />
@@ -106,6 +117,7 @@ export default function NotificationScreen() {
           renderItem={({ item }) => (
             <NotificationItem
               notification={item}
+              onPress={handlePressNotification}
               onDelete={handleDeleteNotification}
               isDeleteDisabled={
                 deleteNotificationMutation.isPending &&

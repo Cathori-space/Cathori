@@ -118,6 +118,37 @@ class NotificationIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    @DisplayName("NI-3-1: GET /api/notifications/unread-exists → 미읽음 성공 알림 존재 시 true")
+    void hasUnread_withUnreadSuccessAlert_returnsTrue() throws Exception {
+        Notice notice = saveNotice();
+        insertAlertHistory(userAId, notice.getId(), "SUCCESS", null);
+
+        mockMvc.perform(get("/api/notifications/unread-exists")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasUnread").value(true));
+    }
+
+    @Test
+    @DisplayName("NI-3-2: GET /api/notifications/unread-exists → 모두 읽음이면 false")
+    void hasUnread_withOnlyReadAlerts_returnsFalse() throws Exception {
+        Notice notice = saveNotice();
+        insertAlertHistory(userAId, notice.getId(), "SUCCESS", null, true);
+
+        mockMvc.perform(get("/api/notifications/unread-exists")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasUnread").value(false));
+    }
+
+    @Test
+    @DisplayName("NI-3-3: GET /api/notifications/unread-exists JWT 없음 → 401")
+    void hasUnread_withoutJwt_returns401() throws Exception {
+        mockMvc.perform(get("/api/notifications/unread-exists"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("NI-4: PATCH /{id}/read → 204 No Content")
     void markRead_validAlert_returns204() throws Exception {
         Notice notice = saveNotice();
@@ -235,9 +266,13 @@ class NotificationIntegrationTest extends IntegrationTestBase {
     }
 
     private Long insertAlertHistory(Long userId, Long noticeId, String status, String matchedTag) {
+        return insertAlertHistory(userId, noticeId, status, matchedTag, false);
+    }
+
+    private Long insertAlertHistory(Long userId, Long noticeId, String status, String matchedTag, boolean isRead) {
         return jdbcTemplate.queryForObject(
                 "INSERT INTO alert_history (user_id, notice_id, alarm_status, is_read, retry_count, created_at, matched_tag) " +
-                "VALUES (?, ?, ?, false, 0, now(), ?) RETURNING id",
-                Long.class, userId, noticeId, status, matchedTag);
+                "VALUES (?, ?, ?, ?, 0, now(), ?) RETURNING id",
+                Long.class, userId, noticeId, status, isRead, matchedTag);
     }
 }

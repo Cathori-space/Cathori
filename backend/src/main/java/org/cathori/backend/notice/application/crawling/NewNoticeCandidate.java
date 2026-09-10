@@ -16,7 +16,7 @@ import lombok.Builder;
  * @param detailUrl  상세 크롤링(CrawlerPort.crawlDetail) 호출 시 사용할 상세 페이지 URL
  */
 @Builder
-public record NoticeCandidate(
+public record NewNoticeCandidate(
         String articleNo,
         String category,
         String title,

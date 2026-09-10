@@ -13,7 +13,7 @@ import java.time.LocalDate;
  * @param deadlineAt   공지에서 추출된 마감일, 없으면 null
  * @param isBookmarked 조회 요청자가 이 공지를 북마크했는지 여부
  */
-public record NoticeSearchRow(
+public record NoticeSearchQueryResult(
         Long id,
         String category,
         String title,

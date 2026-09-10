@@ -28,7 +28,7 @@ public interface CrawlerPort {
      * @param sourceId   학과 공지의 경우 학과 코드, 메인 공지는 null
      * @return 목록 페이지에서 수집한 공지 후보 목록
      */
-    List<NoticeCandidate> listCandidates(String sourceType, String sourceId);
+    List<NewNoticeCandidate> listCandidates(String sourceType, String sourceId);
 
     /**
      * 신규로 판별된 후보 하나의 상세 페이지를 크롤링해 본문/이미지를 채운다.
@@ -38,5 +38,5 @@ public interface CrawlerPort {
      * @param candidate  상세 크롤링 대상 후보
      * @return 상세 정보가 채워진 공지
      */
-    CrawledNotice crawlDetail(String sourceType, String sourceId, NoticeCandidate candidate);
+    CrawledNotice crawlDetail(String sourceType, String sourceId, NewNoticeCandidate candidate);
 }

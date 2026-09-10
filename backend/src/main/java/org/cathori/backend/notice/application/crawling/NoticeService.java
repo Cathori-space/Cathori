@@ -25,11 +25,11 @@ public class NoticeService {
     private final NoticeSummaryUpdater noticeSummaryUpdater;
 
     public List<CrawledNotice> crawl(String sourceType, String sourceId) {
-        List<NoticeCandidate> candidates = crawlerPort.listCandidates(sourceType, sourceId);
+        List<NewNoticeCandidate> candidates = crawlerPort.listCandidates(sourceType, sourceId);
         if (candidates.isEmpty()) return List.of();
 
         List<String> articleNos = candidates.stream()
-                .map(NoticeCandidate::articleNo)
+                .map(NewNoticeCandidate::articleNo)
                 .toList();
         Set<String> existingArticleNos = noticeRepository.findExistingArticleNos(sourceType, sourceId, articleNos);
 

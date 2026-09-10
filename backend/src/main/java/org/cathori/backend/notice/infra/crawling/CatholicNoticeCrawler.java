@@ -3,7 +3,7 @@ package org.cathori.backend.notice.infra.crawling;
 import lombok.extern.slf4j.Slf4j;
 import org.cathori.backend.notice.application.crawling.CrawledNotice;
 import org.cathori.backend.notice.application.crawling.CrawlerPort;
-import org.cathori.backend.notice.application.crawling.NoticeCandidate;
+import org.cathori.backend.notice.application.crawling.NewNoticeCandidate;
 import org.cathori.backend.notice.infra.crawling.model.NoticeDetails;
 import org.cathori.backend.notice.infra.crawling.model.NoticeRow;
 import org.cathori.backend.notice.infra.crawling.source.DepartmentSource;
@@ -40,9 +40,9 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      * @return 목록 페이지에서 수집한 공지 후보 목록 (중복 articleNo 제거됨)
      */
     @Override
-    public List<NoticeCandidate> listCandidates(String sourceType, String sourceId) {
+    public List<NewNoticeCandidate> listCandidates(String sourceType, String sourceId) {
         String targetUrl = getCrawlTargetUrl(sourceType, sourceId);
-        List<NoticeCandidate> result = new ArrayList<>();
+        List<NewNoticeCandidate> result = new ArrayList<>();
         Set<String> seenArticleNo = new HashSet<>();
 
         for (int page = 1; page <= MAX_LIST_PAGES; page++) {
@@ -65,7 +65,7 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      * @return 상세 정보가 채워진 공지
      */
     @Override
-    public CrawledNotice crawlDetail(String sourceType, String sourceId, NoticeCandidate candidate) {
+    public CrawledNotice crawlDetail(String sourceType, String sourceId, NewNoticeCandidate candidate) {
         NoticeDetails detail = crawlNoticeDetail(candidate.detailUrl());
 
         log.debug("본문 수집 - articleNo: {}, 본문길이: {}, 이미지수: {}",
@@ -126,14 +126,14 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      * 이미 같은 크롤링 실행 안에서 본 articleNo(예: 상단 고정 공지 중복 노출)는 건너뛴다.
      */
     private void collectCandidatesFromRows(Elements rows, String targetUrl, String pageUrl,
-                                            Set<String> seenArticleNo, List<NoticeCandidate> result) {
+                                            Set<String> seenArticleNo, List<NewNoticeCandidate> result) {
         for (Element row : rows) {
             try {
                 NoticeRow parsed = parseNoticeRow(row, targetUrl);
                 if (parsed == null) continue;
                 if (!seenArticleNo.add(parsed.articleNo())) continue;
 
-                result.add(NoticeCandidate.builder()
+                result.add(NewNoticeCandidate.builder()
                         .articleNo(parsed.articleNo())
                         .category(parsed.category())
                         .title(parsed.title())

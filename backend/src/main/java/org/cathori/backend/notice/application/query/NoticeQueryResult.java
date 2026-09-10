@@ -18,7 +18,7 @@ import java.time.LocalDate;
  * @param viewCount       조회수
  * @param isBookmarked    조회 요청자가 이 공지를 북마크했는지 여부
  */
-public record NoticeRow(
+public record NoticeQueryResult(
         Long id,
         String sourceType,
         String category,

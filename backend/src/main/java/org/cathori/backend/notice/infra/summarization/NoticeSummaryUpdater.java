@@ -24,4 +24,10 @@ public class NoticeSummaryUpdater {
         Notice notice = noticeRepository.findById(noticeId).orElseThrow();
         notice.markSummaryFailed();
     }
+
+    @Transactional
+    public void recordRetryAttempt(Long noticeId) {
+        Notice notice = noticeRepository.findById(noticeId).orElseThrow();
+        notice.recordSummaryRetryAttempt();
+    }
 }

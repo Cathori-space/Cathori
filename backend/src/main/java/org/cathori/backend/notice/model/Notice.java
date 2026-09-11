@@ -54,6 +54,9 @@ public class Notice {
     @Column(nullable = false, length = 20)
     private String aiSummaryStatus = "PENDING";
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int aiSummaryRetryCount = 0;
+
     @Column(nullable = false, length = 30)
     private String department;
 
@@ -109,6 +112,10 @@ public class Notice {
 
     public void markSummaryFailed() {
         this.aiSummaryStatus = "FAILED";
+    }
+
+    public void recordSummaryRetryAttempt() {
+        this.aiSummaryRetryCount++;
     }
 
     public static Notice from(CrawledNotice crawled) {

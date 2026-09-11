@@ -19,6 +19,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class NoticeService {
 
+    private static final int MAX_SUMMARY_RETRY_COUNT = 3;
+
     private final CrawlerPort crawlerPort;
     private final AiPort aiPort;
     private final NoticeRepository noticeRepository;
@@ -69,11 +71,13 @@ public class NoticeService {
     public void retrySummary() {
         List<Notice> notices = noticeRepository.findTop15ForSummary(
                 List.of("PENDING", "FAILED"),
+                MAX_SUMMARY_RETRY_COUNT,
                 PageRequest.of(0, 15)
         );
 
         for (Notice notice : notices) {
             if (notice.getBodyText() == null) continue;
+            noticeSummaryUpdater.recordRetryAttempt(notice.getId());
             try {
                 AiSummaryResult result = aiPort.summarize(notice.getBodyText(), notice.getImageUrls());
                 noticeSummaryUpdater.applyResult(notice.getId(), result);

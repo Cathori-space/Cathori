@@ -4,7 +4,7 @@ export default {
   expo: {
     name: isDev ? "cathori Dev" : "cathori",
     slug: "cathori",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/images/cathori-icon.png",
     scheme: "cathori",

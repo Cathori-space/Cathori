@@ -29,8 +29,11 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
                                         @Param("sourceId") String sourceId,
                                         @Param("articleNos") Collection<String> articleNos);
 
-    @Query("SELECT n FROM Notice n WHERE n.aiSummaryStatus IN :statuses ORDER BY n.id ASC")
-    List<Notice> findTop15ForSummary(@Param("statuses") List<String> statuses, Pageable pageable);
+    @Query("SELECT n FROM Notice n WHERE n.aiSummaryStatus IN :statuses " +
+            "AND n.aiSummaryRetryCount < :maxRetryCount ORDER BY n.id ASC")
+    List<Notice> findTop15ForSummary(@Param("statuses") List<String> statuses,
+                                      @Param("maxRetryCount") int maxRetryCount,
+                                      Pageable pageable);
 
     List<Notice> findByAlertDispatchedFalse();
 }

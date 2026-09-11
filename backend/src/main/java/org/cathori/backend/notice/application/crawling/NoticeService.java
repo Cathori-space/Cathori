@@ -1,9 +1,10 @@
-package org.cathori.backend.notice.application;
+package org.cathori.backend.notice.application.crawling;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.cathori.backend.notice.infra.NoticeSummaryUpdater;
-import org.cathori.backend.notice.infra.ai.AiSummaryResult;
+import org.cathori.backend.notice.application.AiPort;
+import org.cathori.backend.notice.infra.summarization.NoticeSummaryUpdater;
+import org.cathori.backend.notice.application.AiSummaryResult;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.springframework.data.domain.PageRequest;
@@ -18,22 +19,24 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class NoticeService {
 
+    private static final int MAX_SUMMARY_RETRY_COUNT = 3;
+
     private final CrawlerPort crawlerPort;
     private final AiPort aiPort;
     private final NoticeRepository noticeRepository;
     private final NoticeSummaryUpdater noticeSummaryUpdater;
 
     public List<CrawledNotice> crawl(String sourceType, String sourceId) {
-        List<NoticeCandidate> candidates = crawlerPort.listCandidates(sourceType, sourceId);
+        List<NewNoticeCandidate> candidates = crawlerPort.listCandidates(sourceType, sourceId);
         if (candidates.isEmpty()) return List.of();
 
         List<String> articleNos = candidates.stream()
-                .map(NoticeCandidate::getArticleNo)
+                .map(NewNoticeCandidate::articleNo)
                 .toList();
         Set<String> existingArticleNos = noticeRepository.findExistingArticleNos(sourceType, sourceId, articleNos);
 
         return candidates.stream()
-                .filter(candidate -> !existingArticleNos.contains(candidate.getArticleNo()))
+                .filter(candidate -> !existingArticleNos.contains(candidate.articleNo()))
                 .map(candidate -> crawlerPort.crawlDetail(sourceType, sourceId, candidate))
                 .toList();
     }
@@ -68,11 +71,13 @@ public class NoticeService {
     public void retrySummary() {
         List<Notice> notices = noticeRepository.findTop15ForSummary(
                 List.of("PENDING", "FAILED"),
+                MAX_SUMMARY_RETRY_COUNT,
                 PageRequest.of(0, 15)
         );
 
         for (Notice notice : notices) {
             if (notice.getBodyText() == null) continue;
+            noticeSummaryUpdater.recordRetryAttempt(notice.getId());
             try {
                 AiSummaryResult result = aiPort.summarize(notice.getBodyText(), notice.getImageUrls());
                 noticeSummaryUpdater.applyResult(notice.getId(), result);

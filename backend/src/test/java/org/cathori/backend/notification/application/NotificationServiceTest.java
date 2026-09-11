@@ -6,7 +6,7 @@ import org.cathori.backend.notification.api.dto.NotificationListResponse;
 import org.cathori.backend.notification.application.inbox.NotificationService;
 import org.cathori.backend.notification.infra.AlertHistoryJpaRepository;
 import org.cathori.backend.common.exception.BusinessException;
-import org.cathori.backend.notice.application.CrawledNotice;
+import org.cathori.backend.notice.application.crawling.CrawledNotice;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.notification.application.push.PushNotificationPort;
@@ -126,6 +126,32 @@ class NotificationServiceTest extends IntegrationTestBase {
                 .isEqualTo(ZoneOffset.ofHours(9));
     }
 
+    @Test
+    @DisplayName("NS-6-1: 미읽음 SUCCESS 알림 존재 → true")
+    void hasUnreadNotifications_withUnreadSuccessAlert_returnsTrue() {
+        Notice notice = saveNotice("공지");
+        insertAlertHistory(USER_ID, notice.getId(), "SUCCESS", null);
+
+        boolean hasUnread = notificationService.hasUnreadNotifications(USER_ID);
+
+        assertThat(hasUnread).isTrue();
+    }
+
+    @Test
+    @DisplayName("NS-6-2: 읽음/실패/타인 알림만 존재 → false")
+    void hasUnreadNotifications_withoutUnreadSuccessAlert_returnsFalse() {
+        Notice readNotice = saveNotice("읽은 공지");
+        Notice failedNotice = saveNotice("실패 공지");
+        Notice otherNotice = saveNotice("타인 공지");
+        insertAlertHistory(USER_ID, readNotice.getId(), "SUCCESS", null, true);
+        insertAlertHistory(USER_ID, failedNotice.getId(), "FAILED", null);
+        insertAlertHistory(OTHER_USER_ID, otherNotice.getId(), "SUCCESS", null);
+
+        boolean hasUnread = notificationService.hasUnreadNotifications(USER_ID);
+
+        assertThat(hasUnread).isFalse();
+    }
+
     // --- markRead ---
 
     @Test
@@ -219,9 +245,13 @@ class NotificationServiceTest extends IntegrationTestBase {
     }
 
     private Long insertAlertHistory(Long userId, Long noticeId, String status, String matchedTag) {
+        return insertAlertHistory(userId, noticeId, status, matchedTag, false);
+    }
+
+    private Long insertAlertHistory(Long userId, Long noticeId, String status, String matchedTag, boolean isRead) {
         return jdbcTemplate.queryForObject(
                 "INSERT INTO alert_history (user_id, notice_id, alarm_status, is_read, retry_count, created_at, matched_tag) " +
-                "VALUES (?, ?, ?, false, 0, now(), ?) RETURNING id",
-                Long.class, userId, noticeId, status, matchedTag);
+                "VALUES (?, ?, ?, ?, 0, now(), ?) RETURNING id",
+                Long.class, userId, noticeId, status, isRead, matchedTag);
     }
 }

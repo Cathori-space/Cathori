@@ -2,6 +2,7 @@ package org.cathori.backend.notification.api;
 
 import lombok.RequiredArgsConstructor;
 import org.cathori.backend.notification.api.dto.NotificationListResponse;
+import org.cathori.backend.notification.api.dto.UnreadNotificationStatusResponse;
 import org.cathori.backend.notification.application.inbox.NotificationService;
 import org.cathori.backend.security.CustomUserDetails;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,14 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
 
     private final NotificationService notificationService;
+
+    @GetMapping("/unread-exists")
+    public ResponseEntity<UnreadNotificationStatusResponse> hasUnread(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        boolean hasUnread = notificationService.hasUnreadNotifications(userDetails.getUserId());
+        return ResponseEntity.ok(new UnreadNotificationStatusResponse(hasUnread));
+    }
 
     @GetMapping
     public ResponseEntity<NotificationListResponse> list(

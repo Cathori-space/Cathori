@@ -1,13 +1,13 @@
-package org.cathori.backend.notice.infra.crawler;
+package org.cathori.backend.notice.infra.crawling;
 
 import lombok.extern.slf4j.Slf4j;
-import org.cathori.backend.notice.application.CrawledNotice;
-import org.cathori.backend.notice.application.CrawlerPort;
-import org.cathori.backend.notice.application.NoticeCandidate;
-import org.cathori.backend.notice.infra.crawler.format.NoticeDetails;
-import org.cathori.backend.notice.infra.crawler.format.NoticeRow;
-import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
-import org.cathori.backend.notice.infra.crawler.source.MainSource;
+import org.cathori.backend.notice.application.crawling.CrawledNotice;
+import org.cathori.backend.notice.application.crawling.CrawlerPort;
+import org.cathori.backend.notice.application.crawling.NewNoticeCandidate;
+import org.cathori.backend.notice.infra.crawling.model.NoticeDetails;
+import org.cathori.backend.notice.infra.crawling.model.NoticeRow;
+import org.cathori.backend.notice.infra.crawling.source.DepartmentSource;
+import org.cathori.backend.notice.infra.crawling.source.MainSource;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -40,16 +40,17 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      * @return 목록 페이지에서 수집한 공지 후보 목록 (중복 articleNo 제거됨)
      */
     @Override
-    public List<NoticeCandidate> listCandidates(String sourceType, String sourceId) {
+    public List<NewNoticeCandidate> listCandidates(String sourceType, String sourceId) {
         String targetUrl = getCrawlTargetUrl(sourceType, sourceId);
-        List<NoticeCandidate> result = new ArrayList<>();
+        List<NewNoticeCandidate> result = new ArrayList<>();
         Set<String> seenArticleNo = new HashSet<>();
 
         for (int page = 1; page <= MAX_LIST_PAGES; page++) {
-            Elements rows = fetchListRows(targetUrl, sourceType, sourceId, page);
+            String pageUrl = page == 1 ? targetUrl : buildPageUrl(targetUrl, page);
+            Elements rows = fetchListRows(pageUrl, sourceId, page);
             if (rows == null) break;
 
-            collectCandidatesFromRows(rows, targetUrl, seenArticleNo, result);
+            collectCandidatesFromRows(rows, targetUrl, pageUrl, seenArticleNo, result);
         }
 
         return result;
@@ -64,19 +65,19 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      * @return 상세 정보가 채워진 공지
      */
     @Override
-    public CrawledNotice crawlDetail(String sourceType, String sourceId, NoticeCandidate candidate) {
-        NoticeDetails detail = crawlNoticeDetail(candidate.getDetailUrl());
+    public CrawledNotice crawlDetail(String sourceType, String sourceId, NewNoticeCandidate candidate) {
+        NoticeDetails detail = crawlNoticeDetail(candidate.detailUrl());
 
         log.debug("본문 수집 - articleNo: {}, 본문길이: {}, 이미지수: {}",
-                candidate.getArticleNo(), detail.bodyText().length(), detail.imageUrls().size());
+                candidate.articleNo(), detail.bodyText().length(), detail.imageUrls().size());
 
         return CrawledNotice.builder()
-                .articleNo(candidate.getArticleNo())
-                .category(candidate.getCategory())
-                .title(candidate.getTitle())
-                .department(candidate.getDepartment())
-                .postedAt(candidate.getPostedAt())
-                .url(candidate.getDetailUrl())
+                .articleNo(candidate.articleNo())
+                .category(candidate.category())
+                .title(candidate.title())
+                .department(candidate.department())
+                .postedAt(candidate.postedAt())
+                .url(candidate.detailUrl())
                 .bodyText(detail.bodyText())
                 .imageUrls(detail.imageUrls())
                 .sourceType(sourceType)
@@ -90,19 +91,16 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      * 그 이상이면 article.offset 파라미터를 붙여 다음 페이지를 요청한다.
      * 요청 실패 시 null 반환.
      *
-     * @param targetUrl  공지 목록 페이지 기본 URL
-     * @param sourceType 공지 출처 유형
+     * @param pageUrl    조회할 페이지의 완성된 URL
      * @param sourceId   학과 코드 또는 null
      * @param page       조회할 페이지 번호 (1부터 시작)
      * @return tr 요소 목록. 요청 실패 시 null
      */
-    private Elements fetchListRows(String targetUrl, String sourceType, String sourceId, int page) {
-        String pageUrl = page == 1 ? targetUrl : buildPageUrl(targetUrl, page);
-
+    private Elements fetchListRows(String pageUrl,String sourceId, int page) {
         try {
             Document targetPageDoc = Jsoup.connect(pageUrl).get();
-            log.info("HTML 수신 성공 - sourceType: {}, sourceId: {}, page: {}, 길이: {}",
-                    sourceType, sourceId, page, targetPageDoc.html().length());
+            log.info("크롤링 시작 - sourceId: {}, pageURL: {}",
+                     sourceId,pageUrl);
             return targetPageDoc.select("table tbody tr");
         } catch (IOException e) {
             log.warn("크롤링 연결 실패 (page={}): {}", page, e.getMessage());
@@ -127,15 +125,15 @@ public class CatholicNoticeCrawler implements CrawlerPort {
      * 목록 페이지의 tr 행들을 파싱해 공지 후보를 result에 추가한다.
      * 이미 같은 크롤링 실행 안에서 본 articleNo(예: 상단 고정 공지 중복 노출)는 건너뛴다.
      */
-    private void collectCandidatesFromRows(Elements rows, String targetUrl,
-                                            Set<String> seenArticleNo, List<NoticeCandidate> result) {
+    private void collectCandidatesFromRows(Elements rows, String targetUrl, String pageUrl,
+                                            Set<String> seenArticleNo, List<NewNoticeCandidate> result) {
         for (Element row : rows) {
             try {
                 NoticeRow parsed = parseNoticeRow(row, targetUrl);
                 if (parsed == null) continue;
                 if (!seenArticleNo.add(parsed.articleNo())) continue;
 
-                result.add(NoticeCandidate.builder()
+                result.add(NewNoticeCandidate.builder()
                         .articleNo(parsed.articleNo())
                         .category(parsed.category())
                         .title(parsed.title())
@@ -143,8 +141,9 @@ public class CatholicNoticeCrawler implements CrawlerPort {
                         .postedAt(parsed.postedAt())
                         .detailUrl(parsed.noticeDetailsUrl())
                         .build());
+                log.info("파싱 성공 {}", parsed.title());
             } catch (Exception e) {
-                log.warn("공지 파싱 실패 (스킵): {}", e.getMessage());
+                log.warn("파싱 실패: {}", pageUrl);
             }
         }
     }

@@ -1,8 +1,9 @@
-package org.cathori.backend.notice.application;
+package org.cathori.backend.notice.application.query;
 
 import lombok.RequiredArgsConstructor;
 import org.cathori.backend.bookmark.infra.BookmarkJpaRepository;
 import org.cathori.backend.common.exception.BusinessException;
+import org.cathori.backend.notice.application.*;
 import org.cathori.backend.tag.domain.Tag;
 import org.cathori.backend.tag.domain.TagRepository;
 import org.cathori.backend.notice.api.dto.NoticeFeedItem;
@@ -15,7 +16,7 @@ import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.domain.UserRepository;
-import org.cathori.backend.notice.infra.crawler.source.DepartmentSource;
+import org.cathori.backend.notice.infra.crawling.source.DepartmentSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,11 +62,11 @@ public class NoticeFeedService {
                 category, tagList, page, size
         );
 
-        List<NoticeRow> rows = noticeFeedPort.findFeed(query);
+        List<NoticeQueryResult> rows = noticeFeedPort.findFeed(query);
 
         // 4. hasNext 판정
         boolean hasNext = rows.size() > size;
-        List<NoticeRow> pageRows = hasNext ? rows.subList(0, size) : rows;
+        List<NoticeQueryResult> pageRows = hasNext ? rows.subList(0, size) : rows;
 
 
         // 5. DTO 매핑 + 반환
@@ -84,12 +85,12 @@ public class NoticeFeedService {
         List<String> userTags = tagRepository.findAllByUserId(user.getId()).stream()
                 .map(Tag::getName)
                 .toList();
-        List<NoticeRow> rows = noticeFeedPort.findBookmarked(
+        List<NoticeQueryResult> rows = noticeFeedPort.findBookmarked(
                 new BookmarkedNoticeQuery(user.getId(), page, size)
         );
 
         boolean hasNext = rows.size() > size;
-        List<NoticeRow> pageRows = hasNext ? rows.subList(0, size) : rows;
+        List<NoticeQueryResult> pageRows = hasNext ? rows.subList(0, size) : rows;
 
         List<NoticeFeedItem> content = pageRows.stream()
                 .map(r -> toItem(r, userTags))
@@ -108,10 +109,10 @@ public class NoticeFeedService {
                 userId, keyword, majorCode, resolveSecondMajorCode(user.getSecondMajor()), page, size
         );
 
-        List<NoticeSearchRow> rows = noticeFeedPort.findSearch(query);
+        List<NoticeSearchQueryResult> rows = noticeFeedPort.findSearch(query);
 
         boolean hasNext = rows.size() > size;
-        List<NoticeSearchRow> pageRows = hasNext ? rows.subList(0, size) : rows;
+        List<NoticeSearchQueryResult> pageRows = hasNext ? rows.subList(0, size) : rows;
 
         List<NoticeSearchItem> content = pageRows.stream()
                 .map(this::toSearchItem)
@@ -120,7 +121,7 @@ public class NoticeFeedService {
         return new NoticeSearchResponse(content, page, size, hasNext);
     }
 
-    private NoticeSearchItem toSearchItem(NoticeSearchRow row) {
+    private NoticeSearchItem toSearchItem(NoticeSearchQueryResult row) {
         String deadlineAt = row.deadlineAt() != null ? row.deadlineAt().toString() : null;
         return new NoticeSearchItem(
                 String.valueOf(row.id()), row.category(), row.title(), row.department(), row.postedAt(), deadlineAt,
@@ -163,7 +164,7 @@ public class NoticeFeedService {
         return DepartmentSource.findEnumNameByDisplayName(secondMajor);
     }
 
-    private NoticeFeedItem toItem(NoticeRow row, List<String> queryTags) {
+    private NoticeFeedItem toItem(NoticeQueryResult row, List<String> queryTags) {
         String category = "DEPARTMENT".equals(row.sourceType()) ? null : row.category();
         String deadlineAt = row.deadlineAt() != null ? row.deadlineAt().toString() : null;
         List<String> tags = queryTags.stream()

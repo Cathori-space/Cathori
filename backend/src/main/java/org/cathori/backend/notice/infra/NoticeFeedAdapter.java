@@ -1,12 +1,12 @@
 package org.cathori.backend.notice.infra;
 
 import lombok.RequiredArgsConstructor;
-import org.cathori.backend.notice.application.BookmarkedNoticeQuery;
-import org.cathori.backend.notice.application.NoticeFeedPort;
-import org.cathori.backend.notice.application.NoticeFeedQuery;
-import org.cathori.backend.notice.application.NoticeRow;
-import org.cathori.backend.notice.application.NoticeSearchQuery;
-import org.cathori.backend.notice.application.NoticeSearchRow;
+import org.cathori.backend.notice.application.query.BookmarkedNoticeQuery;
+import org.cathori.backend.notice.application.query.NoticeFeedPort;
+import org.cathori.backend.notice.application.query.NoticeFeedQuery;
+import org.cathori.backend.notice.application.query.NoticeQueryResult;
+import org.cathori.backend.notice.application.query.NoticeSearchQuery;
+import org.cathori.backend.notice.application.query.NoticeSearchQueryResult;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -23,7 +23,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
     private final JdbcTemplate jdbcTemplate;
 
     // DB컬럼 -> 자바객체로 전환
-    private static final RowMapper<NoticeRow> ROW_MAPPER = (rs, rowNum) -> new NoticeRow(
+    private static final RowMapper<NoticeQueryResult> ROW_MAPPER = (rs, rowNum) -> new NoticeQueryResult(
             rs.getLong("id"),
             rs.getString("source_type"),
             rs.getString("category"),
@@ -39,7 +39,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
     );
 
     @Override
-    public List<NoticeRow> findFeed(NoticeFeedQuery q) {
+    public List<NoticeQueryResult> findFeed(NoticeFeedQuery q) {
         boolean hasCategory = q.category() != null && !q.category().isBlank();
         boolean hasTags = !q.tags().isEmpty();
 
@@ -59,7 +59,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
     }
 
     @Override
-    public List<NoticeRow> findBookmarked(BookmarkedNoticeQuery q) {
+    public List<NoticeQueryResult> findBookmarked(BookmarkedNoticeQuery q) {
         List<Object> params = new ArrayList<>();
         params.add(q.userId());
         params.add(q.size() + 1);
@@ -208,7 +208,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
     }
 
     @Override
-    public List<NoticeSearchRow> findSearch(NoticeSearchQuery q) {
+    public List<NoticeSearchQueryResult> findSearch(NoticeSearchQuery q) {
         List<Object> params = new ArrayList<>();
 
         StringBuilder sql = new StringBuilder(
@@ -234,7 +234,7 @@ public class NoticeFeedAdapter implements NoticeFeedPort {
         params.add(q.size() + 1);
         params.add((long) q.page() * q.size());
 
-        RowMapper<NoticeSearchRow> mapper = (rs, rowNum) -> new NoticeSearchRow(
+        RowMapper<NoticeSearchQueryResult> mapper = (rs, rowNum) -> new NoticeSearchQueryResult(
                 rs.getLong("id"),
                 rs.getString("category"),
                 rs.getString("title"),

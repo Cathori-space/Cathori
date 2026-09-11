@@ -34,3 +34,8 @@ export interface NotificationPage {
   /** 다음 페이지 존재 여부 */
   hasNext: boolean;
 }
+
+/** 인증 사용자의 미읽음 알림 존재 여부 */
+export interface UnreadNotificationStatus {
+  hasUnread: boolean;
+}

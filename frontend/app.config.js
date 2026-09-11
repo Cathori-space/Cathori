@@ -1,6 +1,8 @@
+const isDev = process.env.APP_VARIANT === "development";
+
 export default {
   expo: {
-    name: "cathori",
+    name: isDev ? "cathori Dev" : "cathori",
     slug: "cathori",
     version: "1.0.0",
     orientation: "portrait",
@@ -27,8 +29,12 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      package: "site.cathori.cathoriapp",
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+      package: isDev
+          ? "site.cathori.cathoriapp.dev"
+          : "site.cathori.cathoriapp",
+      googleServicesFile: isDev
+          ? "./google-services.dev.json"
+          : process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       versionCode: 1
     },
     web: {

@@ -43,6 +43,10 @@ public class NotificationService {
         return new NotificationListResponse(items, nextCursor, hasNext);
     }
 
+    public boolean hasUnreadNotifications(Long userId) {
+        return alertHistoryRepository.existsUnreadSuccessByUserId(userId);
+    }
+
     @Transactional
     public void markRead(Long userId, Long alertHistoryId) {
         AlertHistory alertHistory = alertHistoryRepository.findByIdAndUserId(alertHistoryId, userId)

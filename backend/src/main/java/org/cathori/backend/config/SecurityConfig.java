@@ -18,10 +18,16 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final boolean metricsPublic;
+    private final boolean prometheusPublic;
 
-    public SecurityConfig(JwtFilter jwtFilter, @Value("${app.actuator.metrics-public:false}") boolean metricsPublic) {
+    public SecurityConfig(
+            JwtFilter jwtFilter,
+            @Value("${app.actuator.metrics-public:false}") boolean metricsPublic,
+            @Value("${app.actuator.prometheus-public:false}") boolean prometheusPublic
+    ) {
         this.jwtFilter = jwtFilter;
         this.metricsPublic = metricsPublic;
+        this.prometheusPublic = prometheusPublic;
     }
 
     @Bean
@@ -43,6 +49,9 @@ public class SecurityConfig {
                     ).permitAll();
                     if (metricsPublic) {
                         auth.requestMatchers("/actuator/metrics", "/actuator/metrics/**").permitAll();
+                    }
+                    if (prometheusPublic) {
+                        auth.requestMatchers("/actuator/prometheus").permitAll();
                     }
                     auth.anyRequest().authenticated();
                 })

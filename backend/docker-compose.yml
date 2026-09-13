@@ -11,5 +11,20 @@ services:
     volumes:
       - cathori-db-data:/var/lib/postgresql/data
 
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: cathori-prometheus-local
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - cathori-prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
 volumes:
   cathori-db-data:
+  cathori-prometheus-data:

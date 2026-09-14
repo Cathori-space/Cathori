@@ -8,7 +8,13 @@ on:
     paths:
       - 'backend/**'
       - 'nginx/**'
+      - 'prometheus/**'
+      - 'grafana/**'
       - 'docker-compose.prod.yml'
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   deploy:
@@ -17,6 +23,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./backend/Dockerfile.prod
+          push: true
+          tags: |
+            ghcr.io/cathori-space/cathori-backend:latest
+            ghcr.io/cathori-space/cathori-backend:sha-${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/Cathori-space/Cathori
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1

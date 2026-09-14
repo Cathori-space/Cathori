@@ -17,9 +17,7 @@ services:
       - cathori-net
 
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile.prod
+    image: ghcr.io/cathori-space/cathori-backend:latest
     container_name: cathori-backend
     env_file:
       - .env

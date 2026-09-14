@@ -23,6 +23,9 @@ services:
     container_name: cathori-backend
     env_file:
       - .env
+    environment:
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
     volumes:
       - ./secrets/cathori-firebase.json:/app/secrets/cathori-firebase.json:ro
     expose:

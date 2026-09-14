@@ -30,12 +30,14 @@ services:
       - ./secrets/cathori-firebase.json:/app/secrets/cathori-firebase.json:ro
     expose:
       - "8080"
+      - "9091"
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - cathori-net
+      - monitoring-net
 
   db:
     image: postgres:16-alpine
@@ -59,9 +61,57 @@ services:
     networks:
       - cathori-net
 
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: cathori-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-15d}"
+      - "--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-1GB}"
+    volumes:
+      - ./prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - cathori-prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - backend
+    mem_limit: 512m
+    cpus: 0.50
+    restart: unless-stopped
+    networks:
+      - monitoring-net
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: cathori-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER must be set}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/cathori-spring-boot.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - cathori-grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+    mem_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+    networks:
+      - monitoring-net
+
 volumes:
   cathori-db-data:
+  cathori-prometheus-data:
+  cathori-grafana-data:
 
 networks:
   cathori-net:
+    driver: bridge
+  monitoring-net:
     driver: bridge

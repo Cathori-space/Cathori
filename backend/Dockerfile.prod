@@ -25,4 +25,4 @@ USER cathori
 COPY --from=builder /app/backend/build/libs/*.jar app.jar
 
 EXPOSE 8080 9091
-ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=prod", "app.jar"]
+ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]

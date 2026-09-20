@@ -2,7 +2,6 @@ package org.cathori.backend.notice.model;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,10 +10,6 @@ import java.util.List;
 import java.util.Set;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
-
-    @Modifying
-    @Query("UPDATE Notice n SET n.viewCount = n.viewCount + 1 WHERE n.id = :id")
-    void incrementViewCount(@Param("id") Long id);
 
     /**
      * 주어진 articleNo 후보들 중 이미 DB에 저장된 것만 골라 반환한다.

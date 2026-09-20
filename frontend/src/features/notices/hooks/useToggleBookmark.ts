@@ -5,13 +5,13 @@
  *  1. onMutate: 낙관적 업데이트 — 캐시에서 즉시 isBookmarked 반전 (체감 속도 향상)
  *  2. mutationFn: POST /api/notices/{id}/bookmark — 서버에서 토글 처리
  *  3. onError: 서버 실패 시 롤백 — 낙관적 업데이트 전 스냅샷으로 복원
- *  4. onSettled: 성공/실패 불문 캐시 무효화 — 서버 상태와 동기화
+ *  4. onSettled: 성공/실패 불문 목록 캐시 무효화 — 서버 상태와 동기화
  *
  * 캐시 무효화 대상:
  *  - ['notices', ...] — 메인 목록의 isBookmarked 상태 갱신
  *  - ['search', ...] — 검색 목록의 isBookmarked 상태 갱신
  *  - ['bookmarkedNotices'] — 북마크 목록 갱신
- *  - ['notice', noticeId] — 상세 화면의 isBookmarked 상태 갱신
+ *  - 상세 화면의 isBookmarked는 상세 API 재호출 없이 캐시를 직접 갱신
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -186,12 +186,12 @@ export function useToggleBookmark() {
       }
     },
 
-    onSettled: (_data, _error, noticeId) => {
+    onSettled: () => {
       // 서버 상태와 동기화 — 성공/실패 불문
+      // 상세 조회 API는 조회수를 증가시키므로 북마크 토글 후에는 재호출하지 않는다.
       queryClient.invalidateQueries({ queryKey: ['notices'] });
       queryClient.invalidateQueries({ queryKey: ['search'] });
       queryClient.invalidateQueries({ queryKey: ['bookmarkedNotices'] });
-      queryClient.invalidateQueries({ queryKey: ['notice', noticeId] });
     },
   });
 }

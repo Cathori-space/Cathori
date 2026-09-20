@@ -33,7 +33,7 @@ export default {
           ? "site.cathori.cathoriapp.dev"
           : "site.cathori.cathoriapp",
       googleServicesFile: isDev
-          ? "./google-services.dev.json"
+          ? process.env.GOOGLE_SERVICES_JSON ?? "./google-services.dev.json"
           : process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       versionCode: 1
     },

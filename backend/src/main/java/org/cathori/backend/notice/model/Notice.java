@@ -87,6 +87,10 @@ public class Notice {
         this.alertDispatched = true;
     }
 
+    public void increaseViewCount() {
+        this.viewCount++;
+    }
+
     public List<String> getImageUrls() {
         if (imageUrlsJson == null || imageUrlsJson.isBlank()) return List.of();
         try {

@@ -134,7 +134,7 @@ public class NoticeFeedService {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new BusinessException(NoticeErrorCode.NOTICE_NOT_FOUND));
 
-        noticeRepository.incrementViewCount(noticeId);
+        notice.increaseViewCount();
 
         boolean isBookmarked = bookmarkJpaRepository.existsByUserIdAndNoticeId(userId, noticeId);
 

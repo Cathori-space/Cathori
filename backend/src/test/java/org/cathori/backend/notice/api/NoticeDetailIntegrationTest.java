@@ -217,7 +217,8 @@ class NoticeDetailIntegrationTest extends IntegrationTestBase {
 
         mockMvc.perform(get("/api/notices/" + notice.getId())
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.viewCount").value(1));
 
         long viewCount = noticeRepository.findById(notice.getId())
                 .orElseThrow()

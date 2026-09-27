@@ -2,9 +2,9 @@
 
 <!-- ============================================== --> <!-- 📌 비고: 여기에 Cathori 배너 이미지 추가 예정 --> <!-- 권장 크기: 1200 x 400 / DCU Blue + Ginkgo Yellow --> <!-- ============================================== --> <div align="center">
 
-<img width="863" height="443" alt="image" src="https://github.com/user-attachments/assets/0317e953-04c4-4bb2-957e-0ee4bed92ab5" />
+<img width="1024" height="685" alt="image" src="https://github.com/user-attachments/assets/f53fe2ba-88b5-49fb-b739-cdd4e9b7f45b" />
 
-<h3>관심 공지를 편하게, 놓치지 않고 알람으로</h3> <p>가톨릭대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
+<h3>관심 공지를 편하게, 놓치지 않고 알람으로</h3> <p>대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
 
 <a href="#">🚀 서비스 바로가기 (Play Store 심사 중)</a> | <a href="https://github.com/tomass22/Cathori/wiki">📚 팀 Wiki</a>
 
@@ -33,7 +33,7 @@
 |---|---|---|
 |학과·키워드를 미리 등록해두면 관련 공지만 골라 전달|AI가 본문과 이미지를 3줄로 요약하고 마감일 자동 추출|매칭된 공지가 올라오는 즉시 FCM으로 푸시 알림 발송|
 
-> 💡 **Cathori는** _Catholic_ + 한국어 *소리(sori)*의 합성어로, "가톨릭대학교의 소식을 전하는 목소리"라는 뜻을 담고 있습니다.
+> 💡 **Cathori는** _Catholic_ + 한국어 *소리(sori)*의 합성어로, "대학교의 소식을 전하는 목소리"라는 뜻을 담고 있습니다.
 
 ---
 
@@ -55,7 +55,7 @@
     <td width="50%">
       <h4>📝 이메일 인증 회원가입</h4>
       <img width="250" height="538" alt="image" src="https://github.com/user-attachments/assets/f201af6c-2494-4cb0-b7c7-70ad3e87324c" />
-      <p><small>가톨릭대학교 학생임을 이메일 인증으로 확인 후 가입</small></p>
+      <p><small>대학교 학생임을 이메일 인증으로 확인 후 가입</small></p>
     </td>
   </tr>
 </table>
@@ -110,7 +110,7 @@
 ```mermaid
 sequenceDiagram
   autonumber
-  participant U as 가톨릭대 학생
+  participant U as 대 학생
   participant A as Cathori App (RN)
   participant API as Spring Boot API
   participant DB as PostgreSQL
@@ -344,10 +344,10 @@ notification_logs
 
 ## 🏫 프로젝트 정보
 
-- **소속**: 가톨릭대학교 (Catholic University of Korea)
+- **소속**: OO대학교
 - **과목**: 종합설계프로젝트 (캡스톤 디자인)
 - **진행 기간**: 2026.03 ~
-- **타겟 사용자**: 가톨릭대학교 학부생
+- **타겟 사용자**: OO대학교 학부생
 - **첫 출시 플랫폼**: Android (Google Play Store, 심사 중)
 
 ---
@@ -375,7 +375,7 @@ notification_logs
 
 <div align="center">
 
-**Cathori는 가톨릭대학교 학생을 위해, 가톨릭대학교 학생이 만들고 있습니다.** 🐦
+**Cathori는 대학교 학생을 위해, 대학교 학생이 만들고 있습니다.** 🐦
 
 ⭐ 응원해주신다면 Star 한 번 부탁드립니다!
 

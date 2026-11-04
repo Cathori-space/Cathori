@@ -1,10 +1,12 @@
 package org.cathori.backend;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.cathori.backend.user.application.NotificationPort;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest
-class CathoriApplicationTests {
+class CathoriApplicationTests extends IntegrationTestBase {
+
+    @MockitoBean NotificationPort notificationPort;
 
     @Test
     void contextLoads() {

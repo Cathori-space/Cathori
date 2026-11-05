@@ -128,6 +128,7 @@ public class PushNotificationService {
     private boolean matchesNoticeScope(User user, Notice notice) {
         if ("MAIN".equals(notice.getSourceType())) return true;
         String sourceId = notice.getSourceId();
+        if (sourceId == null) return false;
         String majorCode = DepartmentSource.findEnumNameByDisplayName(user.getMajor());
         if (sourceId.equals(majorCode)) return true;
         String secondMajor = user.getSecondMajor();

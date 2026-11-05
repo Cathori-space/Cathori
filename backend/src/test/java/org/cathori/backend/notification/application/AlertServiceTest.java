@@ -168,11 +168,11 @@ class AlertServiceTest extends IntegrationTestBase {
     @DisplayName("DA-11: 학과 공지 — 제1전공 일치 사용자에게만 발송")
     @SuppressWarnings("unchecked")
     void sendNoticeNotifications_departmentNotice_onlySendsToMatchingMajorUser() {
-        String csieCode = DepartmentSource.findEnumNameByDisplayName("컴퓨터정보공학");
+        String csieCode = DepartmentSource.findEnumNameByDisplayName("컴퓨터정보공학부");
         saveDepartmentNotice("장학금 안내", csieCode);
         User matching = saveUserWithToken("csie@test.com", "token-csie");
         saveTag(matching.getId(), "장학금");
-        User nonMatching = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", null);
+        User nonMatching = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학과", null);
         saveTag(nonMatching.getId(), "장학금");
         given(pushNotificationPort.send(anyList(), anyString(), anyString(), anyLong()))
                 .willReturn(List.of(new UserPushResult(matching.getId(), true)));
@@ -188,14 +188,28 @@ class AlertServiceTest extends IntegrationTestBase {
     @Test
     @DisplayName("DA-14: 학과 공지 — 제2전공=전공심화 → 제외")
     void sendNoticeNotifications_departmentNotice_excludesSecondMajorJeonGongSimhwa() {
-        String csieCode = DepartmentSource.findEnumNameByDisplayName("컴퓨터정보공학");
+        String csieCode = DepartmentSource.findEnumNameByDisplayName("컴퓨터정보공학부");
         saveDepartmentNotice("장학금 안내", csieCode);
-        User user = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학", "전공심화");
+        User user = saveUserWithSecondMajor("biz@test.com", "token-biz", "경영학과", "전공심화");
         saveTag(user.getId(), "장학금");
 
         pushNotificationService.sendNoticeNotifications();
 
         verify(pushNotificationPort, never()).send(anyList(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("sourceId가 없는 학과 공지 — NPE 없이 발송 대상에서 제외 (#221)")
+    void sendNoticeNotifications_departmentNoticeWithoutSourceId_sendsNothing() {
+        Notice notice = saveDepartmentNotice("장학금 안내", null);
+        User user = saveUserWithToken("csie@test.com", "token-csie");
+        saveTag(user.getId(), "장학금");
+
+        pushNotificationService.sendNoticeNotifications();
+
+        verify(pushNotificationPort, never()).send(anyList(), anyString(), anyString(), anyLong());
+        Notice reloaded = noticeRepository.findById(notice.getId()).orElseThrow();
+        assertThat(reloaded.isAlertDispatched()).isTrue();
     }
 
     @Test
@@ -269,14 +283,14 @@ class AlertServiceTest extends IntegrationTestBase {
 
     private User saveUserWithToken(String email, String token) {
         User user = userJpaRepository.save(
-                User.create(email, "encodedPwd", "컴퓨터정보공학", null, 2, "재학"));
+                User.create(email, "encodedPwd", "컴퓨터정보공학부", null, 2, "재학"));
         jdbcTemplate.update("UPDATE users SET device_token = ? WHERE id = ?", token, user.getId());
         return user;
     }
 
     private User saveUserWithoutToken(String email) {
         return userJpaRepository.save(
-                User.create(email, "encodedPwd", "컴퓨터정보공학", null, 2, "재학"));
+                User.create(email, "encodedPwd", "컴퓨터정보공학부", null, 2, "재학"));
     }
 
     private User saveUserWithSecondMajor(String email, String token, String major, String secondMajor) {

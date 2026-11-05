@@ -26,7 +26,7 @@ public class Notice {
     /** 컬럼 길이 정본 — {@code @Column(length)}와 수집 시 보정 기준이 같은 값을 본다. */
     public static final int ARTICLE_NO_MAX = 20;
     public static final int CATEGORY_MAX = 20;
-    public static final int TITLE_MAX = 200;
+    public static final int TITLE_MAX = 500;   // 운영 DB 2026-11-06 varchar(500)으로 확대 (#219)
     public static final int DEPARTMENT_MAX = 30;
     public static final int URL_MAX = 500;
 

@@ -11,12 +11,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Notice.from 컬럼 한도 보정")
 class NoticeFromTest {
 
-    /** articleNo=277446 패턴 — 4개 언어 병기로 200자를 넘는 제목. */
-    private static final String MULTILINGUAL_TITLE = String.join(" ",
-            "[기숙사운영센터] 2026학년도 동계방학 기숙사(K,A관) 모집공고",
-            "2026年寒假宿舍(K馆/A馆)申请公告",
-            "Notice of Application for Winter Session Dormitory (K Hall / A Hall) in 2026",
-            "THÔNG BÁO TUYỂN SINH KÝ TÚC XÁ KỲ NGHỈ ĐÔNG NĂM 2026 (TÒA K / TÒA A) DÀNH CHO SINH VIÊN");
+    /** articleNo=277446 실제 제목 (운영 로그 2026-11-05 12:00 발췌) — 200자를 넘는다. */
+    private static final String MULTILINGUAL_TITLE =
+            "[기숙사운영센터] 2026학년도 동계방학 기숙사(K,A관) 모집공고 2026年寒假宿舍(K馆/A馆)申请公告 "
+            + "Notice of Application for Winter Session Dormitory (K Hall / A Hall) in 2026 "
+            + "THÔNG BÁO TUYỂN SINH KÝ TÚC XÁ HỌC KỲ NGHỈ ĐÔNG NĂM HỌC 2026 (TÒA K / TÒA A)";
 
     private static CrawledNotice.CrawledNoticeBuilder base() {
         return CrawledNotice.builder()
@@ -35,11 +34,22 @@ class NoticeFromTest {
     }
 
     @Test
-    @DisplayName("200자를 넘는 다국어 제목은 한도 안으로 절단되고 말줄임표로 끝난다")
-    void truncatesLongMultilingualTitle() {
-        assertThat(codePoints(MULTILINGUAL_TITLE)).isGreaterThan(Notice.TITLE_MAX);
+    @DisplayName("200자를 넘던 다국어 제목(277446)이 절단 없이 원문 그대로 저장된다")
+    void keepsRealMultilingualTitleIntact() {
+        assertThat(codePoints(MULTILINGUAL_TITLE)).isGreaterThan(200);
 
         Notice notice = Notice.from(base().title(MULTILINGUAL_TITLE).build());
+
+        assertThat(notice.getTitle()).isEqualTo(MULTILINGUAL_TITLE);
+    }
+
+    @Test
+    @DisplayName("컬럼 한도(500자)를 넘는 제목은 안전망으로 절단되고 말줄임표로 끝난다")
+    void truncatesTitleOverColumnLimit() {
+        String tooLong = MULTILINGUAL_TITLE.repeat(3);
+        assertThat(codePoints(tooLong)).isGreaterThan(Notice.TITLE_MAX);
+
+        Notice notice = Notice.from(base().title(tooLong).build());
 
         assertThat(codePoints(notice.getTitle())).isEqualTo(Notice.TITLE_MAX);
         assertThat(notice.getTitle()).startsWith("[기숙사운영센터]").endsWith("…");

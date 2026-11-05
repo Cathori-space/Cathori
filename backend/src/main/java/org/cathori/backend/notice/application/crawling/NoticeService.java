@@ -44,12 +44,20 @@ public class NoticeService {
     @Transactional
     public List<Long> save(List<CrawledNotice> crawledList) {
         List<Notice> notices = crawledList.stream()
+                .filter(this::storableOrWarn)
                 .map(Notice::from)
                 .toList();
 
         return noticeRepository.saveAll(notices).stream()
                 .map(Notice::getId)
                 .toList();
+    }
+
+    private boolean storableOrWarn(CrawledNotice crawled) {
+        if (Notice.isStorable(crawled)) return true;
+        log.warn("필수값 누락 또는 컬럼 한도 초과로 공지 저장 제외 sourceType={} sourceId={} articleNo={} url={}",
+                crawled.sourceType(), crawled.sourceId(), crawled.articleNo(), crawled.url());
+        return false;
     }
 
     public void summarize(List<Long> noticeIds) {

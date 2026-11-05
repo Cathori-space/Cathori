@@ -41,6 +41,8 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")
     implementation("org.jsoup:jsoup:1.18.1")
+    // 인증번호·인증상태·발송이력 인메모리 저장소. 버전은 Spring Boot BOM이 관리한다.
+    implementation("com.github.ben-manes.caffeine:caffeine")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")

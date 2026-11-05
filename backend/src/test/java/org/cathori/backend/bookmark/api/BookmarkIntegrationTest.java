@@ -9,7 +9,8 @@ import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.security.JwtUtil;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
-import org.cathori.backend.user.application.VerifiedEmailStore;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.infra.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -52,12 +53,12 @@ class BookmarkIntegrationTest extends IntegrationTestBase {
 
     @BeforeEach
     void setUp() {
-        verifiedEmailStore.markVerified(EMAIL_A);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL_A);
         authService.register(new RegisterRequest(EMAIL_A, PASSWORD, "컴퓨터정보공학부", null, 2, "재학"));
         userAId = userJpaRepository.findByEmail(EMAIL_A).orElseThrow().getId();
         tokenA = jwtUtil.generateAccessToken(userAId);
 
-        verifiedEmailStore.markVerified(EMAIL_B);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL_B);
         authService.register(new RegisterRequest(EMAIL_B, PASSWORD, "컴퓨터정보공학부", null, 2, "재학"));
         userBId = userJpaRepository.findByEmail(EMAIL_B).orElseThrow().getId();
         tokenB = jwtUtil.generateAccessToken(userBId);
@@ -69,8 +70,8 @@ class BookmarkIntegrationTest extends IntegrationTestBase {
         noticeRepository.deleteAll();
         userJpaRepository.findByEmail(EMAIL_A).ifPresent(userJpaRepository::delete);
         userJpaRepository.findByEmail(EMAIL_B).ifPresent(userJpaRepository::delete);
-        verifiedEmailStore.remove(EMAIL_A);
-        verifiedEmailStore.remove(EMAIL_B);
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, EMAIL_A);
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, EMAIL_B);
     }
 
     private Notice saveNotice() {

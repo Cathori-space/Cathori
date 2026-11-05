@@ -4,8 +4,9 @@ import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.security.JwtUtil;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
-import org.cathori.backend.user.application.VerificationStore;
-import org.cathori.backend.user.application.VerifiedEmailStore;
+import org.cathori.backend.user.application.email.VerificationCodeStore;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.api.dto.LoginRequest;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.api.dto.ReissueRequest;
@@ -34,7 +35,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     ObjectMapper objectMapper;
     @Autowired AuthService authService;
     @Autowired VerifiedEmailStore verifiedEmailStore;
-    @Autowired VerificationStore verificationStore;
+    @Autowired VerificationCodeStore verificationCodeStore;
     @Autowired UserJpaRepository userJpaRepository;
     @Autowired JwtUtil jwtUtil;
     @MockitoBean
@@ -49,19 +50,19 @@ class AuthIntegrationTest extends IntegrationTestBase {
     @AfterEach
     void cleanup() {
         userJpaRepository.findByEmail(EMAIL).ifPresent(userJpaRepository::delete);
-        verifiedEmailStore.remove(EMAIL);
-        verificationStore.remove(EMAIL);
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, EMAIL);
+        verificationCodeStore.remove(VerificationPurpose.SIGNUP, EMAIL);
     }
 
     private void createVerifiedUser(String email, String password) {
-        verifiedEmailStore.markVerified(email);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, email);
         authService.register(new RegisterRequest(email, password, MAJOR, null, GRADE, STATUS));
     }
 
     @Test
     @DisplayName("A-1: 이메일 인증 완료 후 회원가입 성공 시 201과 userId/email 반환")
     void register_success() throws Exception {
-        verifiedEmailStore.markVerified(EMAIL);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL);
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -89,7 +90,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     void register_duplicateEmail() throws Exception {
         createVerifiedUser(EMAIL, PASSWORD);
 
-        verifiedEmailStore.markVerified(EMAIL);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL);
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(

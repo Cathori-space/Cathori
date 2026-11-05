@@ -6,6 +6,8 @@ import org.cathori.backend.security.TokenHasher;
 import org.cathori.backend.tag.application.TagService;
 import org.cathori.backend.tag.api.dto.TagDto;
 import org.cathori.backend.user.UserErrorCode;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.api.dto.LoginRequest;
 import org.cathori.backend.user.api.dto.LoginResponse;
 import org.cathori.backend.user.api.dto.RegisterRequest;
@@ -48,7 +50,9 @@ public class AuthService {
     }
 
     public RegisterResponse register(RegisterRequest request) {
-        if (!verifiedEmailStore.isVerified(request.email())) {
+        // purpose를 SIGNUP으로 고정한다 — PASSWORD_RESET으로 받은 인증 상태로는
+        // 가입이 통과되지 않아야 한다 (그러면 학교 도메인 제한이 무력화된다).
+        if (!verifiedEmailStore.isVerified(VerificationPurpose.SIGNUP, request.email())) {
             throw new BusinessException(UserErrorCode.USER_NOT_VERIFIED);
         }
 
@@ -57,7 +61,7 @@ public class AuthService {
         }
 
         User saved = userService.save(request);
-        verifiedEmailStore.remove(request.email());
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, request.email());
         return new RegisterResponse(saved.getId(), saved.getEmail());
     }
 

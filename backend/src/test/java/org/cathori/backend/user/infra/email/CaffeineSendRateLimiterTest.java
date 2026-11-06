@@ -15,14 +15,18 @@ class CaffeineSendRateLimiterTest {
     @Test
     @DisplayName("한도에 도달하면 재시도까지 남은 시간을 돌려주고, 다른 이메일에는 영향이 없다")
     void retryAfterWhenLimitReached() {
+        // given — a@ 로 1분 안에 2회 발송
         Duration window = Duration.ofMinutes(1);
         limiter.record("a@catholic.ac.kr");
         limiter.record("a@catholic.ac.kr");
 
+        // when & then — 한도 3이면 여유, 한도 2면 대기 시간 반환
         assertThat(limiter.countWithin("a@catholic.ac.kr", window)).isEqualTo(2);
         assertThat(limiter.retryAfter("a@catholic.ac.kr", window, 3)).isEmpty();
         assertThat(limiter.retryAfter("a@catholic.ac.kr", window, 2))
                 .hasValueSatisfying(d -> assertThat(d).isPositive().isLessThanOrEqualTo(window));
+
+        // then — 다른 이메일은 집계가 분리된다
         assertThat(limiter.countWithin("b@catholic.ac.kr", window)).isZero();
     }
 }

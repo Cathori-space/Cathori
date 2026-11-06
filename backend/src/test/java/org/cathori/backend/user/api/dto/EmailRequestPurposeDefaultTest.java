@@ -15,10 +15,15 @@ class EmailRequestPurposeDefaultTest {
     @Test
     @DisplayName("purpose 필드가 없는 구버전 요청 본문은 SIGNUP으로 처리된다")
     void missingPurposeDefaultsToSignup() {
-        EmailSendRequest send = mapper.readValue("{\"email\":\"a@catholic.ac.kr\"}", EmailSendRequest.class);
-        EmailVerifyRequest verify = mapper.readValue(
-                "{\"email\":\"a@catholic.ac.kr\",\"code\":\"123456\"}", EmailVerifyRequest.class);
+        // given — 1.0.1 앱이 보내는 본문 (purpose 없음)
+        String sendBody = "{\"email\":\"a@catholic.ac.kr\"}";
+        String verifyBody = "{\"email\":\"a@catholic.ac.kr\",\"code\":\"123456\"}";
 
+        // when
+        EmailSendRequest send = mapper.readValue(sendBody, EmailSendRequest.class);
+        EmailVerifyRequest verify = mapper.readValue(verifyBody, EmailVerifyRequest.class);
+
+        // then
         assertThat(send.purpose()).isEqualTo(VerificationPurpose.SIGNUP);
         assertThat(verify.purpose()).isEqualTo(VerificationPurpose.SIGNUP);
     }
@@ -26,9 +31,13 @@ class EmailRequestPurposeDefaultTest {
     @Test
     @DisplayName("purpose를 명시하면 그대로 쓴다")
     void explicitPurposeIsKept() {
-        EmailSendRequest send = mapper.readValue(
-                "{\"email\":\"a@catholic.ac.kr\",\"purpose\":\"PASSWORD_RESET\"}", EmailSendRequest.class);
+        // given
+        String body = "{\"email\":\"a@catholic.ac.kr\",\"purpose\":\"PASSWORD_RESET\"}";
 
+        // when
+        EmailSendRequest send = mapper.readValue(body, EmailSendRequest.class);
+
+        // then
         assertThat(send.purpose()).isEqualTo(VerificationPurpose.PASSWORD_RESET);
     }
 }

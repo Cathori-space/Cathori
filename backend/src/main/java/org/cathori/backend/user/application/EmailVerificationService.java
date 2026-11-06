@@ -2,6 +2,7 @@ package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.user.UserErrorCode;
+import org.cathori.backend.user.application.email.EmailDomainPolicy;
 import org.cathori.backend.user.application.email.VerificationCode;
 import org.cathori.backend.user.application.email.VerificationCodeStore;
 import org.cathori.backend.user.application.email.VerificationPurpose;
@@ -21,25 +22,30 @@ public class EmailVerificationService {
     private final VerificationCodeStore verificationCodeStore;
     private final VerifiedEmailStore verifiedEmailStore;
     private final NotificationPort notificationPort;
+    private final EmailDomainPolicy emailDomainPolicy;
     private final Duration codeTtl;
 
     public EmailVerificationService(VerificationCodeStore verificationCodeStore,
                                     VerifiedEmailStore verifiedEmailStore,
                                     NotificationPort notificationPort,
+                                    EmailDomainPolicy emailDomainPolicy,
                                     @Value("${auth.email.code-ttl:PT3M}") Duration codeTtl) {
         this.verificationCodeStore = verificationCodeStore;
         this.verifiedEmailStore = verifiedEmailStore;
         this.notificationPort = notificationPort;
+        this.emailDomainPolicy = emailDomainPolicy;
         this.codeTtl = codeTtl;
     }
 
     public void sendCode(VerificationPurpose purpose, String email) {
+        emailDomainPolicy.requireAllowed(purpose, email);
         String code = String.format("%06d", RANDOM.nextInt(1_000_000));
         verificationCodeStore.save(purpose, email, VerificationCode.issue(code, Instant.now(), codeTtl));
         notificationPort.sendVerificationCode(purpose, email, code);
     }
 
     public void verifyCode(VerificationPurpose purpose, String email, String code) {
+        emailDomainPolicy.requireAllowed(purpose, email);
         VerificationCode issued = verificationCodeStore.find(purpose, email)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_VERIFY_CODE_EXPIRED));
 

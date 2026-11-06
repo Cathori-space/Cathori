@@ -22,7 +22,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -226,5 +225,19 @@ class AuthIntegrationTest extends IntegrationTestBase {
     private String extractField(MvcResult result, String field) throws Exception {
         JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
         return root.get(field).asText();
+    }
+
+    @Test
+    @DisplayName("purpose 없이(1.0.1 앱) 비학교 도메인으로 인증번호 요청 시 400 USER_EMAIL_DOMAIN_NOT_ALLOWED")
+    void sendCode_nonSchoolDomainWithoutPurpose_rejected() throws Exception {
+        // given — purpose 필드가 없는 구버전 요청 본문
+        String body = "{\"email\":\"someone@gmail.com\"}";
+
+        // when & then — SIGNUP으로 처리되어 도메인 제한에 걸린다
+        mockMvc.perform(post("/api/auth/email/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("USER_EMAIL_DOMAIN_NOT_ALLOWED"));
     }
 }

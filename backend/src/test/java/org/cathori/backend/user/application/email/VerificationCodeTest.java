@@ -17,9 +17,15 @@ class VerificationCodeTest {
     @Test
     @DisplayName("만료 시각 정각까지는 유효하고, 그 뒤부터 만료다")
     void expiryBoundary() {
+        // given
         VerificationCode code = VerificationCode.issue("123456", T0, TTL);
 
-        assertThat(code.isExpired(T0.plus(TTL))).isFalse();
-        assertThat(code.isExpired(T0.plus(TTL).plusMillis(1))).isTrue();
+        // when
+        boolean atExpiry = code.isExpired(T0.plus(TTL));
+        boolean justAfter = code.isExpired(T0.plus(TTL).plusMillis(1));
+
+        // then
+        assertThat(atExpiry).isFalse();
+        assertThat(justAfter).isTrue();
     }
 }

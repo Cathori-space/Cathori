@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class EmailVerificationService {
@@ -68,22 +69,37 @@ public class EmailVerificationService {
 
     public void verifyCode(VerificationPurpose purpose, String email, String code) {
         emailDomainPolicy.requireAllowed(purpose, email);
-        VerificationCode issued = verificationCodeStore.find(purpose, email)
-                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_VERIFY_CODE_EXPIRED));
 
-        // 만료는 캐시 TTL이 아니라 expiresAt으로 본다 — 실패 누적으로 다시 저장하면 캐시 TTL은 리셋된다.
-        if (issued.isExpired(Instant.now())) {
-            verificationCodeStore.remove(purpose, email);
-            throw new BusinessException(UserErrorCode.USER_VERIFY_CODE_EXPIRED);
+        // 만료 판정·비교·실패 누적·삭제를 한 번의 원자적 갱신으로 처리한다 — 나누면 동시에 온 오답이 실패 횟수를 덮어쓴다 (ADR D3).
+        AtomicReference<Attempt> attempt = new AtomicReference<>(Attempt.NO_CODE);
+        Instant now = Instant.now();
+        verificationCodeStore.computeIfPresent(purpose, email, current -> {
+            // 만료는 캐시 TTL이 아니라 expiresAt으로 본다 (실패 누적으로 다시 쓰면 캐시 TTL은 리셋된다).
+            if (current.isExpired(now)) {
+                attempt.set(Attempt.NO_CODE);
+                return null;
+            }
+            if (current.matches(code)) {
+                attempt.set(Attempt.MATCHED);
+                return null; // 쓴 번호는 바로 지운다
+            }
+            VerificationCode failed = current.withFailure();
+            if (failed.failedAttempts() >= VerificationCode.MAX_FAILED_ATTEMPTS) {
+                attempt.set(Attempt.EXHAUSTED);
+                return null; // 5번째 실패 — 번호를 지워 재발송을 받게 한다
+            }
+            attempt.set(Attempt.MISMATCHED);
+            return failed;
+        });
+
+        switch (attempt.get()) {
+            case MATCHED -> verifiedEmailStore.markVerified(purpose, email);
+            case MISMATCHED -> throw new BusinessException(UserErrorCode.USER_INVALID_VERIFY_CODE);
+            case EXHAUSTED -> throw new BusinessException(UserErrorCode.USER_VERIFY_ATTEMPTS_EXCEEDED);
+            case NO_CODE -> throw new BusinessException(UserErrorCode.USER_VERIFY_CODE_EXPIRED);
         }
-
-        if (!issued.matches(code)) {
-            // 실패 횟수 누적만 해둔다. 5회 제한 판정은 아직 없다 (ADR D3).
-            verificationCodeStore.save(purpose, email, issued.withFailure());
-            throw new BusinessException(UserErrorCode.USER_INVALID_VERIFY_CODE);
-        }
-
-        verifiedEmailStore.markVerified(purpose, email);
-        verificationCodeStore.remove(purpose, email);
     }
+
+    /** 인증 시도 한 번의 결과. 저장소의 원자적 갱신 안에서 정해진다. */
+    private enum Attempt { MATCHED, MISMATCHED, EXHAUSTED, NO_CODE }
 }

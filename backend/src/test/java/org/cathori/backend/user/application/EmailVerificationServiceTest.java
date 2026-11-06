@@ -21,6 +21,13 @@ import org.mockito.ArgumentCaptor;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -36,7 +43,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@DisplayName("EmailVerificationService 목적(purpose) 분리 · 가입 도메인 제한 · 발송 제한 · 번호 재사용")
+@DisplayName("EmailVerificationService 목적(purpose) 분리 · 가입 도메인 제한 · 발송 제한 · 번호 재사용 · 입력 제한")
 class EmailVerificationServiceTest {
 
     private static final String EMAIL = "student@catholic.ac.kr";
@@ -243,5 +250,86 @@ class EmailVerificationServiceTest {
         // then
         assertThat(thrown).isInstanceOf(IllegalStateException.class);
         assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofHours(1))).isZero();
+    }
+
+    /** 발급된 번호와 반드시 다른 6자리. */
+    private static String wrongOf(String code) {
+        return code.equals("000000") ? "111111" : "000000";
+    }
+
+    @Test
+    @DisplayName("4번째 실패까지는 USER_INVALID_VERIFY_CODE, 5번째 실패는 USER_VERIFY_ATTEMPTS_EXCEEDED + 번호 삭제")
+    void fifthFailureDeletesCode() {
+        // given — 4번 틀렸다
+        service.sendCode(SIGNUP, EMAIL);
+        String code = sentCode(SIGNUP, EMAIL);
+        for (int i = 0; i < VerificationCode.MAX_FAILED_ATTEMPTS - 1; i++) {
+            BusinessException e = catchThrowableOfType(BusinessException.class,
+                    () -> service.verifyCode(SIGNUP, EMAIL, wrongOf(code)));
+            assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_INVALID_VERIFY_CODE);
+        }
+
+        // when — 5번째도 틀린다
+        BusinessException fifth = catchThrowableOfType(BusinessException.class,
+                () -> service.verifyCode(SIGNUP, EMAIL, wrongOf(code)));
+
+        // then
+        assertThat(fifth.getErrorCode()).isEqualTo(UserErrorCode.USER_VERIFY_ATTEMPTS_EXCEEDED);
+        assertThat(codeStore.find(SIGNUP, EMAIL)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("5번 틀린 뒤에는 맞는 번호를 넣어도 인증되지 않는다 (ADR §7)")
+    void correctCodeAfterExhaustionFails() {
+        // given — 5번 틀려 번호가 지워졌다
+        service.sendCode(SIGNUP, EMAIL);
+        String code = sentCode(SIGNUP, EMAIL);
+        for (int i = 0; i < VerificationCode.MAX_FAILED_ATTEMPTS; i++) {
+            catchThrowable(() -> service.verifyCode(SIGNUP, EMAIL, wrongOf(code)));
+        }
+
+        // when — 6번째에 맞는 번호
+        BusinessException e = catchThrowableOfType(BusinessException.class,
+                () -> service.verifyCode(SIGNUP, EMAIL, code));
+
+        // then — 남은 번호가 없으므로 다시 받아야 한다
+        assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_VERIFY_CODE_EXPIRED);
+        assertThat(verifiedStore.isVerified(SIGNUP, EMAIL)).isFalse();
+    }
+
+    @Test
+    @DisplayName("동시에 들어온 오답 20건도 정확히 5번만 비교된다 — 실패 누적이 서로 덮어쓰지 않는다")
+    void concurrentWrongAttemptsAreCountedExactly() throws Exception {
+        // given
+        service.sendCode(SIGNUP, EMAIL);
+        String wrong = wrongOf(sentCode(SIGNUP, EMAIL));
+        int threads = 20;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        Map<UserErrorCode, AtomicInteger> outcomes = new ConcurrentHashMap<>();
+
+        // when — 20건을 한꺼번에 출발시킨다
+        try {
+            for (int i = 0; i < threads; i++) {
+                pool.submit(() -> {
+                    start.await();
+                    BusinessException e = catchThrowableOfType(BusinessException.class,
+                            () -> service.verifyCode(SIGNUP, EMAIL, wrong));
+                    outcomes.computeIfAbsent((UserErrorCode) e.getErrorCode(), k -> new AtomicInteger())
+                            .incrementAndGet();
+                    return null;
+                });
+            }
+            start.countDown();
+            pool.shutdown();
+            assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            pool.shutdownNow();
+        }
+
+        // then — 4번 오답, 1번 한도 초과, 나머지는 번호 없음
+        assertThat(outcomes.get(UserErrorCode.USER_INVALID_VERIFY_CODE)).hasValue(4);
+        assertThat(outcomes.get(UserErrorCode.USER_VERIFY_ATTEMPTS_EXCEEDED)).hasValue(1);
+        assertThat(outcomes.get(UserErrorCode.USER_VERIFY_CODE_EXPIRED)).hasValue(threads - 5);
     }
 }

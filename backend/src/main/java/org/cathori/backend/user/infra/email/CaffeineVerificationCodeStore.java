@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 /**
  * 인증번호 저장소 — Caffeine, {@code expireAfterWrite}.
@@ -40,5 +41,12 @@ public class CaffeineVerificationCodeStore implements VerificationCodeStore {
     @Override
     public void remove(VerificationPurpose purpose, String email) {
         cache.invalidate(new VerificationKey(purpose, email));
+    }
+
+    /** Caffeine의 {@code asMap().computeIfPresent}는 키 단위로 원자적이고, 만료된 항목은 없는 것으로 본다. */
+    @Override
+    public void computeIfPresent(VerificationPurpose purpose, String email,
+                                 UnaryOperator<VerificationCode> remapping) {
+        cache.asMap().computeIfPresent(new VerificationKey(purpose, email), (key, current) -> remapping.apply(current));
     }
 }

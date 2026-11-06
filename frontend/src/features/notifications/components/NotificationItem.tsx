@@ -93,22 +93,32 @@ function NotificationItemComponent({
       overshootRight={false}
     >
       <TouchableOpacity
-        style={styles.container}
+        style={[
+          styles.container,
+          !notification.isRead && styles.unreadContainer,
+        ]}
         onPress={handlePress}
         activeOpacity={0.7}
       >
+        {!notification.isRead && <View style={styles.unreadAccent} />}
+
         {/* 상단: 매칭 태그 칩 + D-day 뱃지 */}
         <View style={styles.topRow}>
-          {notification.matchedTag ? (
-            <View style={styles.tagChip}>
-              <Text style={styles.tagChipText} numberOfLines={1}>
-                #{notification.matchedTag}
-              </Text>
-            </View>
-          ) : (
-            // 태그가 없는 경우에도 space-between 정렬 유지를 위한 빈 자리
-            <View />
-          )}
+          <View style={styles.badgeRow}>
+            {!notification.isRead && (
+              <View style={styles.unreadBadge}>
+                <View style={styles.unreadDot} />
+                <Text style={styles.unreadBadgeText}>새 알림</Text>
+              </View>
+            )}
+            {notification.matchedTag && (
+              <View style={styles.tagChip}>
+                <Text style={styles.tagChipText} numberOfLines={1}>
+                  #{notification.matchedTag}
+                </Text>
+              </View>
+            )}
+          </View>
           {dday != null && (
             <View
               style={[
@@ -129,7 +139,10 @@ function NotificationItemComponent({
         </View>
 
         {/* 제목 */}
-        <Text style={styles.title} numberOfLines={2}>
+        <Text
+          style={[styles.title, !notification.isRead && styles.unreadTitle]}
+          numberOfLines={2}
+        >
           {notification.title}
         </Text>
 
@@ -148,9 +161,29 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: Colors.cardBg,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
     borderRadius: 12,
     padding: 20,
     gap: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  unreadContainer: {
+    backgroundColor: Colors.notificationUnreadBg,
+    borderColor: Colors.notificationUnreadBorder,
+  },
+  unreadAccent: {
+    position: 'absolute',
+    top: 14,
+    bottom: 14,
+    left: 0,
+    width: 3,
+    borderRadius: 9999,
+    backgroundColor: Colors.accent,
   },
   deleteActionWrapper: {
     width: 88,
@@ -178,6 +211,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
+  },
+  badgeRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+  },
+  unreadBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 9999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: Colors.notificationUnreadBadgeBg,
+  },
+  unreadDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 9999,
+    backgroundColor: Colors.accent,
+  },
+  unreadBadgeText: {
+    fontFamily: 'Pretendard',
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.notificationUnreadText,
   },
   // 매칭 태그 칩
   tagChip: {
@@ -185,7 +247,7 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    maxWidth: '70%',
+    maxWidth: '65%',
   },
   tagChipText: {
     fontFamily: 'Pretendard',
@@ -220,9 +282,12 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Pretendard',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.textPrimary,
     lineHeight: 22,
+  },
+  unreadTitle: {
+    fontWeight: '700',
   },
   // 발송 시각
   date: {

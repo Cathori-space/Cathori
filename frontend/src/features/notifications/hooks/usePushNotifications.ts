@@ -13,21 +13,22 @@
 import * as Notifications from 'expo-notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, type Href } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { getDevicePushToken, requestNotificationPermission } from '@/src/services/notification';
+import { markNotificationReadByNoticeId } from '@/src/services/notifications';
 import { registerDeviceToken } from '@/src/services/pushToken';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
-/** 알림 payload의 noticeId를 안전하게 꺼내 공지 상세로 이동 */
-function navigateToNotice(router: ReturnType<typeof useRouter>, data: unknown) {
+/** 알림 payload의 noticeId를 안전하게 숫자로 변환 */
+function getNoticeId(data: unknown): number | null {
   if (data != null && typeof data === 'object' && 'noticeId' in data) {
-    const noticeId = (data as { noticeId?: string | number }).noticeId;
-    if (noticeId != null) {
-      router.push(`/notice/${noticeId}` as Href);
-    }
+    const rawNoticeId = (data as { noticeId?: unknown }).noticeId;
+    const noticeId = Number(rawNoticeId);
+    if (Number.isSafeInteger(noticeId) && noticeId > 0) return noticeId;
   }
+  return null;
 }
 
 export function usePushNotifications() {
@@ -36,6 +37,28 @@ export function usePushNotifications() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const registeredRef = useRef(false); // 등록여부 확인 플래그
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const handledNotificationIdsRef = useRef(new Set<string>());
+
+  const handleNotificationResponse = useCallback(
+    async (response: Notifications.NotificationResponse) => {
+      const notificationId = response.notification.request.identifier;
+      if (handledNotificationIdsRef.current.has(notificationId)) return;
+
+      const noticeId = getNoticeId(response.notification.request.content.data);
+      if (noticeId == null) return;
+      handledNotificationIdsRef.current.add(notificationId);
+
+      try {
+        await markNotificationReadByNoticeId(noticeId);
+      } catch {
+        // 저장 실패 시 서버의 미읽음 상태를 유지하되 공지 상세 이동은 허용한다.
+      } finally {
+        void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        router.push(`/notice/${noticeId}` as Href);
+      }
+    },
+    [queryClient, router],
+  );
 
   // 1) 로그인 직후 디바이스 토큰 등록
   useEffect(() => {
@@ -89,24 +112,31 @@ export function usePushNotifications() {
 
   // 4) 알림 탭 → 공지 상세 이동 (포그라운드/백그라운드)
   useEffect(() => {
+    if (!accessToken) return;
+
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      navigateToNotice(router, response.notification.request.content.data);
+      void handleNotificationResponse(response);
     });
     return () => sub.remove();
-  }, [queryClient, router]);
+  }, [accessToken, handleNotificationResponse]);
 
   // 4-b) cold start: 종료 상태에서 알림 탭으로 진입한 경우
   useEffect(() => {
+    if (!accessToken) return;
+
     let cancelled = false;
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (!cancelled && response) {
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
-        navigateToNotice(router, response.notification.request.content.data);
-      }
-    });
+    Notifications.getLastNotificationResponseAsync()
+      .then(async (response) => {
+        if (!cancelled && response) {
+          await handleNotificationResponse(response);
+          await Notifications.clearLastNotificationResponseAsync();
+        }
+      })
+      .catch(() => {
+        // 마지막 응답 조회 실패는 앱 시작을 막지 않는다.
+      });
     return () => {
       cancelled = true;
     };
-  }, [queryClient, router]);
+  }, [accessToken, handleNotificationResponse]);
 }

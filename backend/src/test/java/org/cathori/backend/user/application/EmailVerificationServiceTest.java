@@ -10,6 +10,7 @@ import org.cathori.backend.user.application.email.VerificationCode;
 import org.cathori.backend.user.application.email.VerificationCodeStore;
 import org.cathori.backend.user.application.email.VerificationPurpose;
 import org.cathori.backend.user.application.email.VerifiedEmailStore;
+import org.cathori.backend.user.domain.UserRepository;
 import org.cathori.backend.user.infra.email.CaffeineSendRateLimiter;
 import org.cathori.backend.user.infra.email.CaffeineVerificationCodeStore;
 import org.cathori.backend.user.infra.email.CaffeineVerifiedEmailStore;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 @DisplayName("EmailVerificationService 목적(purpose) 분리 · 가입 도메인 제한 · 발송 제한 · 번호 재사용 · 입력 제한")
@@ -55,6 +57,7 @@ class EmailVerificationServiceTest {
     private VerifiedEmailStore verifiedStore;
     private SendRateLimiter sendRateLimiter;
     private NotificationPort notificationPort;
+    private UserRepository userRepository;
     private EmailVerificationService service;
 
     @BeforeEach
@@ -63,9 +66,10 @@ class EmailVerificationServiceTest {
         codeStore = new CaffeineVerificationCodeStore(ttl);
         verifiedStore = new CaffeineVerifiedEmailStore(Duration.ofMinutes(30));
         notificationPort = mock(NotificationPort.class);
+        userRepository = mock(UserRepository.class);
         sendRateLimiter = new CaffeineSendRateLimiter(Duration.ofHours(1));
         service = new EmailVerificationService(codeStore, verifiedStore, notificationPort, SCHOOL_ONLY,
-                new EmailSendLimitPolicy(sendRateLimiter, 3, 10), ttl);
+                new EmailSendLimitPolicy(sendRateLimiter, 3, 10), userRepository, ttl);
     }
 
     /** 발송된 메일에 실린 인증번호를 꺼낸다. */
@@ -331,5 +335,21 @@ class EmailVerificationServiceTest {
         assertThat(outcomes.get(UserErrorCode.USER_INVALID_VERIFY_CODE)).hasValue(4);
         assertThat(outcomes.get(UserErrorCode.USER_VERIFY_ATTEMPTS_EXCEEDED)).hasValue(1);
         assertThat(outcomes.get(UserErrorCode.USER_VERIFY_CODE_EXPIRED)).hasValue(threads - 5);
+    }
+
+    @Test
+    @DisplayName("SIGNUP — 이미 가입된 이메일이면 메일을 보내지 않고 409, 발송 횟수에도 넣지 않는다 (ADR D6)")
+    void signupSendRejectsRegisteredEmail() {
+        // given
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
+
+        // when
+        BusinessException e = catchThrowableOfType(BusinessException.class,
+                () -> service.sendCode(SIGNUP, EMAIL));
+
+        // then
+        assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_EMAIL_DUPLICATE);
+        verify(notificationPort, never()).sendVerificationCode(any(), anyString(), anyString());
+        assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofHours(1))).isZero();
     }
 }

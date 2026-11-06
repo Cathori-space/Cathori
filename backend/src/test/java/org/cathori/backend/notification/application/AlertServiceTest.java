@@ -11,6 +11,7 @@ import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.tag.domain.Tag;
 import org.cathori.backend.tag.infra.TagJpaRepository;
 import org.cathori.backend.user.application.NotificationPort;
+import org.cathori.backend.user.application.UserService;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.infra.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @DisplayName("AlertService 통합 테스트")
@@ -38,6 +40,7 @@ class AlertServiceTest extends IntegrationTestBase {
     @Autowired AlertHistoryJpaRepository alertHistoryJpaRepository;
     @Autowired NoticeRepository noticeRepository;
     @Autowired UserJpaRepository userJpaRepository;
+    @Autowired UserService userService;
     @Autowired TagJpaRepository tagJpaRepository;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -54,6 +57,54 @@ class AlertServiceTest extends IntegrationTestBase {
     }
 
     // --- sendNoticeNotifications() ---
+
+    @Test
+    @DisplayName("002가 보존한 단독 토큰은 이전 세대와 소유권 이력이 있어도 신규 발송에서 제외한다")
+    void legacyRegistrationIsExcludedFromNewDispatch() {
+        saveNotice("장학금 안내");
+        User legacy = saveUserWithoutToken("legacy@test.com");
+        saveLegacyClaim(legacy, "legacy-device", 7);
+        saveTag(legacy.getId(), "장학금");
+
+        pushNotificationService.sendNoticeNotifications();
+
+        verify(pushNotificationPort, never()).send(anyList(), anyString(), anyString(), anyLong());
+        assertThat(alertHistoryJpaRepository.findAll()).isEmpty();
+        assertThat(userJpaRepository.findById(legacy.getId()).orElseThrow().getDeviceToken()).isEqualTo("legacy-device");
+    }
+
+    @Test
+    @DisplayName("기존 대기·실패 이력에서도 재등록하지 않은 토큰을 발송하지 않는다")
+    void pendingAndRetryExcludeLegacyRegistration() {
+        Notice notice = saveNotice("장학금 안내");
+        User legacy = saveUserWithoutToken("legacy@test.com");
+        User current = saveUserWithoutToken("current@test.com");
+        saveLegacyClaim(legacy, "legacy-device", 7);
+        saveTag(legacy.getId(), "장학금");
+        saveTag(current.getId(), "장학금");
+        userService.updateDeviceToken(current.getId(), current.getSessionVersion(), "current-device");
+        alertHistoryJpaRepository.save(AlertHistory.create(legacy.getId(), notice.getId(), "장학금"));
+        given(pushNotificationPort.send(anyList(), anyString(), anyString(), eq(notice.getId())))
+                .willReturn(List.of(new UserPushResult(current.getId(), true)));
+
+        pushNotificationService.sendNoticeNotifications();
+        var histories = alertHistoryJpaRepository.findAll();
+        histories.forEach(AlertHistory::markFailed);
+        alertHistoryJpaRepository.saveAll(histories);
+        pushNotificationService.retryFailedNotifications();
+
+        verify(pushNotificationPort, times(2)).send(eq(List.of(new UserToken(current.getId(), "current-device"))),
+                anyString(), anyString(), eq(notice.getId()));
+    }
+
+    private void saveLegacyClaim(User user, String token, long sessionVersion) {
+        jdbcTemplate.update("UPDATE users SET device_token = ?, session_version = ? WHERE id = ?",
+                token, sessionVersion, user.getId());
+        jdbcTemplate.update("""
+                INSERT INTO device_token_claims (token_hash, user_id, session_version, latest_claim)
+                VALUES (encode(sha256(convert_to(?, 'UTF8')), 'hex'), ?, ?, true)
+                """, token, user.getId(), sessionVersion);
+    }
 
     @Test
     @DisplayName("DA-1: FCM 성공 → 사용자별 SUCCESS 이력 저장")
@@ -247,6 +298,37 @@ class AlertServiceTest extends IntegrationTestBase {
         assertThat(updated.getAlarmStatus()).isEqualTo("SUCCESS");
     }
 
+    @Test
+    @DisplayName("토큰 이전 후 대기 발송과 실패 재시도는 현재 소유자에게만 보낸다")
+    void dispatchAndRetrySendOnlyToCurrentDeviceTokenOwner() {
+        Notice notice = saveNotice("장학금 안내");
+        User previous = saveUserWithoutToken("previous@test.com");
+        User current = saveUserWithoutToken("current@test.com");
+        saveTag(previous.getId(), "장학금");
+        saveTag(current.getId(), "장학금");
+        AlertHistory previousHistory = alertHistoryJpaRepository.save(
+                AlertHistory.create(previous.getId(), notice.getId(), "장학금"));
+        userService.updateDeviceToken(previous.getId(), previous.getSessionVersion(), "shared-device");
+        userService.updateDeviceToken(current.getId(), current.getSessionVersion(), "shared-device");
+        given(pushNotificationPort.send(anyList(), anyString(), anyString(), eq(notice.getId())))
+                .willReturn(List.of(new UserPushResult(current.getId(), true)));
+
+        pushNotificationService.sendNoticeNotifications();
+        var histories = alertHistoryJpaRepository.findAll();
+        assertThat(histories).hasSize(2);
+        assertThat(histories).filteredOn(history -> history.getUserId().equals(current.getId()))
+                .singleElement().satisfies(history -> assertThat(history.getAlarmStatus()).isEqualTo("SUCCESS"));
+        histories.forEach(AlertHistory::markFailed);
+        alertHistoryJpaRepository.saveAll(histories);
+
+        pushNotificationService.retryFailedNotifications();
+
+        var recipients = List.of(new UserToken(current.getId(), "shared-device"));
+        verify(pushNotificationPort, times(2)).send(eq(recipients), anyString(), anyString(), eq(notice.getId()));
+        assertThat(alertHistoryJpaRepository.findById(previousHistory.getId()).orElseThrow().getAlarmStatus())
+                .isEqualTo("FAILED");
+    }
+
     // --- 헬퍼 메서드 ---
 
     private Notice saveNotice(String title) {
@@ -284,7 +366,7 @@ class AlertServiceTest extends IntegrationTestBase {
     private User saveUserWithToken(String email, String token) {
         User user = userJpaRepository.save(
                 User.create(email, "encodedPwd", "컴퓨터정보공학부", null, 2, "재학"));
-        jdbcTemplate.update("UPDATE users SET device_token = ? WHERE id = ?", token, user.getId());
+        userService.updateDeviceToken(user.getId(), user.getSessionVersion(), token);
         return user;
     }
 
@@ -297,7 +379,7 @@ class AlertServiceTest extends IntegrationTestBase {
         User user = userJpaRepository.save(
                 User.create(email, "encodedPwd", major, secondMajor, 2, "재학"));
         if (token != null) {
-            jdbcTemplate.update("UPDATE users SET device_token = ? WHERE id = ?", token, user.getId());
+            userService.updateDeviceToken(user.getId(), user.getSessionVersion(), token);
         }
         return user;
     }

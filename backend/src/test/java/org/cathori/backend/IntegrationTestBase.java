@@ -2,6 +2,7 @@ package org.cathori.backend;
 
 
 import com.google.firebase.FirebaseApp;
+import org.cathori.backend.notification.infra.PushNotificationScheduler;
 import org.cathori.backend.notice.infra.crawling.CrawlingScheduler;
 import org.cathori.backend.notice.infra.summarization.RetryScheduler;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,8 +15,9 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 public abstract class IntegrationTestBase {
 
-    // API 테스트에서는 실제 공지 크롤링, 예약된 AI 재시도 및 실제 인증 정보 로딩을 수행하지 않는다.
+    // 테스트 컨텍스트에서 시작 이벤트, 예약 작업, Firebase 인증 정보 로딩을 차단한다.
     @MockitoBean CrawlingScheduler crawlingScheduler;
     @MockitoBean RetryScheduler retryScheduler;
+    @MockitoBean PushNotificationScheduler pushNotificationScheduler;
     @MockitoBean FirebaseApp firebaseApp;
 }

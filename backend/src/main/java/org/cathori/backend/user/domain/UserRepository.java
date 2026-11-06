@@ -9,7 +9,16 @@ public interface UserRepository {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
     Optional<User> findById(Long id);
-    List<User> findUsersWithTagMatchingTitle(String title);
+    Optional<User> findByEmailForUpdate(String email);
+    Optional<User> findByIdForUpdate(Long id);
+    void lockDeviceToken(String tokenHash);
+    Optional<Long> findDeviceTokenOwnerId(String deviceToken);
+    List<User> findAllByIdsForUpdate(List<Long> ids);
+    boolean isDeviceTokenClaimDisplaced(String tokenHash, Long userId, long sessionVersion);
+    void clearDeviceTokenConfirmation(String tokenHash, Long userId, long sessionVersion);
+    void recordDeviceTokenClaim(String tokenHash, Long userId, long sessionVersion);
+    void flushDeviceTokenChange();
+    List<User> findPushEligibleUsersWithTagMatchingTitle(String title);
     Map<Long, String> findFirstMatchedTagsByTitle(String title);
     Map<Long, String> findDeviceTokensByIds(List<Long> userIds);
     void delete(User user);

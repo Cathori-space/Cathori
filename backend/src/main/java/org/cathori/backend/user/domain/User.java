@@ -4,11 +4,12 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_device_token", columnNames = "device_token"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
@@ -38,6 +39,10 @@ public class User {
     @Column(length = 255)
     private String deviceToken;
 
+    @Column(name = "session_version", nullable = false)
+    @ColumnDefault("0")
+    private long sessionVersion;
+
     @Column(nullable = false)
     private int dailyAlertLimit = 1;
 
@@ -51,6 +56,11 @@ public class User {
     /** 로그아웃 등으로 기기 토큰을 반납합니다. 이후 이 사용자는 알림 대상에서 제외됩니다. */
     public void clearDeviceToken() {
         this.deviceToken = null;
+    }
+
+    public void rotateSession() {
+        sessionVersion = Math.incrementExact(sessionVersion);
+        clearDeviceToken();
     }
 
     public static User create(String email, String encodedPassword,

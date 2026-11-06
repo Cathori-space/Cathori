@@ -10,6 +10,8 @@ public enum UserErrorCode implements ErrorCode {
     USER_NOT_VERIFIED(HttpStatus.FORBIDDEN, "USER_NOT_VERIFIED", "이메일 인증이 완료되지 않았습니다"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "존재하지 않는 사용자입니다"),
     USER_INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "USER_INVALID_PASSWORD", "비밀번호가 올바르지 않습니다"),
+    SESSION_INVALID(HttpStatus.UNAUTHORIZED, "SESSION_INVALID", "유효하지 않거나 만료된 세션입니다"),
+    DEVICE_TOKEN_OWNERSHIP_CONFLICT(HttpStatus.CONFLICT, "DEVICE_TOKEN_OWNERSHIP_CONFLICT", "현재 세션에서 기기 토큰을 등록할 수 없습니다"),
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "REFRESH_TOKEN_INVALID", "유효하지 않거나 만료된 리프레시 토큰입니다");
 
     private final HttpStatus status;

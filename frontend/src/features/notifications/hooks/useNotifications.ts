@@ -20,9 +20,12 @@ import {
   fetchNotifications,
   markNotificationRead,
 } from '@/src/services/notifications';
+import { requireMember, useAuthStore } from '@/src/store/useAuthStore';
+import { assertCurrentSession, isCurrentSession } from '@/src/services/session';
 import type { NotificationPage } from '@/src/types/notifications';
 
 interface DeleteNotificationContext {
+  sessionId: number;
   previousNotificationQueries: {
     queryKey: readonly unknown[];
     data: InfiniteData<NotificationPage> | undefined;
@@ -30,6 +33,7 @@ interface DeleteNotificationContext {
 }
 
 interface MarkNotificationReadContext {
+  sessionId: number;
   previousNotificationQueries: {
     queryKey: readonly unknown[];
     data: InfiniteData<NotificationPage> | undefined;
@@ -80,10 +84,12 @@ function markNotificationReadInPages(
 }
 
 export function useNotifications() {
+  const isMember = useAuthStore((s) => s.status === 'authenticated');
   return useInfiniteQuery<NotificationPage>({
     queryKey: ['notifications'],
-    queryFn: ({ pageParam }) =>
-      fetchNotifications({ cursor: pageParam as number | null }),
+    enabled: isMember,
+    queryFn: ({ pageParam, signal }) =>
+      fetchNotifications({ cursor: pageParam as number | null }, signal),
     // 첫 페이지는 커서 없음
     initialPageParam: null,
     // hasNext가 false거나 nextCursor가 null이면 undefined를 반환해 페이징 종료
@@ -93,21 +99,31 @@ export function useNotifications() {
 }
 
 export function useHasNotifications() {
+  const isMember = useAuthStore((s) => s.status === 'authenticated');
   return useQuery({
     queryKey: ['notifications', 'hasUnread'],
-    queryFn: fetchUnreadNotificationStatus,
+    enabled: isMember,
+    queryFn: ({ signal }) => fetchUnreadNotificationStatus(signal),
     select: (status) => status.hasUnread,
   });
 }
 
 export function useMarkNotificationRead() {
+  const hookSessionId = useAuthStore((s) => s.sessionId);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: markNotificationRead,
+    mutationFn: (id: number) => {
+      assertCurrentSession(hookSessionId);
+      requireMember();
+      return markNotificationRead(id);
+    },
 
     onMutate: async (alertHistoryId): Promise<MarkNotificationReadContext> => {
+      assertCurrentSession(hookSessionId);
+      const sessionId = requireMember();
       await queryClient.cancelQueries({ queryKey: ['notifications'] });
+      assertCurrentSession(sessionId);
 
       const notificationQueries = queryClient
         .getQueriesData<unknown>({ queryKey: ['notifications'] })
@@ -128,31 +144,40 @@ export function useMarkNotificationRead() {
         );
       });
 
-      return { previousNotificationQueries };
+      return { sessionId, previousNotificationQueries };
     },
 
     onError: (_error, _alertHistoryId, context) => {
-      if (!context) return;
+      if (!context || !isCurrentSession(context.sessionId)) return;
 
       context.previousNotificationQueries.forEach(({ queryKey, data }) => {
         queryClient.setQueryData(queryKey, data);
       });
     },
 
-    onSettled: () => {
+    onSettled: (_data, _error, _id, context) => {
+      if (!context || !isCurrentSession(context.sessionId)) return;
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
 
 export function useDeleteNotification() {
+  const hookSessionId = useAuthStore((s) => s.sessionId);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteNotification,
+    mutationFn: (id: number) => {
+      assertCurrentSession(hookSessionId);
+      requireMember();
+      return deleteNotification(id);
+    },
 
     onMutate: async (alertHistoryId): Promise<DeleteNotificationContext> => {
+      assertCurrentSession(hookSessionId);
+      const sessionId = requireMember();
       await queryClient.cancelQueries({ queryKey: ['notifications'] });
+      assertCurrentSession(sessionId);
 
       const notificationQueries = queryClient
         .getQueriesData<unknown>({ queryKey: ['notifications'] })
@@ -173,18 +198,19 @@ export function useDeleteNotification() {
         );
       });
 
-      return { previousNotificationQueries };
+      return { sessionId, previousNotificationQueries };
     },
 
     onError: (_error, _alertHistoryId, context) => {
-      if (!context) return;
+      if (!context || !isCurrentSession(context.sessionId)) return;
 
       context.previousNotificationQueries.forEach(({ queryKey, data }) => {
         queryClient.setQueryData(queryKey, data);
       });
     },
 
-    onSettled: () => {
+    onSettled: (_data, _error, _id, context) => {
+      if (!context || !isCurrentSession(context.sessionId)) return;
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });

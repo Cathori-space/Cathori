@@ -8,6 +8,8 @@ public enum UserErrorCode implements ErrorCode {
     USER_EMAIL_DOMAIN_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "USER_EMAIL_DOMAIN_NOT_ALLOWED", "가톨릭대학교 이메일(@catholic.ac.kr)만 사용할 수 있어요"),
     USER_INVALID_VERIFY_CODE(HttpStatus.BAD_REQUEST, "USER_INVALID_VERIFY_CODE", "인증번호가 올바르지 않습니다"),
     USER_VERIFY_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "USER_VERIFY_CODE_EXPIRED", "인증번호가 만료되었습니다"),
+    EMAIL_SEND_TOO_FREQUENT(HttpStatus.TOO_MANY_REQUESTS, "EMAIL_SEND_TOO_FREQUENT", "잠시 후 다시 시도해 주세요"),
+    EMAIL_SEND_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "EMAIL_SEND_LIMIT_EXCEEDED", "인증번호 요청 횟수를 초과했어요. 잠시 후 다시 시도해 주세요"),
     USER_NOT_VERIFIED(HttpStatus.FORBIDDEN, "USER_NOT_VERIFIED", "이메일 인증이 완료되지 않았습니다"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "존재하지 않는 사용자입니다"),
     USER_INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "USER_INVALID_PASSWORD", "비밀번호가 올바르지 않습니다"),

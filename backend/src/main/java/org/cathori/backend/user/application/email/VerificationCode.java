@@ -13,12 +13,23 @@ import java.time.Instant;
  */
 public record VerificationCode(String code, Instant expiresAt, int failedAttempts) {
 
+    /** 번호 하나당 틀릴 수 있는 횟수 (ADR D3). */
+    public static final int MAX_FAILED_ATTEMPTS = 5;
+
     public static VerificationCode issue(String code, Instant now, Duration ttl) {
         return new VerificationCode(code, now.plus(ttl), 0);
     }
 
     public boolean isExpired(Instant now) {
         return expiresAt.isBefore(now);
+    }
+
+    /**
+     * 재발송 때 이 번호를 그대로 다시 보내도 되는지 (ADR D2). 만료 전이고 실패 한도에 닿지 않았으면 된다.
+     * 재발송마다 새 번호를 만들면 늦게 도착한 앞 메일의 번호가 틀린 번호가 된다.
+     */
+    public boolean isReusable(Instant now) {
+        return !isExpired(now) && failedAttempts < MAX_FAILED_ATTEMPTS;
     }
 
     public boolean matches(String input) {

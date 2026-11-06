@@ -2,6 +2,7 @@ package org.cathori.backend.common.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,10 +14,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import tools.jackson.databind.JsonNode;
@@ -44,6 +48,10 @@ class GlobalExceptionHandlerTest {
         @Override public String getMessage() { return message; }
     }
 
+    enum Color { RED }
+
+    record ColorRequest(Color color) { }
+
     @RestController
     static class TestController {
         @GetMapping("/business")
@@ -55,6 +63,9 @@ class GlobalExceptionHandlerTest {
         void rateLimited() {
             throw new RateLimitedException(TestErrorCode.TOO_MANY, Duration.ofMillis(41_200));
         }
+
+        @PostMapping("/color")
+        void color(@RequestBody ColorRequest request) { }
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -102,5 +113,23 @@ class GlobalExceptionHandlerTest {
 
         // then — 429에서만 retryAfterSeconds가 추가된다
         assertThat(jsonKeys(result)).containsExactlyInAnyOrder("code", "message", "retryAfterSeconds");
+    }
+
+    @Test
+    @DisplayName("정의되지 않은 enum 값 등 본문 파싱 실패는 500이 아니라 400 INVALID_INPUT")
+    void unreadableBodyIsBadRequest() throws Exception {
+        // given
+        String body = "{\"color\":\"PURPLE\"}";
+
+        // when
+        MvcResult result = mockMvc.perform(post("/color")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andReturn();
+
+        // then
+        assertThat(jsonKeys(result)).containsExactlyInAnyOrder("code", "message");
     }
 }

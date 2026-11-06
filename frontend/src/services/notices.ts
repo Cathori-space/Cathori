@@ -157,10 +157,12 @@ function mapDetailToNotice(detail: BackendNoticeDetail): Notice {
  */
 export async function fetchNotices(
   params: NoticeListParams,
+  signal?: AbortSignal,
 ): Promise<PageResponse<Notice>> {
   const { data } = await apiClient.get<BackendPageResponse<BackendNoticeListItem>>(
     '/api/notices',
     {
+      signal,
       params: {
         category: params.category,
         tags: params.tags,
@@ -184,10 +186,12 @@ export async function fetchNotices(
  */
 export async function fetchBookmarkedNotices(
   params: BookmarkedNoticeListParams,
+  signal?: AbortSignal,
 ): Promise<PageResponse<Notice>> {
   const { data } = await apiClient.get<BackendPageResponse<BackendNoticeListItem>>(
     '/api/notices/bookmarks',
     {
+      signal,
       params: {
         page: params.page - 1,
         size: params.size,
@@ -206,9 +210,9 @@ export async function fetchBookmarkedNotices(
 /**
  * 공지 상세 조회 fetcher
  */
-export async function fetchNoticeById(id: string): Promise<Notice> {
+export async function fetchNoticeById(id: string, signal?: AbortSignal): Promise<Notice> {
   const { data } = await apiClient.get<BackendNoticeDetail>(
-    `/api/notices/${id}`,
+    `/api/notices/${id}`, { signal },
   );
 
   return mapDetailToNotice(data);
@@ -222,10 +226,12 @@ export async function fetchNoticeById(id: string): Promise<Notice> {
  */
 export async function fetchSearchNotices(
   params: NoticeSearchParams,
+  signal?: AbortSignal,
 ): Promise<PageResponse<SearchNoticeListItem>> {
   const { data } = await apiClient.get<BackendPageResponse<BackendSearchListItem>>(
     '/api/notices/search',
     {
+      signal,
       params: {
         q: params.q,
         page: params.page - 1, // 프론트 1-based → 백엔드 0-based

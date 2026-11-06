@@ -26,6 +26,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuthStore } from '@/src/store/useAuthStore';
 import { Colors } from '@/src/constants/colors';
 import { DEPARTMENTS } from '@/src/constants/departments';
 import { useEmailVerification, useRegister } from '@/src/features/auth/hooks';
@@ -45,6 +46,11 @@ const isValidPassword = (pw: string) =>
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const handleBack = () => {
+    if (useAuthStore.getState().status === 'guest') router.dismissTo('/(tabs)');
+    else if (router.canGoBack()) router.back();
+    else router.replace('/login');
+  };
   const insets = useSafeAreaInsets();
 
   // ── 폼 상태 ──
@@ -153,7 +159,7 @@ export default function RegisterScreen() {
   return (
     <View style={styles.container}>
       {/* ── SubHeader (absolute) ── */}
-      <SubHeader title="회원가입" />
+      <SubHeader onBack={handleBack} title="회원가입" />
 
       {/* ── Main (스크롤) ── */}
       <KeyboardAvoidingView
@@ -487,7 +493,7 @@ export default function RegisterScreen() {
           <TouchableOpacity
             style={styles.prevButton}
             activeOpacity={0.7}
-            onPress={() => router.back()}
+            onPress={handleBack}
           >
             <Feather name="chevron-left" size={18} color="#444652" />
             <Text style={styles.prevButtonText}>이전</Text>

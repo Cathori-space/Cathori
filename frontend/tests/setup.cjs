@@ -62,6 +62,16 @@ jest.mock('expo-constants', () => ({ expoConfig: { version: '1.0.2' } }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 jest.mock('expo-splash-screen', () => ({ preventAutoHideAsync: jest.fn(), hideAsync: jest.fn() }));
 jest.mock('expo-status-bar', () => ({ StatusBar: 'StatusBar' }));
+// 게스트 화면 검증에서는 스토어 리뷰의 네이티브 호출과 내비게이션 의존성을 대체한다.
+jest.mock('@/src/features/reviews', () => ({
+  useReviewSessionTimer: jest.fn(),
+  useIosReviewPrompt: jest.fn(),
+  useAndroidReviewPrompt: jest.fn(() => ({
+    visible: false, handleDismiss: jest.fn(), handleReviewPress: jest.fn(),
+  })),
+  AndroidReviewPromptModal: () => null,
+  openStoreReviewPage: jest.fn(async () => {}),
+}));
 require('axios').default.defaults.adapter = jest.fn();
 const originalError = console.error;
 jest.spyOn(console, 'error').mockImplementation((...args) => {

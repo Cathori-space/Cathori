@@ -22,6 +22,8 @@
  */
 
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import { isAxiosError } from 'axios';
+import { requireMembership } from '@/src/features/auth/requireMembership';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
@@ -50,7 +52,7 @@ import { formatDate } from '@/src/shared/utils/date';
 export default function NoticeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>(); // URL 파라미터에서 ID 가져오기
   const router = useRouter();
-  const { data: notice, isLoading } = useNoticeDetail(id ?? ''); // ID를 이용해 공지 상세 데이터 가져오기
+  const { data: notice, isLoading, error, refetch } = useNoticeDetail(id ?? ''); // ID를 이용해 공지 상세 데이터 가져오기
 
   // 원문 링크 열기
   const handleOpenUrl = () => {
@@ -106,7 +108,15 @@ export default function NoticeDetailScreen() {
         </View>
         <View style={styles.errorContainer}>
           <Feather name="alert-circle" size={48} color={Colors.separator} />
-          <Text style={styles.errorText}>공지를 찾을 수 없습니다</Text>
+          <Text style={styles.errorText}>{isAxiosError(error) && error.response?.status === 403
+            ? '공개되지 않은 공지입니다.'
+            : error && (!isAxiosError(error) || error.response?.status !== 404)
+              ? '공지를 불러오지 못했습니다.' : '공지를 찾을 수 없습니다'}</Text>
+          {isAxiosError(error) && error.response?.status === 403 ? (
+            <TouchableOpacity onPress={() => requireMembership()}><Text>로그인·회원가입 안내</Text></TouchableOpacity>
+          ) : error && !(isAxiosError(error) && error.response?.status === 404) ? (
+            <TouchableOpacity onPress={() => refetch()}><Text>다시 시도</Text></TouchableOpacity>
+          ) : null}
         </View>
       </SafeAreaView>
     );

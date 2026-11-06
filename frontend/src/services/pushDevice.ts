@@ -38,13 +38,15 @@ async function resetDeviceRegistration() {
   resetRequired = false;
 }
 
-export function invalidateDevicePushToken(afterServer: Promise<unknown>): Promise<void> {
+export function invalidateDevicePushToken() {
   resetRequired = true;
-  // 진행 중인 발급이 끝난 뒤 삭제하므로 늦은 발급 결과가 삭제를 되돌리지 못한다.
-  return enqueueNative(async () => {
-    await afterServer;
+  const intent = AsyncStorage.setItem(RESET_REQUIRED_KEY, 'true');
+  // 정리 의도는 서버 응답과 발급 큐를 기다리지 않고 기록한다.
+  const completion = enqueueNative(async () => {
+    await intent.catch(() => {}); // 네이티브 정리 단계에서 표시 저장을 다시 시도한다.
     await resetDeviceRegistration();
   });
+  return { intent, completion };
 }
 
 export function getManagedDevicePushToken(canUse: () => boolean): Promise<string> {

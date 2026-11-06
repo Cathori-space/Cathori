@@ -13,8 +13,7 @@ public interface UserRepository {
     Optional<User> findByIdForUpdate(Long id);
     void lockDeviceToken(String tokenHash);
     Optional<Long> findDeviceTokenOwnerId(String deviceToken);
-    List<User> findAllByIdsForUpdate(List<Long> ids);
-    boolean isDeviceTokenClaimDisplaced(String tokenHash, Long userId, long sessionVersion);
+    boolean isDeviceTokenClaimUnavailable(String tokenHash, Long userId);
     void clearDeviceTokenConfirmation(String tokenHash, Long userId, long sessionVersion);
     void recordDeviceTokenClaim(String tokenHash, Long userId, long sessionVersion);
     void flushDeviceTokenChange();

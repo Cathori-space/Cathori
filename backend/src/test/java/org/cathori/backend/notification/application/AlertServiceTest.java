@@ -299,7 +299,7 @@ class AlertServiceTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("토큰 이전 후 대기 발송과 실패 재시도는 현재 소유자에게만 보낸다")
+    @DisplayName("이전 토큰 반납 후 대기 발송과 실패 재시도는 새 등록에만 보낸다")
     void dispatchAndRetrySendOnlyToCurrentDeviceTokenOwner() {
         Notice notice = saveNotice("장학금 안내");
         User previous = saveUserWithoutToken("previous@test.com");
@@ -309,7 +309,8 @@ class AlertServiceTest extends IntegrationTestBase {
         AlertHistory previousHistory = alertHistoryJpaRepository.save(
                 AlertHistory.create(previous.getId(), notice.getId(), "장학금"));
         userService.updateDeviceToken(previous.getId(), previous.getSessionVersion(), "shared-device");
-        userService.updateDeviceToken(current.getId(), current.getSessionVersion(), "shared-device");
+        userService.clearDeviceToken(previous.getId(), previous.getSessionVersion());
+        userService.updateDeviceToken(current.getId(), current.getSessionVersion(), "rotated-device");
         given(pushNotificationPort.send(anyList(), anyString(), anyString(), eq(notice.getId())))
                 .willReturn(List.of(new UserPushResult(current.getId(), true)));
 
@@ -323,7 +324,7 @@ class AlertServiceTest extends IntegrationTestBase {
 
         pushNotificationService.retryFailedNotifications();
 
-        var recipients = List.of(new UserToken(current.getId(), "shared-device"));
+        var recipients = List.of(new UserToken(current.getId(), "rotated-device"));
         verify(pushNotificationPort, times(2)).send(eq(recipients), anyString(), anyString(), eq(notice.getId()));
         assertThat(alertHistoryJpaRepository.findById(previousHistory.getId()).orElseThrow().getAlarmStatus())
                 .isEqualTo("FAILED");

@@ -532,8 +532,8 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("A의 로그아웃이 실패해도 B가 등록한 동일 토큰은 B에게만 발송 조회된다")
-    void transfersDeviceTokenAfterFailedLogout() throws Exception {
+    @DisplayName("A의 로그아웃 실패 후 B는 A 토큰을 가져갈 수 없고 새 토큰을 등록할 수 있다")
+    void requiresFreshDeviceTokenAfterFailedLogout() throws Exception {
         var sessionA = login(memberA);
         put(sessionA, "shared-device");
         String expiredAccess = signedToken(memberA, "access", version(sessionA.access()), Instant.now().minusSeconds(60));
@@ -542,25 +542,26 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
         assertStatus(send("GET", "/api/public/notices", null, null), 200);
 
         var sessionB = login(memberB);
-        put(sessionB, "shared-device");
+        assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "shared-device")), 409);
+        put(sessionB, "rotated-device");
 
         assertThat(sessionVersion(memberA)).isEqualTo(version(sessionA.access()));
         assertThat(storedRefreshHash(memberA)).isEqualTo(tokenHasher.hash(sessionA.refresh()));
-        assertThat(deviceToken(memberA)).isNull();
-        assertThat(deviceToken(memberB)).isEqualTo("shared-device");
+        assertThat(deviceToken(memberA)).isEqualTo("shared-device");
+        assertThat(deviceToken(memberB)).isEqualTo("rotated-device");
+        assertStatus(send("POST", REFRESH_LOGOUT, sessionA.refresh(), null), 204);
         assertThat(users.findDeviceTokensByIds(List.of(memberA.getId(), memberB.getId())))
                 .singleElement().satisfies(target -> {
                     assertThat(target.getId()).isEqualTo(memberB.getId());
-                    assertThat(target.getDeviceToken()).isEqualTo("shared-device");
+                    assertThat(target.getDeviceToken()).isEqualTo("rotated-device");
                 });
     }
 
     @Test
-    @DisplayName("이전 소유자의 PUT이 인증을 통과했어도 이전된 토큰을 되가져갈 수 없다")
-    void delayedPriorOwnerPutCannotTakeTokenBack() throws Exception {
+    @DisplayName("이력 없는 A의 첫 지연 PUT은 B의 등록과 발송 자격을 가져가지 못한다")
+    void delayedFirstPutCannotTakeTokenBack() throws Exception {
         var sessionA = login(memberA);
         var sessionB = login(memberB);
-        put(sessionA, "shared-device");
         var delayed = probes.pauseAt(CONTROLLER::equals, memberA.getId());
         var put = http.sendAsync(request("PUT", DEVICE_TOKEN, sessionA.access(),
                 Map.of("deviceToken", "shared-device"), delayed), HttpResponse.BodyHandlers.ofString());
@@ -576,6 +577,10 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
         assertThat(json.readTree(result.body()).get("code").asText()).isEqualTo("DEVICE_TOKEN_OWNERSHIP_CONFLICT");
         assertThat(deviceToken(memberA)).isNull();
         assertThat(deviceToken(memberB)).isEqualTo("shared-device");
+        assertThat(users.findDeviceTokensByIds(List.of(memberA.getId(), memberB.getId())))
+                .singleElement().satisfies(target -> assertThat(target.getId()).isEqualTo(memberB.getId()));
+        put(sessionB, "shared-device");
+        put(login(memberB), "shared-device");
     }
 
     @Test
@@ -604,13 +609,13 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
         }
 
         assertStatus(putA.get(WAIT.toSeconds(), TimeUnit.SECONDS), 204);
-        assertStatus(putB.get(WAIT.toSeconds(), TimeUnit.SECONDS), 204);
+        assertStatus(putB.get(WAIT.toSeconds(), TimeUnit.SECONDS), 409);
         assertThat(jdbc.queryForList("SELECT id FROM users WHERE device_token = ?", Long.class, "shared-device"))
-                .containsExactly(memberB.getId());
+                .containsExactly(memberA.getId());
     }
 
     @Test
-    @DisplayName("다른 토큰을 서로 교차 등록해도 사용자 행 잠금 순서가 일관된다")
+    @DisplayName("서로의 토큰을 동시에 요청해도 소유권을 바꾸거나 교착하지 않는다")
     void concurrentTokenSwapCompletesWithoutDeadlock() throws Exception {
         var sessionA = login(memberA);
         var sessionB = login(memberB);
@@ -618,8 +623,8 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
         put(sessionB, "device-y");
         putConcurrently(sessionA, "device-y", sessionB, "device-x");
 
-        assertThat(deviceToken(memberA)).isEqualTo("device-y");
-        assertThat(deviceToken(memberB)).isEqualTo("device-x");
+        assertThat(deviceToken(memberA)).isEqualTo("device-x");
+        assertThat(deviceToken(memberB)).isEqualTo("device-y");
     }
 
     private void putConcurrently(Tokens sessionA, String tokenA, Tokens sessionB, String tokenB) throws Exception {
@@ -637,8 +642,8 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
             probeB.resume();
         }
 
-        assertStatus(putA.get(WAIT.toSeconds(), TimeUnit.SECONDS), 204);
-        assertStatus(putB.get(WAIT.toSeconds(), TimeUnit.SECONDS), 204);
+        assertStatus(putA.get(WAIT.toSeconds(), TimeUnit.SECONDS), 409);
+        assertStatus(putB.get(WAIT.toSeconds(), TimeUnit.SECONDS), 409);
     }
 
     @Test
@@ -647,28 +652,25 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
         var sessionA = login(memberA);
         var sessionB = login(memberB);
         put(sessionA, "shared-device");
-        put(sessionB, "shared-device");
+        put(sessionB, "rotated-device");
 
         assertStatus(send("POST", REFRESH_LOGOUT, sessionA.refresh(), null), 204);
         assertThat(deviceToken(memberA)).isNull();
-        assertThat(deviceToken(memberB)).isEqualTo("shared-device");
+        assertThat(deviceToken(memberB)).isEqualTo("rotated-device");
         assertThat(refreshCount(memberA)).isZero();
         assertThat(storedRefreshHash(memberB)).isEqualTo(tokenHasher.hash(sessionB.refresh()));
     }
 
     @Test
-    @DisplayName("토큰 반납과 이후 계정 전환을 거쳐도 이전 소유자의 같은 세대는 차단된다")
-    void displacedClaimSurvivesTokenRelease() throws Exception {
+    @DisplayName("반납된 토큰도 다른 계정에 재할당되지 않고 원래 계정은 다시 등록할 수 있다")
+    void claimSurvivesTokenRelease() throws Exception {
         var sessionA = login(memberA);
         var sessionB = login(memberB);
         put(sessionA, "shared-device");
         assertStatus(send("DELETE", DEVICE_TOKEN, sessionA.access(), null), 204);
         put(sessionA, "shared-device");
         assertStatus(send("DELETE", DEVICE_TOKEN, sessionA.access(), null), 204);
-        put(sessionB, "shared-device");
-        assertStatus(send("DELETE", DEVICE_TOKEN, sessionB.access(), null), 204);
-
-        assertStatus(send("PUT", DEVICE_TOKEN, sessionA.access(), Map.of("deviceToken", "shared-device")), 409);
+        assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "shared-device")), 409);
         assertThat(deviceToken(memberA)).isNull();
         assertThat(deviceToken(memberB)).isNull();
         put(login(memberA), "shared-device");
@@ -677,7 +679,7 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("새 소유자 저장에 실패하면 이전 토큰과 이전 이력이 함께 롤백된다")
+    @DisplayName("새 토큰 저장 실패는 확인 이력도 롤백하고 다른 계정에 영향을 주지 않는다")
     void tokenTransferRollsBackOnAssignmentFailure() throws Exception {
         var sessionA = login(memberA);
         var sessionB = login(memberB);
@@ -685,7 +687,7 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
         jdbc.execute("""
                 CREATE FUNCTION reject_test_device_token_transfer() RETURNS trigger LANGUAGE plpgsql AS $$
                 BEGIN
-                    IF NEW.id = %d AND NEW.device_token = 'shared-device' THEN
+                    IF NEW.id = %d AND NEW.device_token = 'rotated-device' THEN
                         RAISE EXCEPTION 'synthetic transfer failure';
                     END IF;
                     RETURN NEW;
@@ -697,17 +699,19 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
                     CREATE TRIGGER reject_test_device_token_transfer BEFORE UPDATE OF device_token ON users
                     FOR EACH ROW EXECUTE FUNCTION reject_test_device_token_transfer()
                     """);
-            assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "shared-device")), 500);
+            assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "rotated-device")), 500);
             assertThat(deviceToken(memberA)).isEqualTo("shared-device");
             assertThat(deviceToken(memberB)).isNull();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM device_token_claims WHERE user_id = ?",
+                    Long.class, memberB.getId())).isZero();
             put(sessionA, "shared-device");
         } finally {
             jdbc.execute("DROP TRIGGER IF EXISTS reject_test_device_token_transfer ON users");
             jdbc.execute("DROP FUNCTION reject_test_device_token_transfer()");
         }
-        put(sessionB, "shared-device");
-        assertThat(deviceToken(memberA)).isNull();
-        assertThat(deviceToken(memberB)).isEqualTo("shared-device");
+        put(sessionB, "rotated-device");
+        assertThat(deviceToken(memberA)).isEqualTo("shared-device");
+        assertThat(deviceToken(memberB)).isEqualTo("rotated-device");
     }
 
     private void awaitUserLockWait() {

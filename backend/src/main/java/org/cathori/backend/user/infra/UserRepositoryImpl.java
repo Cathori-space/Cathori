@@ -71,15 +71,8 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public List<User> findAllByIdsForUpdate(List<Long> ids) {
-        List<User> users = jpaRepository.findAllByIdsForUpdate(ids);
-        users.forEach(entityManager::refresh);
-        return users;
-    }
-
-    @Override
-    public boolean isDeviceTokenClaimDisplaced(String tokenHash, Long userId, long sessionVersion) {
-        return jpaRepository.isDeviceTokenClaimDisplaced(tokenHash, userId, sessionVersion);
+    public boolean isDeviceTokenClaimUnavailable(String tokenHash, Long userId) {
+        return jpaRepository.isDeviceTokenClaimUnavailable(tokenHash, userId);
     }
 
     @Override
@@ -89,7 +82,6 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public void recordDeviceTokenClaim(String tokenHash, Long userId, long sessionVersion) {
-        jpaRepository.displaceOtherDeviceTokenClaims(tokenHash, userId);
         jpaRepository.upsertDeviceTokenClaim(tokenHash, userId, sessionVersion);
     }
 

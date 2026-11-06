@@ -13,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -66,21 +65,13 @@ public class UserService {
     public void updateDeviceToken(Long userId, long sessionVersion, String deviceToken) {
         String tokenHash = tokenHasher.hash(deviceToken);
         userRepository.lockDeviceToken(tokenHash);
-        Long ownerId = userRepository.findDeviceTokenOwnerId(deviceToken).orElse(userId);
-        List<Long> ids = userId.equals(ownerId) ? List.of(userId) : List.of(userId, ownerId);
-        List<User> lockedUsers = userRepository.findAllByIdsForUpdate(ids);
-        User user = requireCurrentSession(lockedUsers.stream().filter(candidate -> candidate.getId().equals(userId))
-                .findFirst(), sessionVersion);
-
-        if (userRepository.isDeviceTokenClaimDisplaced(tokenHash, userId, sessionVersion)) {
+        User user = requireCurrentSessionForUpdate(userId, sessionVersion);
+        boolean ownedByAnotherUser = userRepository.findDeviceTokenOwnerId(deviceToken)
+                .filter(ownerId -> !userId.equals(ownerId)).isPresent();
+        // 계정 간 요청 순서를 검증할 수 없으므로 다른 계정에서는 새 기기 토큰으로 등록해야 한다.
+        if (ownedByAnotherUser || userRepository.isDeviceTokenClaimUnavailable(tokenHash, userId)) {
             throw new BusinessException(UserErrorCode.DEVICE_TOKEN_OWNERSHIP_CONFLICT);
         }
-        lockedUsers.stream()
-                .filter(previous -> !previous.getId().equals(userId) && deviceToken.equals(previous.getDeviceToken()))
-                .findFirst().ifPresent(previous -> {
-                    previous.clearDeviceToken();
-                    userRepository.flushDeviceTokenChange();
-                });
 
         if (!deviceToken.equals(user.getDeviceToken())) clearCurrentDeviceTokenConfirmation(user);
         userRepository.recordDeviceTokenClaim(tokenHash, userId, sessionVersion);

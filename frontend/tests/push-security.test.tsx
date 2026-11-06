@@ -248,6 +248,82 @@ describe('지연 요청과 회원 전환', () => {
       }
     });
 
+  it('서버 응답 전 정리 의도를 기록하고 기기 토큰을 먼저 삭제한다', async () => {
+    await registerPush();
+    jest.mocked(AsyncStorage.setItem).mockClear();
+    jest.mocked(deleteToken).mockClear();
+    const pending = deferred<ReturnType<typeof response>>();
+    let logoutConfig!: InternalAxiosRequestConfig;
+    transport.mockImplementation(async (config) => {
+      if (config.url === '/api/auth/logout') {
+        logoutConfig = config;
+        expect(AsyncStorage.setItem).toHaveBeenCalledWith('cathori-push-reset-required', 'true');
+        return pending.promise;
+      }
+      return response(config, {}, 204);
+    });
+    let ending!: Promise<PushCleanupResult>;
+    await act(async () => { ending = useAuthStore.getState().clearAuth('logout'); });
+    await flush();
+    expect(logoutConfig).toBeDefined();
+    expect(deleteToken).toHaveBeenCalledTimes(1);
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('cathori-auth-clear-required', 'true');
+    pending.resolve(response(logoutConfig, {}, 204));
+    await act(async () => { await ending; });
+  });
+
+  it('재실행 때 미완료 로그아웃의 자격 증명을 복원하지 않고 기기 정리를 시도한다', async () => {
+    jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) =>
+      ['cathori-auth-clear-required', 'cathori-push-reset-required'].includes(key) ? 'true' : null);
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValueOnce('old-access').mockResolvedValueOnce('old-refresh');
+    jest.mocked(SecureStore.getItemAsync).mockClear();
+    jest.mocked(deleteToken).mockClear();
+    await act(async () => { await useAuthStore.getState().initializeAuth(); });
+    await flush();
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().status).toBe('unauthenticated');
+    expect(useAuthStore.getState().accessToken).toBeNull();
+    expect(deleteToken).toHaveBeenCalled();
+    expect(puts()).toHaveLength(0);
+    jest.mocked(SecureStore.getItemAsync).mockReset().mockResolvedValue(null);
+  });
+
+  it('기기 삭제가 지연돼도 다음 회원 로그인은 완료하고 푸시 등록만 기다린다', async () => {
+    await registerPush();
+    const pending = deferred<void>();
+    jest.mocked(deleteToken).mockImplementationOnce(async (messaging) => {
+      await pending.promise;
+      await defaultDeleteToken(messaging);
+    });
+    let ending!: Promise<PushCleanupResult>;
+    await act(async () => { ending = useAuthStore.getState().clearAuth('logout'); });
+    try {
+      await act(async () => { await useAuthStore.getState().setAuth({ ...member, userId: 2, accessToken: 'next-access' }); });
+      expect(useAuthStore.getState().user?.userId).toBe(2);
+      expect(puts()).toHaveLength(1);
+    } finally {
+      pending.resolve();
+      await act(async () => { await ending; });
+    }
+    await flush();
+    expect(puts()).toHaveLength(2);
+    expect(puts()[1].headers.Authorization).toBe('Bearer next-access');
+  });
+
+  it('다른 계정 소유 응답에는 기기 토큰을 한 번만 교체한다', async () => {
+    transport.mockImplementation(async (config) => {
+      if (config.method === 'put') {
+        return rejectStatus(config, 409, { code: 'DEVICE_TOKEN_OWNERSHIP_CONFLICT' });
+      }
+      return response(config, {}, 204);
+    });
+    await registerPush();
+    await flush();
+    expect(puts()).toHaveLength(2);
+    expect(JSON.parse(puts()[0].data).deviceToken).not.toBe(JSON.parse(puts()[1].data).deviceToken);
+    expect(useAuthStore.getState().status).toBe('authenticated');
+  });
+
   it('네이티브 삭제가 지연되어도 저장된 회원 JWT를 먼저 지운다', async () => {
     await registerPush();
     const gate = deferred<void>();
@@ -346,13 +422,15 @@ describe('기기 삭제 실패와 기존 회원 회귀', () => {
       return response(config, {});
     });
     jest.mocked(deleteToken).mockRejectedValue(new Error('FCM 삭제 실패'));
-    const clearedMarkers = jest.mocked(AsyncStorage.removeItem).mock.calls.length;
+    const clearedMarkers = jest.mocked(AsyncStorage.removeItem).mock.calls
+      .filter(([key]) => key === 'cathori-push-reset-required').length;
 
     await act(async () => { await useAuthStore.getState().clearAuth('logout'); });
     expect(deletes()).toHaveLength(1);
     expect(deleteToken).toHaveBeenCalledWith(getMessaging());
     expect(AsyncStorage.setItem).toHaveBeenCalledWith('cathori-push-reset-required', 'true');
-    expect(AsyncStorage.removeItem).toHaveBeenCalledTimes(clearedMarkers);
+    expect(jest.mocked(AsyncStorage.removeItem).mock.calls
+      .filter(([key]) => key === 'cathori-push-reset-required')).toHaveLength(clearedMarkers);
     expect(useAuthStore.getState().status).toBe('unauthenticated');
 
     await act(async () => { await useAuthStore.getState().enterGuest(); });

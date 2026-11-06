@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
 import { getDevicePushToken, requestNotificationPermission } from '@/src/services/notification';
+import { invalidateDevicePushToken } from '@/src/services/pushDevice';
 import { isPushSessionActive, registerDeviceToken } from '@/src/services/pushToken';
 import { isCurrentSession } from '@/src/services/session';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -22,6 +23,7 @@ export function usePushNotifications() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const registeredSession = useRef<number | null>(null);
+  const rotatedForConflict = useRef<number | null>(null);
   const accessToken = useAuthStore((s) => s.accessToken);
   const status = useAuthStore((s) => s.status);
   const sessionId = useAuthStore((s) => s.sessionId);
@@ -47,6 +49,19 @@ export function usePushNotifications() {
         if (canHandle()) registeredSession.current = sessionId;
         recoverOnForeground = false;
       } catch (error) {
+        if (canHandle() && isAxiosError(error) && error.response?.status === 409
+            && error.response.data?.code === 'DEVICE_TOKEN_OWNERSHIP_CONFLICT'
+            && rotatedForConflict.current !== sessionId) {
+          rotatedForConflict.current = sessionId;
+          try {
+            await invalidateDevicePushToken().completion;
+            const replacement = canHandle() ? await getDevicePushToken() : null;
+            if (replacement && replacement !== token) await submit(replacement);
+          } catch {
+            // 저장한 기기 정리 의도는 다음 실행 또는 로그인에서 재시도한다.
+          }
+          return;
+        }
         recoverOnForeground = canHandle() && canRetryRegistration(error);
         const delay = REGISTRATION_RETRY_DELAYS[attempt];
         if (recoverOnForeground && delay !== undefined) {

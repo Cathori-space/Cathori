@@ -37,17 +37,14 @@ public interface UserJpaRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.id FROM User u WHERE u.deviceToken = :deviceToken")
     Optional<Long> findDeviceTokenOwnerId(@Param("deviceToken") String deviceToken);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT u FROM User u WHERE u.id IN :ids ORDER BY u.id")
-    List<User> findAllByIdsForUpdate(@Param("ids") List<Long> ids);
-
     @Query("""
             SELECT COUNT(c) > 0 FROM DeviceTokenClaim c
-            WHERE c.tokenHash = :tokenHash AND c.user.id = :userId
-              AND c.latestClaim IS NULL AND c.sessionVersion >= :sessionVersion
+            WHERE c.tokenHash = :tokenHash AND NOT EXISTS (
+                SELECT owner.id FROM DeviceTokenClaim owner
+                WHERE owner.tokenHash = :tokenHash AND owner.user.id = :userId AND owner.latestClaim = true
+            )
             """)
-    boolean isDeviceTokenClaimDisplaced(@Param("tokenHash") String tokenHash, @Param("userId") Long userId,
-                                        @Param("sessionVersion") long sessionVersion);
+    boolean isDeviceTokenClaimUnavailable(@Param("tokenHash") String tokenHash, @Param("userId") Long userId);
 
     @Modifying
     @Query("""
@@ -56,13 +53,6 @@ public interface UserJpaRepository extends JpaRepository<User, Long> {
             """)
     void clearDeviceTokenConfirmation(@Param("tokenHash") String tokenHash, @Param("userId") Long userId,
                                       @Param("sessionVersion") long sessionVersion);
-
-    @Modifying
-    @Query("""
-            UPDATE DeviceTokenClaim c SET c.latestClaim = null, c.confirmedSessionVersion = null
-            WHERE c.tokenHash = :tokenHash AND c.user.id <> :userId AND c.latestClaim = true
-            """)
-    void displaceOtherDeviceTokenClaims(@Param("tokenHash") String tokenHash, @Param("userId") Long userId);
 
     @Modifying
     @Query(value = """

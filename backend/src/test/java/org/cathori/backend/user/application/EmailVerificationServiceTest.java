@@ -1,7 +1,6 @@
 package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
-import org.cathori.backend.common.exception.RateLimitedException;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.application.email.EmailDomainPolicy;
 import org.cathori.backend.user.application.email.EmailSendLimitPolicy;
@@ -222,7 +221,7 @@ class EmailVerificationServiceTest {
         service.sendCode(PASSWORD_RESET, EMAIL);
 
         // when — 1분 안의 4번째
-        RateLimitedException e = catchThrowableOfType(RateLimitedException.class,
+        BusinessException e = catchThrowableOfType(BusinessException.class,
                 () -> service.sendCode(SIGNUP, EMAIL));
 
         // then

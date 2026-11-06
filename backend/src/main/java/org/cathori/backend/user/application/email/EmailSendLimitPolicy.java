@@ -1,9 +1,8 @@
 package org.cathori.backend.user.application.email;
 
 import java.time.Duration;
-import java.util.Optional;
 
-import org.cathori.backend.common.exception.RateLimitedException;
+import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.user.UserErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -35,18 +34,13 @@ public class EmailSendLimitPolicy {
         this.perHour = perHour;
     }
 
-    /**
-     * 보낼 수 없으면 남은 시간과 함께 429를 던진다. 두 제한에 다 걸리면 더 오래 기다려야 하는 쪽을 알린다.
-     */
+    /** 보낼 수 없으면 429. 남은 시간은 계산하지 않으므로 둘 다 걸리면 더 보수적인 1시간 상한을 알린다. */
     public void requireSendable(String email) {
-        Optional<Duration> hourly = sendRateLimiter.retryAfter(email, HOUR_WINDOW, perHour);
-        Optional<Duration> minutely = sendRateLimiter.retryAfter(email, MINUTE_WINDOW, perMinute);
-
-        if (hourly.isPresent() && (minutely.isEmpty() || hourly.get().compareTo(minutely.get()) >= 0)) {
-            throw new RateLimitedException(UserErrorCode.EMAIL_SEND_LIMIT_EXCEEDED, hourly.get());
+        if (sendRateLimiter.countWithin(email, HOUR_WINDOW) >= perHour) {
+            throw new BusinessException(UserErrorCode.EMAIL_SEND_LIMIT_EXCEEDED);
         }
-        if (minutely.isPresent()) {
-            throw new RateLimitedException(UserErrorCode.EMAIL_SEND_TOO_FREQUENT, minutely.get());
+        if (sendRateLimiter.countWithin(email, MINUTE_WINDOW) >= perMinute) {
+            throw new BusinessException(UserErrorCode.EMAIL_SEND_TOO_FREQUENT);
         }
     }
 

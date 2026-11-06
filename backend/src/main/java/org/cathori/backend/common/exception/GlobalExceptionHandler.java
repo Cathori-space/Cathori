@@ -2,7 +2,6 @@ package org.cathori.backend.common.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -13,18 +12,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    // BusinessException 핸들러보다 구체적인 타입이라 Spring이 이쪽을 먼저 고른다.
-    @ExceptionHandler(RateLimitedException.class)
-    public ResponseEntity<ErrorResponse> handleRateLimited(RateLimitedException e) {
-        ErrorCode errorCode = e.getErrorCode();
-        long retryAfter = e.getRetryAfterSeconds();
-        log.warn("RateLimited: code={}, retryAfterSeconds={}", errorCode.getCode(), retryAfter);
-        return ResponseEntity
-                .status(errorCode.getStatus())
-                .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter))
-                .body(ErrorResponse.rateLimited(errorCode, retryAfter));
-    }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {

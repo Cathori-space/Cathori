@@ -24,7 +24,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -246,7 +245,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("1분 안에 4번째 인증번호 요청은 429 EMAIL_SEND_TOO_FREQUENT + Retry-After")
+    @DisplayName("1분 안에 4번째 인증번호 요청은 429 EMAIL_SEND_TOO_FREQUENT")
     void sendCode_fourthWithinMinute_tooManyRequests() throws Exception {
         // given — 1분 안에 3번 보냈다
         String body = "{\"email\":\"" + EMAIL + "\"}";
@@ -262,8 +261,6 @@ class AuthIntegrationTest extends IntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(header().exists("Retry-After"))
-                .andExpect(jsonPath("$.code").value("EMAIL_SEND_TOO_FREQUENT"))
-                .andExpect(jsonPath("$.retryAfterSeconds").isNumber());
+                .andExpect(jsonPath("$.code").value("EMAIL_SEND_TOO_FREQUENT"));
     }
 }

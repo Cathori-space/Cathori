@@ -200,6 +200,48 @@ class NotificationServiceTest extends IntegrationTestBase {
                         .isEqualTo(AlertErrorCode.ALERT_NOT_FOUND));
     }
 
+    @Test
+    @DisplayName("NS-10-1: 여러 알림 읽음 처리 → 내 알림만 읽음 처리하고 ID 반환")
+    void markRead_multipleAlerts_marksOnlyMyAlerts() {
+        Notice unreadNotice = saveNotice("미읽은 공지");
+        Notice readNotice = saveNotice("읽은 공지");
+        Notice otherNotice = saveNotice("타인 공지");
+        Long unreadId = insertAlertHistory(USER_ID, unreadNotice.getId(), "SUCCESS", null);
+        Long readId = insertAlertHistory(USER_ID, readNotice.getId(), "SUCCESS", null, true);
+        Long otherId = insertAlertHistory(OTHER_USER_ID, otherNotice.getId(), "SUCCESS", null);
+
+        List<Long> readIds = notificationService.markRead(
+                USER_ID, List.of(unreadId, readId, otherId, 99999L, unreadId));
+
+        assertThat(readIds).containsExactlyInAnyOrder(unreadId, readId);
+        assertThat(alertHistoryJpaRepository.findById(unreadId).orElseThrow().isRead()).isTrue();
+        assertThat(alertHistoryJpaRepository.findById(readId).orElseThrow().isRead()).isTrue();
+        assertThat(alertHistoryJpaRepository.findById(otherId).orElseThrow().isRead()).isFalse();
+    }
+
+    @Test
+    @DisplayName("NS-10-2: 공지 ID로 읽음 처리 → 로그인 사용자의 해당 알림만 읽음 처리")
+    void markReadByNoticeId_marksMyAlert() {
+        Notice notice = saveNotice("푸시 공지");
+        Long historyId = insertAlertHistory(USER_ID, notice.getId(), "SUCCESS", null);
+
+        notificationService.markReadByNoticeId(USER_ID, notice.getId());
+
+        assertThat(alertHistoryJpaRepository.findById(historyId).orElseThrow().isRead()).isTrue();
+    }
+
+    @Test
+    @DisplayName("NS-10-3: 내 이력이 없는 공지 ID → ALERT_NOT_FOUND 예외")
+    void markReadByNoticeId_withoutMyAlert_throwsAlertNotFound() {
+        Notice notice = saveNotice("타인 푸시 공지");
+        insertAlertHistory(OTHER_USER_ID, notice.getId(), "SUCCESS", null);
+
+        assertThatThrownBy(() -> notificationService.markReadByNoticeId(USER_ID, notice.getId()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(AlertErrorCode.ALERT_NOT_FOUND));
+    }
+
     // --- deleteNotification ---
 
     @Test

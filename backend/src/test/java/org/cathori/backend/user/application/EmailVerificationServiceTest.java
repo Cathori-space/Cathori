@@ -180,30 +180,20 @@ class EmailVerificationServiceTest {
         assertThat(verifiedStore.isVerified(PASSWORD_RESET, GMAIL)).isTrue();
     }
 
-    /** 지금까지 발송된 메일에 실린 인증번호를 순서대로 꺼낸다. */
-    private List<String> sentCodes(VerificationPurpose purpose, String email, int times) {
-        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
-        verify(notificationPort, times(times)).sendVerificationCode(eq(purpose), eq(email), code.capture());
-        return code.getAllValues();
-    }
-
     @Test
-    @DisplayName("유효한 번호가 있으면 재발송해도 같은 번호를 보내고, 만료 시각·실패 횟수를 초기화하지 않는다")
-    void resendReusesValidCodeWithoutReset() {
-        // given — 발송 후 한 번 틀렸다
-        service.sendCode(SIGNUP, EMAIL);
-        String first = sentCode(SIGNUP, EMAIL);
-        String wrong = first.equals("000000") ? "111111" : "000000";
-        catchThrowable(() -> service.verifyCode(SIGNUP, EMAIL, wrong));
-        VerificationCode before = codeStore.find(SIGNUP, EMAIL).orElseThrow();
+    @DisplayName("유효한 번호가 있으면 재발송해도 같은 번호를 보내고, 만료는 지금부터 다시 잡되 실패 횟수는 유지한다")
+    void resendReusesValidCodeAndRenewsExpiry() {
+        // given — 10초 뒤 만료될 번호를 한 번 틀린 상태
+        codeStore.save(SIGNUP, EMAIL, new VerificationCode("123456", Instant.now().plusSeconds(10), 1));
 
         // when
         service.sendCode(SIGNUP, EMAIL);
 
-        // then — 두 메일의 번호가 같고, 저장된 값은 그대로다
-        assertThat(sentCodes(SIGNUP, EMAIL, 2)).containsOnly(first);
-        assertThat(codeStore.find(SIGNUP, EMAIL)).contains(before);
-        assertThat(before.failedAttempts()).isEqualTo(1);
+        // then — 같은 번호, 실패 횟수 유지, 만료는 3분 가까이 남는다
+        assertThat(sentCode(SIGNUP, EMAIL)).isEqualTo("123456");
+        VerificationCode after = codeStore.find(SIGNUP, EMAIL).orElseThrow();
+        assertThat(after.failedAttempts()).isEqualTo(1);
+        assertThat(after.expiresAt()).isAfter(Instant.now().plusSeconds(170));
     }
 
     @Test

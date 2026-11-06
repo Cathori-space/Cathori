@@ -65,13 +65,11 @@ export default function RegisterScreen() {
   /** 인증번호 전송 핸들러 */
   const handleSendVerification = () => {
     if (!email.trim()) return;
+    // 재발송이면 이전 번호와 "5회 초과" 같은 지난 안내를 지운다
+    setVerificationCode('');
+    emailVerification.resetErrors();
     emailVerification.sendVerification({ email: email.trim() });
   };
-
-  /** 번호가 만료되거나 5회 초과로 지워지면 입력값을 비운다 (재발송 유도) */
-  useEffect(() => {
-    if (emailVerification.isExpired) setVerificationCode('');
-  }, [emailVerification.isExpired]);
 
   /** 인증번호 검증 핸들러 (6자리 입력 완료 시 자동 검증) */
   const handleVerify = (code: string) => {
@@ -205,25 +203,17 @@ export default function RegisterScreen() {
               <TouchableOpacity
                 style={[
                   styles.verifyButton,
-                  (emailVerification.isVerified || !email.trim() || emailVerification.resendWaitSeconds > 0)
-                    && styles.buttonDisabled,
+                  (emailVerification.isVerified || !email.trim()) && styles.buttonDisabled,
                 ]}
                 activeOpacity={0.85}
-                disabled={
-                  emailVerification.isVerified
-                  || !email.trim()
-                  || emailVerification.isSending
-                  || emailVerification.resendWaitSeconds > 0
-                }
+                disabled={emailVerification.isVerified || !email.trim() || emailVerification.isSending || emailVerification.isVerifying}
                 onPress={handleSendVerification}
               >
                 {emailVerification.isSending ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.verifyButtonText}>
-                    {emailVerification.resendWaitSeconds > 0
-                      ? `${emailVerification.formattedResendWait} 후 재발송`
-                      : emailVerification.isSent ? '재발송' : '인증번호 전송'}
+                    {emailVerification.isSent ? '재발송' : '인증번호 전송'}
                   </Text>
                 )}
               </TouchableOpacity>

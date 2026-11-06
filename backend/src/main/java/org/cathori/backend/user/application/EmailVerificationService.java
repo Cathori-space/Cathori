@@ -8,6 +8,7 @@ import org.cathori.backend.user.application.email.VerificationCode;
 import org.cathori.backend.user.application.email.VerificationCodeStore;
 import org.cathori.backend.user.application.email.VerificationPurpose;
 import org.cathori.backend.user.application.email.VerifiedEmailStore;
+import org.cathori.backend.user.domain.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,7 @@ public class EmailVerificationService {
     private final NotificationPort notificationPort;
     private final EmailDomainPolicy emailDomainPolicy;
     private final EmailSendLimitPolicy emailSendLimitPolicy;
+    private final UserRepository userRepository;
     private final Duration codeTtl;
 
     public EmailVerificationService(VerificationCodeStore verificationCodeStore,
@@ -33,17 +35,23 @@ public class EmailVerificationService {
                                     NotificationPort notificationPort,
                                     EmailDomainPolicy emailDomainPolicy,
                                     EmailSendLimitPolicy emailSendLimitPolicy,
+                                    UserRepository userRepository,
                                     @Value("${auth.email.code-ttl:PT3M}") Duration codeTtl) {
         this.verificationCodeStore = verificationCodeStore;
         this.verifiedEmailStore = verifiedEmailStore;
         this.notificationPort = notificationPort;
         this.emailDomainPolicy = emailDomainPolicy;
         this.emailSendLimitPolicy = emailSendLimitPolicy;
+        this.userRepository = userRepository;
         this.codeTtl = codeTtl;
     }
 
     public void sendCode(VerificationPurpose purpose, String email) {
         emailDomainPolicy.requireAllowed(purpose, email);
+        // 이미 가입된 이메일이면 메일 없이 409 (ADR D6). 보내지 않았으므로 발송 횟수에도 넣지 않는다.
+        if (purpose == VerificationPurpose.SIGNUP && userRepository.existsByEmail(email)) {
+            throw new BusinessException(UserErrorCode.USER_EMAIL_DUPLICATE);
+        }
         emailSendLimitPolicy.requireSendable(email);
 
         String code = reusableOrNewCode(purpose, email);

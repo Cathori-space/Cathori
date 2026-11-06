@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { queryClient } from '@/src/lib/queryClient';
 import { assertCurrentSession, getSessionId, rotateSession } from '@/src/services/session';
 import { clearTokens, getTokens, saveTokens } from '@/src/services/tokenStorage';
+import { startPushSession, stopPushSession, type PushCleanupResult } from '@/src/services/pushToken';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
 import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
 import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
@@ -21,7 +22,7 @@ interface AuthState {
   tags: UserTag[];
   setAuth: (response: LoginResponse, expectedSession?: number) => Promise<void>;
   setTokens: (tokens: ReissueResponse, expectedSession?: number) => Promise<void>;
-  clearAuth: () => Promise<void>;
+  clearAuth: (reason?: 'logout' | 'expired' | 'withdrawal') => Promise<PushCleanupResult>;
   enterGuest: () => Promise<void>;
   initializeAuth: () => Promise<void>;
   updateTags: (tags: UserTag[]) => void;
@@ -35,6 +36,16 @@ function enqueueStorage<T>(task: () => Promise<T>): Promise<T> {
   const next = storageTask.then(task, task);
   storageTask = next.catch(() => {});
   return next;
+}
+
+function clearSessionStorage(pushCleanup: Promise<PushCleanupResult>): Promise<PushCleanupResult> {
+  return enqueueStorage(async () => {
+    // 네트워크·SDK 정리가 지연되어도 JWT는 먼저 지우고, 다음 로그인은 두 정리를 모두 기다린다.
+    const [storage, cleanup] = await Promise.allSettled([clearTokens(), pushCleanup]);
+    if (storage.status === 'rejected') throw storage.reason;
+    if (cleanup.status === 'rejected') throw cleanup.reason;
+    return cleanup.value;
+  });
 }
 
 function resetSession() {
@@ -56,14 +67,17 @@ export const useAuthStore = create<AuthState>()(
 
       setAuth: async (response, expectedSession = getSessionId()) => {
         assertCurrentSession(expectedSession);
+        const previousCleanup = get().status === 'authenticated' ? stopPushSession(get().accessToken) : null;
         const id = resetSession();
         set({ ...EMPTY_AUTH, status: 'initializing', sessionId: id });
         try {
           await enqueueStorage(async () => {
+            await previousCleanup;
             assertCurrentSession(id);
             await saveTokens(response);
           });
           assertCurrentSession(id);
+          startPushSession(id);
           set({
             status: 'authenticated',
             accessToken: response.accessToken,
@@ -76,7 +90,10 @@ export const useAuthStore = create<AuthState>()(
             tags: response.tags,
           });
         } catch (error) {
-          if (getSessionId() === id) set({ ...EMPTY_AUTH, status: 'unauthenticated' });
+          if (getSessionId() === id) {
+            await stopPushSession(null);
+            if (getSessionId() === id) set({ ...EMPTY_AUTH, status: 'unauthenticated' });
+          }
           throw error;
         }
       },
@@ -91,19 +108,23 @@ export const useAuthStore = create<AuthState>()(
         set(tokens);
       },
 
-      clearAuth: async () => {
+      clearAuth: async (reason = 'expired') => {
+        const { accessToken, refreshToken } = get();
+        const cleanup = stopPushSession(reason === 'withdrawal' ? null : accessToken,
+          reason === 'logout' ? { refreshToken } : undefined);
         const id = resetSession();
         set({ ...EMPTY_AUTH, status: 'unauthenticated', sessionId: id });
-        return enqueueStorage(clearTokens);
+        return clearSessionStorage(cleanup);
       },
 
       enterGuest: async () => {
         if (get().status === 'guest') return;
         if (get().status !== 'unauthenticated') return;
+        const cleanup = stopPushSession(null);
         const id = resetSession();
         set({ ...EMPTY_AUTH, status: 'initializing', sessionId: id });
         try {
-          await enqueueStorage(clearTokens);
+          await clearSessionStorage(cleanup);
           assertCurrentSession(id);
           set({ status: 'guest' });
         } catch (error) {
@@ -117,11 +138,17 @@ export const useAuthStore = create<AuthState>()(
         try {
           const tokens = await enqueueStorage(getTokens);
           assertCurrentSession(id);
+          if (tokens) startPushSession(id);
+          else await stopPushSession(null);
+          assertCurrentSession(id);
           set(tokens
             ? { ...tokens, status: 'authenticated' }
             : { ...EMPTY_AUTH, status: 'unauthenticated' });
         } catch (error) {
-          if (getSessionId() === id) set({ ...EMPTY_AUTH, status: 'unauthenticated' });
+          if (getSessionId() === id) {
+            await stopPushSession(null);
+            if (getSessionId() === id) set({ ...EMPTY_AUTH, status: 'unauthenticated' });
+          }
           throw error;
         }
       },

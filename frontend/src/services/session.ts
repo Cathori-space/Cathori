@@ -21,6 +21,7 @@ export type SessionConfig = InternalAxiosRequestConfig & {
   sessionId?: number;
   requestSignal?: InternalAxiosRequestConfig['signal'];
   releaseSessionSignal?: () => void;
+  preserveOnSessionEnd?: boolean;
 };
 
 export function installSessionInterceptors(client: AxiosInstance) {
@@ -31,7 +32,8 @@ export function installSessionInterceptors(client: AxiosInstance) {
     }
     assertCurrentSession(config.sessionId);
     const requestController = new AbortController();
-    const signals = [controller.signal, config.requestSignal];
+    // 푸시 등록은 전송 완료를 기다린 뒤 반납해야 서버의 PUT → DELETE 순서를 지킬 수 있다.
+    const signals = [config.preserveOnSessionEnd ? undefined : controller.signal, config.requestSignal];
     const abort = () => requestController.abort();
     signals.forEach((signal) => {
       if (signal?.aborted) abort();

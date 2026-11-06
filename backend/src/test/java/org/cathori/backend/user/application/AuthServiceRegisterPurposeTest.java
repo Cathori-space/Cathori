@@ -73,4 +73,23 @@ class AuthServiceRegisterPurposeTest {
         assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_EMAIL_DOMAIN_NOT_ALLOWED);
         verify(userService, never()).save(any());
     }
+
+    @Test
+    @DisplayName("인증 완료 상태가 만료된 뒤에는 가입할 수 없다 (운영 30분, ADR §7)")
+    void expiredVerificationCannotRegister() throws InterruptedException {
+        // given — 유효시간 100ms인 저장소에서 인증을 마치고 만료될 때까지 기다린다
+        VerifiedEmailStore shortLived = new CaffeineVerifiedEmailStore(Duration.ofMillis(100));
+        AuthService service = new AuthService(shortLived, userService, null, null, null, null, null, SCHOOL_ONLY);
+        String email = "someone@catholic.ac.kr";
+        shortLived.markVerified(VerificationPurpose.SIGNUP, email);
+        Thread.sleep(200);
+
+        // when
+        BusinessException e = catchThrowableOfType(BusinessException.class,
+                () -> service.register(registerRequest(email)));
+
+        // then
+        assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_VERIFIED);
+        verify(userService, never()).save(any());
+    }
 }

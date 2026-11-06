@@ -1,10 +1,8 @@
 package org.cathori.backend;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class CathoriApplicationTests {
+class CathoriApplicationTests extends IntegrationTestBase {
 
     @Test
     void contextLoads() {

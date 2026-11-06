@@ -1,12 +1,16 @@
 package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
+import org.cathori.backend.common.exception.RateLimitedException;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.application.email.EmailDomainPolicy;
+import org.cathori.backend.user.application.email.EmailSendLimitPolicy;
+import org.cathori.backend.user.application.email.SendRateLimiter;
 import org.cathori.backend.user.application.email.VerificationCode;
 import org.cathori.backend.user.application.email.VerificationCodeStore;
 import org.cathori.backend.user.application.email.VerificationPurpose;
 import org.cathori.backend.user.application.email.VerifiedEmailStore;
+import org.cathori.backend.user.infra.email.CaffeineSendRateLimiter;
 import org.cathori.backend.user.infra.email.CaffeineVerificationCodeStore;
 import org.cathori.backend.user.infra.email.CaffeineVerifiedEmailStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,20 +19,24 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.cathori.backend.user.application.email.VerificationPurpose.PASSWORD_RESET;
 import static org.cathori.backend.user.application.email.VerificationPurpose.SIGNUP;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-@DisplayName("EmailVerificationService 목적(purpose) 분리 · 가입 도메인 제한")
+@DisplayName("EmailVerificationService 목적(purpose) 분리 · 가입 도메인 제한 · 발송 제한 · 번호 재사용")
 class EmailVerificationServiceTest {
 
     private static final String EMAIL = "student@catholic.ac.kr";
@@ -38,6 +46,7 @@ class EmailVerificationServiceTest {
 
     private VerificationCodeStore codeStore;
     private VerifiedEmailStore verifiedStore;
+    private SendRateLimiter sendRateLimiter;
     private NotificationPort notificationPort;
     private EmailVerificationService service;
 
@@ -47,7 +56,9 @@ class EmailVerificationServiceTest {
         codeStore = new CaffeineVerificationCodeStore(ttl);
         verifiedStore = new CaffeineVerifiedEmailStore(Duration.ofMinutes(30));
         notificationPort = mock(NotificationPort.class);
-        service = new EmailVerificationService(codeStore, verifiedStore, notificationPort, SCHOOL_ONLY, ttl);
+        sendRateLimiter = new CaffeineSendRateLimiter(Duration.ofHours(1));
+        service = new EmailVerificationService(codeStore, verifiedStore, notificationPort, SCHOOL_ONLY,
+                new EmailSendLimitPolicy(sendRateLimiter, 3, 10), ttl);
     }
 
     /** 발송된 메일에 실린 인증번호를 꺼낸다. */
@@ -156,5 +167,81 @@ class EmailVerificationServiceTest {
 
         // then
         assertThat(verifiedStore.isVerified(PASSWORD_RESET, GMAIL)).isTrue();
+    }
+
+    /** 지금까지 발송된 메일에 실린 인증번호를 순서대로 꺼낸다. */
+    private List<String> sentCodes(VerificationPurpose purpose, String email, int times) {
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        verify(notificationPort, times(times)).sendVerificationCode(eq(purpose), eq(email), code.capture());
+        return code.getAllValues();
+    }
+
+    @Test
+    @DisplayName("유효한 번호가 있으면 재발송해도 같은 번호를 보내고, 만료 시각·실패 횟수를 초기화하지 않는다")
+    void resendReusesValidCodeWithoutReset() {
+        // given — 발송 후 한 번 틀렸다
+        service.sendCode(SIGNUP, EMAIL);
+        String first = sentCode(SIGNUP, EMAIL);
+        String wrong = first.equals("000000") ? "111111" : "000000";
+        catchThrowable(() -> service.verifyCode(SIGNUP, EMAIL, wrong));
+        VerificationCode before = codeStore.find(SIGNUP, EMAIL).orElseThrow();
+
+        // when
+        service.sendCode(SIGNUP, EMAIL);
+
+        // then — 두 메일의 번호가 같고, 저장된 값은 그대로다
+        assertThat(sentCodes(SIGNUP, EMAIL, 2)).containsOnly(first);
+        assertThat(codeStore.find(SIGNUP, EMAIL)).contains(before);
+        assertThat(before.failedAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("만료된 번호는 재사용하지 않고 새 번호를 발급한다")
+    void resendIssuesNewCodeWhenExpired() {
+        // given — 이미 만료된 번호가 남아 있다
+        Instant past = Instant.now().minusSeconds(1);
+        codeStore.save(SIGNUP, EMAIL, new VerificationCode("123456", past, 2));
+
+        // when
+        service.sendCode(SIGNUP, EMAIL);
+
+        // then — 실패 횟수 0, 만료 시각이 새로 잡힌 번호
+        VerificationCode issued = codeStore.find(SIGNUP, EMAIL).orElseThrow();
+        assertThat(issued.failedAttempts()).isZero();
+        assertThat(issued.expiresAt()).isAfter(Instant.now());
+        assertThat(sentCode(SIGNUP, EMAIL)).isEqualTo(issued.code());
+    }
+
+    @Test
+    @DisplayName("발송 제한은 purpose와 무관하게 이메일 단위로 센다 — 막힌 요청은 메일도, 기록도 남기지 않는다")
+    void sendLimitIsSharedAcrossPurposes() {
+        // given — SIGNUP 2번 + PASSWORD_RESET 1번
+        service.sendCode(SIGNUP, EMAIL);
+        service.sendCode(SIGNUP, EMAIL);
+        service.sendCode(PASSWORD_RESET, EMAIL);
+
+        // when — 1분 안의 4번째
+        RateLimitedException e = catchThrowableOfType(RateLimitedException.class,
+                () -> service.sendCode(SIGNUP, EMAIL));
+
+        // then
+        assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.EMAIL_SEND_TOO_FREQUENT);
+        verify(notificationPort, times(2)).sendVerificationCode(eq(SIGNUP), eq(EMAIL), anyString());
+        assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofMinutes(1))).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("메일 발송에 실패하면 발송 횟수에 넣지 않는다")
+    void failedSendIsNotRecorded() {
+        // given
+        doThrow(new IllegalStateException("smtp down"))
+                .when(notificationPort).sendVerificationCode(any(), anyString(), anyString());
+
+        // when
+        Throwable thrown = catchThrowable(() -> service.sendCode(SIGNUP, EMAIL));
+
+        // then
+        assertThat(thrown).isInstanceOf(IllegalStateException.class);
+        assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofHours(1))).isZero();
     }
 }

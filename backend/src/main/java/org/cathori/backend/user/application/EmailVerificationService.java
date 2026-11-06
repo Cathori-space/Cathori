@@ -3,6 +3,7 @@ package org.cathori.backend.user.application;
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.application.email.EmailDomainPolicy;
+import org.cathori.backend.user.application.email.EmailSendLimitPolicy;
 import org.cathori.backend.user.application.email.VerificationCode;
 import org.cathori.backend.user.application.email.VerificationCodeStore;
 import org.cathori.backend.user.application.email.VerificationPurpose;
@@ -23,25 +24,46 @@ public class EmailVerificationService {
     private final VerifiedEmailStore verifiedEmailStore;
     private final NotificationPort notificationPort;
     private final EmailDomainPolicy emailDomainPolicy;
+    private final EmailSendLimitPolicy emailSendLimitPolicy;
     private final Duration codeTtl;
 
     public EmailVerificationService(VerificationCodeStore verificationCodeStore,
                                     VerifiedEmailStore verifiedEmailStore,
                                     NotificationPort notificationPort,
                                     EmailDomainPolicy emailDomainPolicy,
+                                    EmailSendLimitPolicy emailSendLimitPolicy,
                                     @Value("${auth.email.code-ttl:PT3M}") Duration codeTtl) {
         this.verificationCodeStore = verificationCodeStore;
         this.verifiedEmailStore = verifiedEmailStore;
         this.notificationPort = notificationPort;
         this.emailDomainPolicy = emailDomainPolicy;
+        this.emailSendLimitPolicy = emailSendLimitPolicy;
         this.codeTtl = codeTtl;
     }
 
     public void sendCode(VerificationPurpose purpose, String email) {
         emailDomainPolicy.requireAllowed(purpose, email);
-        String code = String.format("%06d", RANDOM.nextInt(1_000_000));
-        verificationCodeStore.save(purpose, email, VerificationCode.issue(code, Instant.now(), codeTtl));
+        emailSendLimitPolicy.requireSendable(email);
+
+        String code = reusableOrNewCode(purpose, email);
         notificationPort.sendVerificationCode(purpose, email, code);
+        emailSendLimitPolicy.recordSent(email);
+    }
+
+    /**
+     * 쓸 수 있는 번호가 있으면 그 번호를, 없으면 새로 발급해 저장한다 (ADR D2).
+     * 재사용할 때는 다시 저장하지 않는다 — 저장하면 만료 시각·실패 횟수가 초기화된다.
+     */
+    private String reusableOrNewCode(VerificationPurpose purpose, String email) {
+        Instant now = Instant.now();
+        return verificationCodeStore.find(purpose, email)
+                .filter(existing -> existing.isReusable(now))
+                .map(VerificationCode::code)
+                .orElseGet(() -> {
+                    String fresh = String.format("%06d", RANDOM.nextInt(1_000_000));
+                    verificationCodeStore.save(purpose, email, VerificationCode.issue(fresh, now, codeTtl));
+                    return fresh;
+                });
     }
 
     public void verifyCode(VerificationPurpose purpose, String email, String code) {

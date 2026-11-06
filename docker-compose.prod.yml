@@ -10,6 +10,7 @@ services:
     volumes:
       - /etc/ssl/cathori.crt:/etc/ssl/cathori.crt:ro
       - /etc/ssl/cathori.key:/etc/ssl/cathori.key:ro
+      - ./.release-state:/run/cathori-maintenance:ro
     depends_on:
       - backend
     restart: unless-stopped
@@ -17,7 +18,7 @@ services:
       - cathori-net
 
   backend:
-    image: ghcr.io/cathori-space/cathori-backend:latest
+    image: ${CATHORI_BACKEND_IMAGE:?CATHORI_BACKEND_IMAGE에 승인된 백엔드 이미지 다이제스트를 지정하세요}
     container_name: cathori-backend
     env_file:
       - .env
@@ -26,12 +27,19 @@ services:
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
     volumes:
       - ./secrets/cathori-firebase.json:/app/secrets/cathori-firebase.json:ro
+      - ./.release-state:/run/cathori-maintenance:ro
     expose:
       - "8080"
       - "9091"
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9091/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 120s
     restart: unless-stopped
     networks:
       - cathori-net

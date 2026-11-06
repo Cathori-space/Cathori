@@ -82,7 +82,9 @@ export function stopPushSession(
 ): Promise<PushCleanupResult> {
   activeSession = null;
   const pendingRefresh = logout ? getPendingRefresh(getSessionId()) : undefined;
+  const reset = invalidateDevicePushToken();
   const server = enqueueServer(async (): Promise<Pick<PushCleanupResult, 'server' | 'logout'>> => {
+    await reset.intent.catch(() => {});
     let result: PushCleanupResult['server'] = 'not-attempted';
     if (accessToken) {
       try {
@@ -101,8 +103,7 @@ export function stopPushSession(
     if (logout) console.warn('[auth] 서버 로그아웃을 확인하지 못했습니다.');
     return { server: result, logout: logout ? 'unconfirmed' : 'not-attempted' };
   });
-  // 회원 JWT로 서버 반납을 먼저 시도하고, 실패 여부와 관계없이 기기를 무효화한다.
-  const device = invalidateDevicePushToken(server).then(() => 'invalidated' as const, () => {
+  const device = reset.completion.then(() => 'invalidated' as const, () => {
     console.warn('[push] 기기 푸시 무효화 실패: 다음 회원 등록 전에 다시 시도합니다.');
     return 'failed' as const;
   });

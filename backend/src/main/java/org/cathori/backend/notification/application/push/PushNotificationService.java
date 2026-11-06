@@ -117,6 +117,10 @@ public class PushNotificationService {
     }
 
     private List<UserToken> selectEligibleRecipients(Notice notice) {
+        if (!"MAIN".equals(notice.getSourceType()) && notice.getSourceId() == null) {
+            log.warn("학과 공지인데 sourceId가 없어 발송 대상에서 제외 noticeId={}", notice.getId());
+            return List.of();
+        }
         return userRepository.findUsersWithTagMatchingTitle(notice.getTitle())
                 .stream()
                 .filter(user -> matchesNoticeScope(user, notice))

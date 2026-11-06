@@ -39,8 +39,10 @@ interface FetchNotificationsParams {
 /** 실제 백엔드 호출 — GET /api/notifications */
 async function fetchNotificationsReal(
   { cursor, size = NOTIFICATIONS_PAGE_SIZE }: FetchNotificationsParams,
+  signal?: AbortSignal,
 ): Promise<NotificationPage> {
   const { data } = await apiClient.get<NotificationPage>('/api/notifications', {
+    signal,
     // cursor가 null/undefined면 파라미터 자체를 보내지 않음 → 첫 페이지
     params: { cursor: cursor ?? undefined, size },
   });
@@ -54,17 +56,18 @@ async function fetchNotificationsReal(
  */
 export async function fetchNotifications(
   params: FetchNotificationsParams = {},
+  signal?: AbortSignal,
 ): Promise<NotificationPage> {
-  return USE_MOCK ? fetchNotificationsMock(params) : fetchNotificationsReal(params);
+  return USE_MOCK ? fetchNotificationsMock(params) : fetchNotificationsReal(params, signal);
 }
 
 /**
  * 인증 사용자의 미읽음 알림 존재 여부 조회
  * GET /api/notifications/unread-exists
  */
-export async function fetchUnreadNotificationStatus(): Promise<UnreadNotificationStatus> {
+export async function fetchUnreadNotificationStatus(signal?: AbortSignal): Promise<UnreadNotificationStatus> {
   const { data } = await apiClient.get<UnreadNotificationStatus>(
-    '/api/notifications/unread-exists',
+    '/api/notifications/unread-exists', { signal },
   );
   return data;
 }

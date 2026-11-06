@@ -21,24 +21,33 @@ import {
   getTagErrorMessage,
   getTags,
 } from '@/src/services/tags';
-import { useAuthStore } from '@/src/store/useAuthStore';
+import { requireMember, useAuthStore } from '@/src/store/useAuthStore';
+import { assertCurrentSession, isCurrentSession } from '@/src/services/session';
 import type { UserTag } from '@/src/types/auth';
 
 // ─── 태그 추가 훅 ────────────────────────────────────────────────
 
 interface CreateTagContext {
+  sessionId: number;
   /** 낙관적 업데이트 전 태그 목록 */
   previousTags: UserTag[];
 }
 
 export function useCreateTag() {
+  const hookSessionId = useAuthStore((s) => s.sessionId);
   const tags = useAuthStore((s) => s.tags);
   const updateTags = useAuthStore((s) => s.updateTags);
 
   return useMutation({
-    mutationFn: createTag,
+    mutationFn: (name: string) => {
+      assertCurrentSession(hookSessionId);
+      requireMember();
+      return createTag(name);
+    },
 
     onMutate: (tagName): CreateTagContext => {
+      assertCurrentSession(hookSessionId);
+      const sessionId = requireMember();
       const previousTags = [...tags];
 
       // 낙관적 업데이트 — 임시 tagId로 즉시 UI 반영
@@ -48,10 +57,11 @@ export function useCreateTag() {
       };
       updateTags([...tags, optimisticTag]);
 
-      return { previousTags };
+      return { sessionId, previousTags };
     },
 
-    onSuccess: (data) => {
+    onSuccess: (data, _name, context) => {
+      if (!context || !isCurrentSession(context.sessionId)) return;
       // 서버 응답의 진짜 tagId로 교체
       const currentTags = useAuthStore.getState().tags;
       const updatedTags = currentTags.map((tag) =>
@@ -64,7 +74,7 @@ export function useCreateTag() {
 
     onError: (_error, _tagName, context) => {
       // 롤백
-      if (context) {
+      if (context && isCurrentSession(context.sessionId)) {
         updateTags(context.previousTags);
       }
     },
@@ -74,29 +84,37 @@ export function useCreateTag() {
 // ─── 태그 삭제 훅 ────────────────────────────────────────────────
 
 interface DeleteTagContext {
+  sessionId: number;
   /** 낙관적 업데이트 전 태그 목록 */
   previousTags: UserTag[];
 }
 
 export function useDeleteTag() {
+  const hookSessionId = useAuthStore((s) => s.sessionId);
   const tags = useAuthStore((s) => s.tags);
   const updateTags = useAuthStore((s) => s.updateTags);
 
   return useMutation({
-    mutationFn: deleteTag,
+    mutationFn: (id: number) => {
+      assertCurrentSession(hookSessionId);
+      requireMember();
+      return deleteTag(id);
+    },
 
     onMutate: (tagId): DeleteTagContext => {
+      assertCurrentSession(hookSessionId);
+      const sessionId = requireMember();
       const previousTags = [...tags];
 
       // 낙관적 삭제 — 즉시 UI에서 제거
       updateTags(tags.filter((tag) => tag.tagId !== tagId));
 
-      return { previousTags };
+      return { sessionId, previousTags };
     },
 
     onError: (_error, _tagId, context) => {
       // 롤백
-      if (context) {
+      if (context && isCurrentSession(context.sessionId)) {
         updateTags(context.previousTags);
       }
     },
@@ -110,9 +128,12 @@ export function useRefreshTags() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshTags = async () => {
+    if (useAuthStore.getState().status !== 'authenticated') return { success: false };
+    const sessionId = requireMember();
     setIsRefreshing(true);
     try {
       const latestTags = await getTags();
+      if (!isCurrentSession(sessionId)) return { success: false };
       updateTags(latestTags);
       return { success: true };
     } catch (error) {

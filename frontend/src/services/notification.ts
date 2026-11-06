@@ -11,6 +11,9 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+
+import { getSessionId, isCurrentSession } from '@/src/services/session';
+import { useAuthStore } from '@/src/store/useAuthStore';
 import {
   getMessaging,
   getToken,
@@ -44,11 +47,14 @@ if (Platform.OS === 'android') {
 
 /** OS 알림 권한을 확인하고, 미허용 시 요청한다. 최종 허용 여부를 반환. */
 export async function requestNotificationPermission(): Promise<boolean> {
+  if (useAuthStore.getState().status !== 'authenticated') return false;
+  const sessionId = getSessionId();
   const { status: existing } = await Notifications.getPermissionsAsync();
+  if (!isCurrentSession(sessionId) || useAuthStore.getState().status !== 'authenticated') return false;
   if (existing === 'granted') return true;
 
   const { status } = await Notifications.requestPermissionsAsync();
-  return status === 'granted';
+  return isCurrentSession(sessionId) && useAuthStore.getState().status === 'authenticated' && status === 'granted';
 }
 
 /**

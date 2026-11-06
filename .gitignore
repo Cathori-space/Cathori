@@ -12,6 +12,7 @@ temp/
 secrets/
 
 # agent
+/AGENTS.md
 .agents/
 claude.md
 CLAUDE.md

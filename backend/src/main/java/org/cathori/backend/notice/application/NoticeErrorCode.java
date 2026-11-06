@@ -4,7 +4,9 @@ import org.cathori.backend.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
 public enum NoticeErrorCode implements ErrorCode {
-    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_NOT_FOUND", "존재하지 않는 공지입니다");
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_NOT_FOUND", "존재하지 않는 공지입니다"),
+    NOTICE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "NOTICE_ACCESS_DENIED", "공개 조회할 수 없는 공지입니다"),
+    PUBLIC_NOTICE_INVALID_INPUT(HttpStatus.BAD_REQUEST, "INVALID_INPUT", "공개 공지 조회 입력값이 올바르지 않습니다");
 
     private final HttpStatus status;
     private final String code;

@@ -2,21 +2,14 @@
  * 이메일 인증 TanStack Query mutation 훅
  *
  * 두 단계:
- *  1. sendVerification — 인증번호 발송 + 3분 타이머 시작
+ *  1. sendVerification — 인증번호 발송 + 10분 타이머 시작
  *  2. verify — 인증번호 검증, 성공 시 isVerified = true
  *
  * 타이머:
- *  - 인증번호 발송 성공 시 180초 카운트다운 시작
+ *  - 인증번호 발송 성공 시 600초 카운트다운 시작 (서버 auth.email.code-ttl과 같다)
  *  - 0초 도달 시 자동 만료 표시
  *  - 재발송 시 타이머 리셋
- *
- * 에러 분기 (API 명세 기반):
- *  발송:
- *    - 400 INVALID_INPUT → 이메일 형식 오류
- *    - 500 INTERNAL_ERROR → SMTP 발송 실패
- *  검증:
- *    - 400 USER_VERIFY_CODE_EXPIRED → 인증번호 만료 (3분 초과)
- *    - 400 USER_INVALID_VERIFY_CODE → 인증번호 불일치
+ *  - 서버가 만료·5회 초과로 답하면 번호가 지워진 것이므로 타이머를 끝내 재발송을 유도한다
  */
 
 import { useMutation } from '@tanstack/react-query';
@@ -35,7 +28,7 @@ import type {
 } from '@/src/types/auth';
 
 /** 인증번호 유효 시간 (초) */
-const VERIFICATION_TTL_SECONDS = 180;
+const VERIFICATION_TTL_SECONDS = 600;
 
 /** 백엔드 에러 응답 공통 형태 */
 interface ApiErrorResponse {
@@ -47,16 +40,28 @@ interface ApiErrorResponse {
 type EmailVerificationErrorCode =
   | 'INVALID_INPUT'
   | 'INTERNAL_ERROR'
+  | 'USER_EMAIL_DOMAIN_NOT_ALLOWED'
+  | 'USER_EMAIL_DUPLICATE'
+  | 'EMAIL_SEND_TOO_FREQUENT'
+  | 'EMAIL_SEND_LIMIT_EXCEEDED'
+  | 'EMAIL_SEND_FAILED'
   | 'USER_VERIFY_CODE_EXPIRED'
   | 'USER_INVALID_VERIFY_CODE'
+  | 'USER_VERIFY_ATTEMPTS_EXCEEDED'
   | 'UNKNOWN';
 
 /** 에러 메시지 매핑 */
 const ERROR_MESSAGES: Record<EmailVerificationErrorCode, string> = {
   INVALID_INPUT: '올바른 이메일 형식이 아닙니다.',
   INTERNAL_ERROR: '메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
+  USER_EMAIL_DOMAIN_NOT_ALLOWED: '가톨릭대학교 이메일(@catholic.ac.kr)만 사용할 수 있어요.',
+  USER_EMAIL_DUPLICATE: '이미 가입된 이메일이에요. 로그인하거나 비밀번호를 찾아 주세요.',
+  EMAIL_SEND_TOO_FREQUENT: '인증번호를 너무 자주 요청했어요. 1분 후 다시 시도해 주세요.',
+  EMAIL_SEND_LIMIT_EXCEEDED: '인증번호 요청 횟수를 초과했어요. 1시간 후 다시 시도해 주세요.',
+  EMAIL_SEND_FAILED: '메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요.',
   USER_VERIFY_CODE_EXPIRED: '인증번호가 만료되었습니다. 재발송해주세요.',
   USER_INVALID_VERIFY_CODE: '인증번호가 올바르지 않습니다.',
+  USER_VERIFY_ATTEMPTS_EXCEEDED: '인증번호를 5회 잘못 입력했어요. 인증번호를 다시 받아 주세요.',
   UNKNOWN: '인증 중 오류가 발생했습니다.',
 };
 
@@ -75,7 +80,7 @@ export function useEmailVerification() {
   const [isVerified, setIsVerified] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  // ── 3분 타이머 ──
+  // ── 10분 타이머 ──
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -96,6 +101,12 @@ export function useEmailVerification() {
         return prev - 1;
       });
     }, 1000);
+  }, []);
+
+  /** 타이머를 0으로 끝낸다 (서버에서 번호가 지워진 경우) */
+  const expireTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setRemainingSeconds(0);
   }, []);
 
   /** 타이머 정리 (언마운트 시) */
@@ -136,6 +147,12 @@ export function useEmailVerification() {
       setIsVerified(true);
       // 인증 성공 시 타이머 정지
       if (timerRef.current) clearInterval(timerRef.current);
+    },
+    onError: (error) => {
+      const code = extractErrorCode(error);
+      if (code === 'USER_VERIFY_ATTEMPTS_EXCEEDED' || code === 'USER_VERIFY_CODE_EXPIRED') {
+        expireTimer();
+      }
     },
   });
 

@@ -2,11 +2,11 @@
  * 이메일 인증 TanStack Query mutation 훅
  *
  * 두 단계:
- *  1. sendVerification — 인증번호 발송 + 3분 타이머 시작
+ *  1. sendVerification — 인증번호 발송 + 10분 타이머 시작
  *  2. verify — 인증번호 검증, 성공 시 isVerified = true
  *
  * 타이머:
- *  - 인증번호 발송 성공 시 180초 카운트다운 시작
+ *  - 인증번호 발송 성공 시 600초 카운트다운 시작 (서버 auth.email.code-ttl과 같다)
  *  - 0초 도달 시 자동 만료 표시
  *  - 재발송 시 타이머 리셋
  *  - 서버가 만료·5회 초과로 답하면 번호가 지워진 것이므로 타이머를 끝내 재발송을 유도한다
@@ -28,7 +28,7 @@ import type {
 } from '@/src/types/auth';
 
 /** 인증번호 유효 시간 (초) */
-const VERIFICATION_TTL_SECONDS = 180;
+const VERIFICATION_TTL_SECONDS = 600;
 
 /** 백엔드 에러 응답 공통 형태 */
 interface ApiErrorResponse {
@@ -80,7 +80,7 @@ export function useEmailVerification() {
   const [isVerified, setIsVerified] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  // ── 3분 타이머 ──
+  // ── 10분 타이머 ──
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

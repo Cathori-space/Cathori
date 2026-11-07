@@ -31,6 +31,9 @@ import { DEPARTMENTS } from '@/src/constants/departments';
 import { useEmailVerification, useRegister } from '@/src/features/auth/hooks';
 import { SubHeader } from '@/src/shared/components';
 
+/** 가입 가능한 학교 이메일 도메인 (서버 auth.email.allowed-domains와 같다) */
+const SCHOOL_EMAIL_DOMAIN = '@catholic.ac.kr';
+
 /** 학년 옵션 */
 const GRADE_OPTIONS = [1, 2, 3, 4] as const;
 
@@ -45,7 +48,9 @@ export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
 
   // ── 폼 상태 ──
-  const [email, setEmail] = useState('');
+  // 아이디만 입력받고 학교 도메인은 고정 — 가입은 @catholic.ac.kr만 허용된다
+  const [emailId, setEmailId] = useState('');
+  const email = emailId ? `${emailId}${SCHOOL_EMAIL_DOMAIN}` : '';
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [major1, setMajor1] = useState('');
@@ -187,16 +192,18 @@ export default function RegisterScreen() {
               <View style={styles.emailRow}>
                 <View style={[styles.inputContainer, styles.emailInput]}>
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="@catholic.ac.kr"
+                    style={[styles.textInput, styles.emailIdInput]}
+                    placeholder="이메일 아이디"
                     placeholderTextColor="#9CA3AF"
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    value={email}
-                    onChangeText={setEmail}
+                    value={emailId}
+                    // 전체 주소를 붙여 넣어도 @ 앞의 아이디만 남긴다
+                    onChangeText={(text) => setEmailId(text.split('@')[0].replace(/\s/g, ''))}
                     editable={!emailVerification.isVerified && !emailVerification.isSending}
                   />
+                  <Text style={styles.emailDomain}>{SCHOOL_EMAIL_DOMAIN}</Text>
                 </View>
               </View>
               {/* 인증번호 전송 버튼 */}
@@ -604,7 +611,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emailInput: {
-    // 이메일 입력은 전체 너비
+    // 이메일 입력은 전체 너비 — 아이디 입력 + 고정 도메인
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  emailIdInput: {
+    flex: 1,
+  },
+  emailDomain: {
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
   codeInputRow: {
     flexDirection: 'row',

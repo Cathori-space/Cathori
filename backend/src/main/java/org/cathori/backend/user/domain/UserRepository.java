@@ -11,7 +11,13 @@ public interface UserRepository {
     Optional<User> findById(Long id);
     Optional<User> findByEmailForUpdate(String email);
     Optional<User> findByIdForUpdate(Long id);
-    List<User> findUsersWithTagMatchingTitle(String title);
+    void lockDeviceToken(String tokenHash);
+    Optional<Long> findDeviceTokenOwnerId(String deviceToken);
+    boolean isDeviceTokenClaimUnavailable(String tokenHash, Long userId);
+    void clearDeviceTokenConfirmation(String tokenHash, Long userId, long sessionVersion);
+    void recordDeviceTokenClaim(String tokenHash, Long userId, long sessionVersion);
+    void flushDeviceTokenChange();
+    List<User> findPushEligibleUsersWithTagMatchingTitle(String title);
     Map<Long, String> findFirstMatchedTagsByTitle(String title);
     Map<Long, String> findDeviceTokensByIds(List<Long> userIds);
     void delete(User user);

@@ -1,6 +1,7 @@
 package org.cathori.backend.user.application;
 
 import org.cathori.backend.common.exception.BusinessException;
+import org.cathori.backend.security.TokenHasher;
 import org.cathori.backend.notification.domain.AlertHistoryRepository;
 import org.cathori.backend.bookmark.domain.BookmarkRepository;
 import org.cathori.backend.tag.domain.TagRepository;
@@ -23,17 +24,19 @@ public class UserService {
     private final BookmarkRepository bookmarkRepository;
     private final AlertHistoryRepository alertHistoryRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenHasher tokenHasher;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        TagRepository tagRepository, BookmarkRepository bookmarkRepository,
                        AlertHistoryRepository alertHistoryRepository,
-                       RefreshTokenRepository refreshTokenRepository) {
+                       RefreshTokenRepository refreshTokenRepository, TokenHasher tokenHasher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tagRepository = tagRepository;
         this.bookmarkRepository = bookmarkRepository;
         this.alertHistoryRepository = alertHistoryRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.tokenHasher = tokenHasher;
     }
 
     public boolean existsByEmail(String email) {
@@ -60,7 +63,20 @@ public class UserService {
 
     @Transactional
     public void updateDeviceToken(Long userId, long sessionVersion, String deviceToken) {
-        requireCurrentSessionForUpdate(userId, sessionVersion).updateDeviceToken(deviceToken);
+        String tokenHash = tokenHasher.hash(deviceToken);
+        userRepository.lockDeviceToken(tokenHash);
+        User user = requireCurrentSessionForUpdate(userId, sessionVersion);
+        boolean ownedByAnotherUser = userRepository.findDeviceTokenOwnerId(deviceToken)
+                .filter(ownerId -> !userId.equals(ownerId)).isPresent();
+        // 계정 간 요청 순서를 검증할 수 없으므로 다른 계정에서는 새 기기 토큰으로 등록해야 한다.
+        if (ownedByAnotherUser || userRepository.isDeviceTokenClaimUnavailable(tokenHash, userId)) {
+            throw new BusinessException(UserErrorCode.DEVICE_TOKEN_OWNERSHIP_CONFLICT);
+        }
+
+        if (!deviceToken.equals(user.getDeviceToken())) clearCurrentDeviceTokenConfirmation(user);
+        userRepository.recordDeviceTokenClaim(tokenHash, userId, sessionVersion);
+        user.updateDeviceToken(deviceToken);
+        userRepository.flushDeviceTokenChange();
     }
 
     @Transactional
@@ -77,7 +93,15 @@ public class UserService {
     @Transactional
     public void clearDeviceToken(Long userId, long sessionVersion) {
         User user = requireCurrentSessionForUpdate(userId, sessionVersion);
+        clearCurrentDeviceTokenConfirmation(user);
         user.clearDeviceToken();
+    }
+
+    private void clearCurrentDeviceTokenConfirmation(User user) {
+        String deviceToken = user.getDeviceToken();
+        if (deviceToken != null) {
+            userRepository.clearDeviceTokenConfirmation(tokenHasher.hash(deviceToken), user.getId(), user.getSessionVersion());
+        }
     }
 
     User requireCurrentSessionForUpdate(Long userId, long sessionVersion) {

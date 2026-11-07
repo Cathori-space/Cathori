@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.assertj.core.api.Assumptions.assumeThat;
 import static org.cathori.backend.user.application.email.VerificationPurpose.PASSWORD_RESET;
 import static org.cathori.backend.user.application.email.VerificationPurpose.SIGNUP;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,7 +45,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
-@DisplayName("EmailVerificationService 목적(purpose) 분리 · 가입 도메인 제한 · 발송 제한 · 번호 재사용 · 입력 제한")
+@DisplayName("EmailVerificationService 목적(purpose) 분리 · 가입 도메인 제한 · 발송 제한 · 재발송 · 입력 제한")
 class EmailVerificationServiceTest {
 
     private static final String EMAIL = "student@catholic.ac.kr";
@@ -180,36 +181,24 @@ class EmailVerificationServiceTest {
     }
 
     @Test
-    @DisplayName("유효한 번호가 있으면 재발송해도 같은 번호를 보내고, 만료는 지금부터 다시 잡되 실패 횟수는 유지한다")
-    void resendReusesValidCodeAndRenewsExpiry() {
-        // given — 10초 뒤 만료될 번호를 한 번 틀린 상태
-        codeStore.save(SIGNUP, EMAIL, new VerificationCode("123456", Instant.now().plusSeconds(10), 1));
+    @DisplayName("재발송하면 새 번호를 발급하고, 이전 번호는 더 이상 통하지 않는다")
+    void resendIssuesNewCodeAndInvalidatesPrevious() {
+        // given — 아직 유효한 번호를 한 번 틀린 상태
+        codeStore.save(SIGNUP, EMAIL, new VerificationCode("123456", Instant.now().plusSeconds(100), 1));
 
         // when
         service.sendCode(SIGNUP, EMAIL);
 
-        // then — 같은 번호, 실패 횟수 유지, 만료는 3분 가까이 남는다
-        assertThat(sentCode(SIGNUP, EMAIL)).isEqualTo("123456");
-        VerificationCode after = codeStore.find(SIGNUP, EMAIL).orElseThrow();
-        assertThat(after.failedAttempts()).isEqualTo(1);
-        assertThat(after.expiresAt()).isAfter(Instant.now().plusSeconds(170));
-    }
-
-    @Test
-    @DisplayName("만료된 번호는 재사용하지 않고 새 번호를 발급한다")
-    void resendIssuesNewCodeWhenExpired() {
-        // given — 이미 만료된 번호가 남아 있다
-        Instant past = Instant.now().minusSeconds(1);
-        codeStore.save(SIGNUP, EMAIL, new VerificationCode("123456", past, 2));
-
-        // when
-        service.sendCode(SIGNUP, EMAIL);
-
-        // then — 실패 횟수 0, 만료 시각이 새로 잡힌 번호
+        // then — 메일에 실린 새 번호가 저장되고, 실패 횟수 0 · 만료 3분
+        String fresh = sentCode(SIGNUP, EMAIL);
         VerificationCode issued = codeStore.find(SIGNUP, EMAIL).orElseThrow();
+        assertThat(issued.code()).isEqualTo(fresh);
         assertThat(issued.failedAttempts()).isZero();
-        assertThat(issued.expiresAt()).isAfter(Instant.now());
-        assertThat(sentCode(SIGNUP, EMAIL)).isEqualTo(issued.code());
+        assertThat(issued.expiresAt()).isAfter(Instant.now().plusSeconds(170));
+        assumeThat(fresh).isNotEqualTo("123456"); // 100만 분의 1 확률로 같은 번호가 나오면 아래 확인은 건너뛴다
+        BusinessException e = catchThrowableOfType(BusinessException.class,
+                () -> service.verifyCode(SIGNUP, EMAIL, "123456"));
+        assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_INVALID_VERIFY_CODE);
     }
 
     @Test

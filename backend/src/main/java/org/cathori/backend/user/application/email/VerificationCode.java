@@ -23,21 +23,8 @@ public record VerificationCode(String code, Instant expiresAt, int failedAttempt
         return expiresAt.isBefore(now);
     }
 
-    /**
-     * 재발송 때 이 번호를 그대로 다시 보내도 되는지 (ADR D2). 만료 전이고 실패 한도에 닿지 않았으면 된다.
-     * 재발송마다 새 번호를 만들면 늦게 도착한 앞 메일의 번호가 틀린 번호가 된다.
-     */
-    public boolean isReusable(Instant now) {
-        return !isExpired(now) && failedAttempts < MAX_FAILED_ATTEMPTS;
-    }
-
     public boolean matches(String input) {
         return code.equals(input);
-    }
-
-    /** 같은 번호·실패 횟수로 만료만 지금부터 다시 잡은 새 값 (재발송). */
-    public VerificationCode renewed(Instant now, Duration ttl) {
-        return new VerificationCode(code, now.plus(ttl), failedAttempts);
     }
 
     /** 실패 횟수만 1 올린 새 값. 만료 시각은 유지된다 — 틀려도 TTL이 연장되지 않는다. */

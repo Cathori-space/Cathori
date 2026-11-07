@@ -54,27 +54,20 @@ public class EmailVerificationService {
         }
         emailSendLimitPolicy.requireSendable(email);
 
-        String code = reusableOrNewCode(purpose, email);
+        String code = issueNewCode(purpose, email);
         notificationPort.sendVerificationCode(purpose, email, code);
         emailSendLimitPolicy.recordSent(email);
     }
 
     /**
-     * 쓸 수 있는 번호가 있으면 같은 번호의 만료만 지금부터 다시 잡고, 없으면 새로 발급한다 (ADR D2).
-     * 실패 횟수는 유지하므로 재발송으로 5회 제한을 피할 수 없다. 동시 오답의 실패 누적을 덮어쓰지 않도록 원자적으로 갱신한다.
+     * 재발송마다 새 번호를 발급해 덮어쓴다 — 이전 번호는 그 순간 무효다 (ADR D2).
+     * 번호마다 실패 횟수는 0부터 다시 세지만, 발송 제한(1시간 10회)이 시도 총량을 묶는다.
+     * 발송 전에 저장하므로 메일 발송이 실패해도 이전 번호는 이미 무효다 — 재발송으로 복구된다.
      */
-    private String reusableOrNewCode(VerificationPurpose purpose, String email) {
-        Instant now = Instant.now();
-        verificationCodeStore.computeIfPresent(purpose, email,
-                existing -> existing.isReusable(now) ? existing.renewed(now, codeTtl) : null);
-        return verificationCodeStore.find(purpose, email)
-                .filter(existing -> existing.isReusable(now))
-                .map(VerificationCode::code)
-                .orElseGet(() -> {
-                    String fresh = String.format("%06d", RANDOM.nextInt(1_000_000));
-                    verificationCodeStore.save(purpose, email, VerificationCode.issue(fresh, now, codeTtl));
-                    return fresh;
-                });
+    private String issueNewCode(VerificationPurpose purpose, String email) {
+        String code = String.format("%06d", RANDOM.nextInt(1_000_000));
+        verificationCodeStore.save(purpose, email, VerificationCode.issue(code, Instant.now(), codeTtl));
+        return code;
     }
 
     public void verifyCode(VerificationPurpose purpose, String email, String code) {

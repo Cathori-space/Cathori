@@ -7,11 +7,13 @@ import java.time.Instant;
  * 발급된 인증번호 한 건.
  *
  * @param code           6자리 숫자 문자열
- * @param expiresAt      만료 시각. 저장소의 TTL과 별개로 값 자체가 만료를 들고 있어야
- *                       재발송 시 번호 재사용(ADR D2) 판단과 앱의 남은 시간 표시가 가능하다.
+ * @param expiresAt      만료 시각. 저장소 TTL은 쓸 때마다 리셋되므로 만료 판단은 이 값으로 한다.
  * @param failedAttempts 틀린 입력 횟수. 5회 제한(ADR D3)에서 사용한다.
  */
 public record VerificationCode(String code, Instant expiresAt, int failedAttempts) {
+
+    /** 번호 하나당 틀릴 수 있는 횟수 (ADR D3). */
+    public static final int MAX_FAILED_ATTEMPTS = 5;
 
     public static VerificationCode issue(String code, Instant now, Duration ttl) {
         return new VerificationCode(code, now.plus(ttl), 0);

@@ -1,14 +1,19 @@
 package org.cathori.backend.user.infra;
 
+import lombok.extern.slf4j.Slf4j;
+import org.cathori.backend.common.exception.BusinessException;
+import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.application.NotificationPort;
 import org.cathori.backend.user.application.email.VerificationPurpose;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
+@Slf4j
 @Component
 public class SmtpEmailNotifier implements NotificationPort {
 
@@ -31,7 +36,14 @@ public class SmtpEmailNotifier implements NotificationPort {
         message.setTo(email);
         message.setSubject(subjectOf(purpose));
         message.setText(bodyOf(purpose, code));
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            // SMTP 장애·타임아웃(ADR D7)은 사용자 입력 문제가 아니라 일시적 장애다 — 500이 아니라 503으로 알린다.
+            // 예외가 발송 기록 전에 올라가므로 발송 횟수에도 들어가지 않는다.
+            log.warn("Verification mail send failed: purpose={}, cause={}", purpose, e.getClass().getSimpleName());
+            throw new BusinessException(UserErrorCode.EMAIL_SEND_FAILED);
+        }
     }
 
     private String subjectOf(VerificationPurpose purpose) {

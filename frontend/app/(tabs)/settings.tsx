@@ -23,6 +23,7 @@
  * └─────────────────────────────────────────┘
  */
 
+import Constants from 'expo-constants';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -42,6 +43,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
+import { getSessionId, isCurrentSession } from '@/src/services/session';
 import { logout, withdraw } from '@/src/services/auth';
 import { unregisterDeviceToken } from '@/src/services/pushToken';
 import { MainHeader } from '@/src/shared/components';
@@ -49,7 +51,7 @@ import { useAuthStore } from '@/src/store/useAuthStore';
 
 // ─── 상수 ──────────────────────────────────────────────────────────
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.2';
 
 // 관심 태그/이벤트 알림 수신 토글 노출 여부 — 앱스토어 2.1 반려 대응으로 임시 비활성화 (#141).
 // API 연동 완료 후 true로 바꾸면 토글이 바로 노출/동작됨.
@@ -83,6 +85,20 @@ function showToast(message: string) {
 // ─── 설정 화면 ──────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
+  const isMember = useAuthStore((s) => s.status === 'authenticated');
+  if (isMember) return <MemberSettingsScreen />;
+  return (
+    <View style={styles.screen}>
+      <MainHeader />
+      <View style={styles.settingsRow}>
+        <Text style={styles.settingsRowText}>버전 정보</Text>
+        <Text style={styles.versionText}>v{APP_VERSION}</Text>
+      </View>
+    </View>
+  );
+}
+
+function MemberSettingsScreen() {
   const router = useRouter();
 
   // ── Zustand 사용자 정보 ──
@@ -167,27 +183,43 @@ const checkNotificationPermission = async () => {
     setWithdrawModalVisible(true);
   };
 
+  const finishLocalLogout = async () => {
+    const ending = clearAuth();
+    const endingSessionId = getSessionId();
+    try {
+      await ending;
+    } catch {
+      console.warn('[auth] 로컬 토큰 삭제를 완료하지 못했습니다.');
+    } finally {
+      if (isCurrentSession(endingSessionId)) router.replace('/login');
+    }
+  };
+
   /** 회원탈퇴 확정 — DELETE /api/users/me → clearAuth → 로그인 화면 이동 */
   const handleWithdrawConfirm = async () => {
+    const sessionId = getSessionId();
     setWithdrawModalVisible(false);
     try {
       await withdraw();
     } catch (e) {
+      if (!isCurrentSession(sessionId)) return;
       console.warn('[withdraw] 탈퇴 API 실패:', e);
       Alert.alert('탈퇴 실패', '회원탈퇴 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       return;
     }
+    if (!isCurrentSession(sessionId)) return;
     try {
       await unregisterDeviceToken();
     } catch (e) {
       console.warn('[push] 토큰 반납 실패:', e);
     }
-    await clearAuth();
-    router.replace('/login');
+    if (!isCurrentSession(sessionId)) return;
+    await finishLocalLogout();
   };
 
   /** 로그아웃 — 서버 refresh token 폐기 → 로컬 인증 삭제 → 로그인 화면 이동 */
   const handleLogout = () => {
+    const sessionId = getSessionId();
     Alert.alert(
       '로그아웃',
       '정말 로그아웃 하시겠습니까?',
@@ -197,6 +229,7 @@ const checkNotificationPermission = async () => {
           text: '로그아웃',
           style: 'destructive',
           onPress: async () => {
+            if (!isCurrentSession(sessionId)) return;
             // 토큰 반납(DELETE)은 JWT가 아직 유효할 때 먼저 호출해야 한다.
             // clearAuth()가 먼저면 토큰이 사라져 401이 된다. 실패해도 로그아웃은 진행.
             try {
@@ -205,18 +238,14 @@ const checkNotificationPermission = async () => {
               console.warn('[push] 토큰 반납 실패:', e);
             }
 
+            if (!isCurrentSession(sessionId)) return;
             try {
               await logout();
             } catch (e) {
               // 네트워크 문제로 서버 로그아웃이 실패해도 로컬 로그아웃은 진행한다.
               console.warn('[auth] 서버 로그아웃 실패:', e);
             } finally {
-              try {
-                await clearAuth();
-              } catch (e) {
-                console.warn('[auth] 로컬 토큰 삭제 실패:', e);
-              }
-              router.replace('/login');
+              if (isCurrentSession(sessionId)) await finishLocalLogout();
             }
           },
         },

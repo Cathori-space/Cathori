@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { usePushNotifications } from '@/src/features/notifications';
 import { queryClient } from '@/src/lib/queryClient';
+import { MembershipPrompt } from '@/src/features/auth/components/MembershipPrompt';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
 // SplashScreen을 수동 제어 — rehydrate 완료 전까지 유지
@@ -22,12 +23,10 @@ export const unstable_settings = {
 /**
  * 인증 상태 기반 라우팅 가드
  *
- * - accessToken이 있으면 메인(tabs) 진입 허용
- * - 없으면 로그인 화면으로 리다이렉트
- * - 로그인 화면에서 토큰이 생기면 메인으로 이동
+ * 게스트는 공개 화면과 인증 화면을 이용하고, 회원 인증 실패는 로그인으로 이동한다.
  */
 function useProtectedRoute() {
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const status = useAuthStore((state) => state.status);
   const segments = useSegments();
   const router = useRouter();
 
@@ -37,14 +36,14 @@ function useProtectedRoute() {
     const currentSegment = segments[0] as string;
     const inAuthGroup = currentSegment === 'login' || currentSegment === 'register';
 
-    if (!accessToken && !inAuthGroup) {
+    if (status === 'unauthenticated' && !inAuthGroup) {
       // 토큰 없음 + 인증 화면 밖 → 로그인으로
       router.replace('/login' as never);
-    } else if (accessToken && inAuthGroup) {
+    } else if (status === 'authenticated' && inAuthGroup) {
       // 토큰 있음 + 인증 화면 안 → 메인으로
       router.replace('/(tabs)');
     }
-  }, [accessToken, segments, router]);
+  }, [status, segments, router]);
 }
 
 export default function RootLayout() {
@@ -112,6 +111,7 @@ function RootLayoutNav() {
 }
 
 function AppNavigator() {
+  const status = useAuthStore((s) => s.status);
   // 인증 상태 기반 라우팅 가드 활성화
   useProtectedRoute();
   // 푸시 토큰 동기화(로그인 시 등록) + 알림 탭 → 공지 상세 네비게이션
@@ -120,22 +120,26 @@ function AppNavigator() {
   return (
     <>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* 공지 상세 화면 */}
-        <Stack.Screen
-          name="notice/[id]"
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        />
-        {/* 알림 리스트 화면 */}
-        <Stack.Screen
-          name="notification/index"
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        />
-        {/* 북마크 목록 화면 */}
-        <Stack.Screen
-          name="bookmark/index"
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        />
+        <Stack.Protected guard={status === 'guest' || status === 'authenticated'}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* 공지 상세 화면 */}
+          <Stack.Screen
+            name="notice/[id]"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
+        </Stack.Protected>
+        <Stack.Protected guard={status === 'authenticated'}>
+          {/* 알림 리스트 화면 */}
+          <Stack.Screen
+            name="notification/index"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
+          {/* 북마크 목록 화면 */}
+          <Stack.Screen
+            name="bookmark/index"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
+        </Stack.Protected>
         {/* 인증 화면 — 로그인 */}
         <Stack.Screen
           name="login"
@@ -146,12 +150,15 @@ function AppNavigator() {
           name="register"
           options={{ headerShown: false, animation: 'slide_from_right' }}
         />
-        {/* 설정 — 관심 키워드 화면 */}
-        <Stack.Screen
-          name="settings/keywords"
-          options={{ headerShown: false, animation: 'slide_from_right' }}
-        />
+        <Stack.Protected guard={status === 'authenticated'}>
+          {/* 설정 — 관심 키워드 화면 */}
+          <Stack.Screen
+            name="settings/keywords"
+            options={{ headerShown: false, animation: 'slide_from_right' }}
+          />
+        </Stack.Protected>
       </Stack>
+      <MembershipPrompt />
       {/* Android only: 상태바 스타일 */}
       <StatusBar style="light" backgroundColor="transparent" translucent />
     </>

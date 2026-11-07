@@ -1,11 +1,14 @@
 package org.cathori.backend.notification.infra;
 
 import org.cathori.backend.notification.application.push.PushNotificationService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * 새 공지사항 알림을 정해진 시각에 자동 발송하는 스케줄러입니다.
@@ -15,10 +18,16 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class PushNotificationScheduler {
 
     private final PushNotificationService pushNotificationService;
+    private final String maintenanceFile;
+
+    public PushNotificationScheduler(PushNotificationService pushNotificationService,
+                                     @Value("${alert.dispatch.maintenance-file:}") String maintenanceFile) {
+        this.pushNotificationService = pushNotificationService;
+        this.maintenanceFile = maintenanceFile;
+    }
 
     /**
      * 새 공지 알림을 일괄 발송합니다. (기본: 매일 오전 11시)
@@ -28,6 +37,7 @@ public class PushNotificationScheduler {
      */
     @Scheduled(cron = "${alert.dispatch.cron:0 0 11 * * *}")
     public void sendNoticeNotifications() {
+        if (maintenanceActive()) return;
         log.info("알림 발송 스케줄러 시작");
         pushNotificationService.sendNoticeNotifications();
     }
@@ -35,7 +45,13 @@ public class PushNotificationScheduler {
     /** 20분마다 실패한 알림 발송을 재시도합니다. */
     @Scheduled(cron = "0 0/20 * * * *")
     public void retryFailedNotifications() {
+        if (maintenanceActive()) return;
         pushNotificationService.retryFailedNotifications();
     }
 
+    private boolean maintenanceActive() {
+        if (maintenanceFile.isBlank()) return false;
+        Path marker = Path.of(maintenanceFile).toAbsolutePath();
+        return !Files.isDirectory(marker.getParent()) || !Files.notExists(marker);
+    }
 }

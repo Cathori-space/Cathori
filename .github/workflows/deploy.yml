@@ -2,15 +2,16 @@ name: Deploy to AWS
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - 'nginx/**'
-      - 'prometheus/**'
-      - 'grafana/**'
-      - 'docker-compose.prod.yml'
+    inputs:
+      migration_reviewed:
+        description: '유지보수·구 서버 정지 및 001·002·003 전환이 승인됐음을 확인'
+        type: boolean
+        required: true
+        default: false
+
+concurrency:
+  group: cathori-production-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -18,7 +19,9 @@ permissions:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main' && inputs.migration_reviewed
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Checkout
@@ -35,13 +38,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend image
+        id: backend_image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./backend/Dockerfile.prod
           push: true
           tags: |
-            ghcr.io/cathori-space/cathori-backend:latest
             ghcr.io/cathori-space/cathori-backend:sha-${{ github.sha }}
           labels: org.opencontainers.image.source=https://github.com/Cathori-space/Cathori
           cache-from: type=gha,scope=backend
@@ -49,26 +52,20 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          CATHORI_BACKEND_IMAGE: ghcr.io/cathori-space/cathori-backend@${{ steps.backend_image.outputs.digest }}
         with:
           host:     ${{ secrets.WAS_HOST }}
           username: ${{ secrets.WAS_USER }}
           key:      ${{ secrets.WAS_SSH_KEY }}
+          envs: RELEASE_SHA,CATHORI_BACKEND_IMAGE
           script: |
             set -e
             cd /home/${{ secrets.WAS_USER }}/Cathori
 
-            # 최신 코드 받기
-            git pull origin main
-
-            # GitHub Actions에서 빌드한 최신 backend 이미지 받기
-            docker compose -f docker-compose.prod.yml pull backend
-
-            # Compose 전체를 기준으로 필요한 서비스만 갱신
-            # backend는 image를 사용하므로 서버에서 빌드되지 않음
-            docker compose -f docker-compose.prod.yml up -d --build
-
-            # backend IP 변경을 nginx upstream에 반영
-            docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload
-            
-            # 사용하지 않는 이미지 정리
-            docker image prune -f
+            git diff --exit-code --quiet
+            git diff --cached --exit-code --quiet
+            git pull --ff-only origin main
+            test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+            bash backend/scripts/deploy-prod.sh

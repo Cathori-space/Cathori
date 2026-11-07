@@ -17,12 +17,14 @@ RUN cd backend && ./gradlew bootJar --no-daemon -x test
 # ── 2단계: 실행 이미지 ──────────────────────────────
 FROM eclipse-temurin:21-jre-alpine AS runner
 WORKDIR /app
+LABEL org.cathori.push-schema-version="003" org.cathori.push-ownership-policy="account-bound-v1"
 
 # 보안: root 대신 일반 유저로 실행
 RUN addgroup -S cathori && adduser -S cathori -G cathori
 USER cathori
 
 COPY --from=builder /app/backend/build/libs/*.jar app.jar
+COPY --chmod=0555 backend/scripts/production-entrypoint.sh /app/production-entrypoint.sh
 
 EXPOSE 8080 9091
-ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
+ENTRYPOINT ["/app/production-entrypoint.sh"]

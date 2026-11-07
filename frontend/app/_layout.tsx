@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { usePushNotifications } from '@/src/features/notifications';
+import { queryClient } from '@/src/lib/queryClient';
 import { useReviewSessionTimer } from '@/src/features/reviews';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
@@ -127,7 +128,6 @@ function RootLayoutNav() {
 function AppNavigator() {
   // 인증 상태 기반 라우팅 가드 활성화
   useProtectedRoute();
-  useReviewSessionTimer();
   // 푸시 토큰 동기화(로그인 시 등록) + 알림 탭 → 공지 상세 네비게이션
   usePushNotifications();
 

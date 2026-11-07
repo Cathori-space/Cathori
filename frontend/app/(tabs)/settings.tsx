@@ -44,8 +44,7 @@ import {
 
 import { Colors } from '@/src/constants/colors';
 import { getSessionId, isCurrentSession } from '@/src/services/session';
-import { logout, withdraw } from '@/src/services/auth';
-import { unregisterDeviceToken } from '@/src/services/pushToken';
+import { withdraw } from '@/src/services/auth';
 import { MainHeader } from '@/src/shared/components';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
@@ -183,18 +182,6 @@ const checkNotificationPermission = async () => {
     setWithdrawModalVisible(true);
   };
 
-  const finishLocalLogout = async () => {
-    const ending = clearAuth();
-    const endingSessionId = getSessionId();
-    try {
-      await ending;
-    } catch {
-      console.warn('[auth] 로컬 토큰 삭제를 완료하지 못했습니다.');
-    } finally {
-      if (isCurrentSession(endingSessionId)) router.replace('/login');
-    }
-  };
-
   /** 회원탈퇴 확정 — DELETE /api/users/me → clearAuth → 로그인 화면 이동 */
   const handleWithdrawConfirm = async () => {
     const sessionId = getSessionId();
@@ -208,16 +195,10 @@ const checkNotificationPermission = async () => {
       return;
     }
     if (!isCurrentSession(sessionId)) return;
-    try {
-      await unregisterDeviceToken();
-    } catch (e) {
-      console.warn('[push] 토큰 반납 실패:', e);
-    }
-    if (!isCurrentSession(sessionId)) return;
-    await finishLocalLogout();
+    await clearAuth('withdrawal');
+    router.replace('/login');
   };
 
-  /** 로그아웃 — 서버 refresh token 폐기 → 로컬 인증 삭제 → 로그인 화면 이동 */
   const handleLogout = () => {
     const sessionId = getSessionId();
     Alert.alert(
@@ -230,22 +211,21 @@ const checkNotificationPermission = async () => {
           style: 'destructive',
           onPress: async () => {
             if (!isCurrentSession(sessionId)) return;
-            // 토큰 반납(DELETE)은 JWT가 아직 유효할 때 먼저 호출해야 한다.
-            // clearAuth()가 먼저면 토큰이 사라져 401이 된다. 실패해도 로그아웃은 진행.
+            const ending = clearAuth('logout');
+            const endingSessionId = getSessionId();
             try {
-              await unregisterDeviceToken();
-            } catch (e) {
-              console.warn('[push] 토큰 반납 실패:', e);
-            }
-
-            if (!isCurrentSession(sessionId)) return;
-            try {
-              await logout();
-            } catch (e) {
-              // 네트워크 문제로 서버 로그아웃이 실패해도 로컬 로그아웃은 진행한다.
-              console.warn('[auth] 서버 로그아웃 실패:', e);
+              const result = await ending;
+              if (result.logout !== 'confirmed' && isCurrentSession(endingSessionId)) {
+                Alert.alert('서버 로그아웃 미확인', '이 기기에서는 로그아웃했습니다. 서버의 세션 및 알림 등록 해제는 확인하지 못했습니다.');
+              }
+            } catch {
+              if (isCurrentSession(endingSessionId)) {
+                Alert.alert('로그아웃 정리 실패', '로그아웃 정리를 완료하지 못했습니다.');
+              }
             } finally {
-              if (isCurrentSession(sessionId)) await finishLocalLogout();
+              if (isCurrentSession(endingSessionId) && useAuthStore.getState().status === 'unauthenticated') {
+                router.replace('/login');
+              }
             }
           },
         },

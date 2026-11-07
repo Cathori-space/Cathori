@@ -2,29 +2,24 @@
  * expo-notifications 래퍼 — 권한 요청 / 디바이스 토큰 발급 / 포그라운드 표시 정책
  *
  * ADR `알림 발송 방식 도입`에 따라 RN 클라이언트는 expo-notifications를 사용한다.
- * 현재는 FCM 직접 방식(네이티브 FCM 토큰)이며, 추후 Expo Push로 전환 시
- * getDevicePushToken()의 본문 한 줄만 교체하면 된다(아래 주석 참고).
+ * 알림 표시와 권한은 Expo, FCM 등록 토큰의 발급·삭제는 Firebase가 담당한다.
  *
- * 주의: getDevicePushTokenAsync()는 google-services.json이 포함된 개발 빌드(EAS dev build)에서만
- * 동작하며 Expo Go에서는 동작하지 않는다.
+ * FCM 발급·삭제는 Firebase로 통일하며 개발 빌드가 필요하다. Expo Go에서는 동작하지 않는다.
  */
 
+import { useAuthStore } from '@/src/store/useAuthStore';
+import { getSessionId, isCurrentSession } from '@/src/services/session';
+import { getManagedDevicePushToken } from '@/src/services/pushDevice';
+import { isPushSessionActive } from '@/src/services/pushToken';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { getSessionId, isCurrentSession } from '@/src/services/session';
-import { useAuthStore } from '@/src/store/useAuthStore';
-import {
-  getMessaging,
-  getToken,
-} from '@react-native-firebase/messaging';
-
-// 앱이 포그라운드일 때도 OS 알림 배너를 표시한다.
+// 회원 세션에서만 포그라운드 알림을 표시한다.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
+    shouldShowBanner: useAuthStore.getState().status === 'authenticated',
+    shouldShowList: useAuthStore.getState().status === 'authenticated',
+    shouldPlaySound: useAuthStore.getState().status === 'authenticated',
     shouldSetBadge: false,
   }),
 });
@@ -37,8 +32,9 @@ Notifications.setNotificationHandler({
  */
 export const ANDROID_NOTIFICATION_CHANNEL_ID = 'notice';
 
-if (Platform.OS === 'android') {
-  Notifications.setNotificationChannelAsync(ANDROID_NOTIFICATION_CHANNEL_ID, {
+async function ensureNotificationChannel() {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(ANDROID_NOTIFICATION_CHANNEL_ID, {
     name: '공지 알림',
     importance: Notifications.AndroidImportance.HIGH,
     sound: 'default',
@@ -49,6 +45,8 @@ if (Platform.OS === 'android') {
 export async function requestNotificationPermission(): Promise<boolean> {
   if (useAuthStore.getState().status !== 'authenticated') return false;
   const sessionId = getSessionId();
+  await ensureNotificationChannel();
+  if (!isCurrentSession(sessionId)) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (!isCurrentSession(sessionId) || useAuthStore.getState().status !== 'authenticated') return false;
   if (existing === 'granted') return true;
@@ -60,24 +58,16 @@ export async function requestNotificationPermission(): Promise<boolean> {
 /**
  * 디바이스 푸시 토큰을 발급한다. 실패 시 null.
  *
- * 현재: FCM 직접 방식 — 네이티브 FCM 토큰.
- * [Expo Push 전환 시] 아래 본문을 다음으로 교체:
- *   import Constants from 'expo-constants';
- *   const projectId = Constants?.expoConfig?.extra?.eas?.projectId;
- *   const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
- *   return data;
+ * 발급·삭제를 직렬화하고 이전 세션에서 삭제하지 못한 토큰은 재사용하지 않는다.
  */
 export async function getDevicePushToken(): Promise<string | null> {
+  if (useAuthStore.getState().status !== 'authenticated') return null;
+  const sessionId = getSessionId();
   try {
-    if (Platform.OS === 'ios') {
-      const messaging = getMessaging();
-      return await getToken(messaging);
-    }
-
-    const { data } = await Notifications.getDevicePushTokenAsync();
-    return data;
-  } catch (e) {
-    console.warn('[push] 디바이스 토큰 발급 실패:', e);
+    return await getManagedDevicePushToken(() => isPushSessionActive(sessionId)
+      && useAuthStore.getState().status === 'authenticated');
+  } catch {
+    console.warn('[push] 디바이스 토큰 발급을 완료하지 못했습니다.');
     return null;
   }
 }

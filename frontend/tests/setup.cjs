@@ -52,12 +52,20 @@ jest.mock('expo-notifications', () => ({
   addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   getLastNotificationResponseAsync: jest.fn(async () => null),
+  dismissAllNotificationsAsync: jest.fn(async () => {}),
   clearLastNotificationResponseAsync: jest.fn(async () => {}),
 }));
-jest.mock('@react-native-firebase/messaging', () => ({
-  getMessaging: jest.fn(),
-  getToken: jest.fn(async () => 'device'),
-}));
+jest.mock('@react-native-firebase/messaging', () => {
+  let generation = 0;
+  return {
+    getMessaging: jest.fn(() => ({ isDeviceRegisteredForRemoteMessages: false })),
+    getToken: jest.fn(async () => `device-${generation}`),
+    deleteToken: jest.fn(async () => { generation += 1; }),
+    setAutoInitEnabled: jest.fn(async () => {}),
+    registerDeviceForRemoteMessages: jest.fn(async () => {}),
+    unregisterDeviceForRemoteMessages: jest.fn(async () => {}),
+  };
+});
 jest.mock('expo-constants', () => ({ expoConfig: { version: '1.0.2' } }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 jest.mock('expo-splash-screen', () => ({ preventAutoHideAsync: jest.fn(), hideAsync: jest.fn() }));

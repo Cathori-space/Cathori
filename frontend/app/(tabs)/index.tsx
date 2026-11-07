@@ -37,6 +37,7 @@ import {
 import {
   AndroidReviewPromptModal,
   useAndroidReviewPrompt,
+  useIosReviewPrompt,
 } from '@/src/features/reviews';
 import { useRefreshTags } from '@/src/features/settings/hooks';
 import { EmptyState, MainHeader } from '@/src/shared/components';
@@ -100,6 +101,8 @@ const FeedHeader = FeedHeaderComponent;
 // ─── 메인 화면 ────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  useIosReviewPrompt();
+
   const {
     visible: isReviewPromptVisible,
     handleDismiss: handleReviewPromptDismiss,

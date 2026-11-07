@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -8,24 +8,11 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { usePushNotifications } from '@/src/features/notifications';
+import { queryClient } from '@/src/lib/queryClient';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
 // SplashScreen을 수동 제어 — rehydrate 완료 전까지 유지
 SplashScreen.preventAutoHideAsync();
-
-// TanStack Query 클라이언트 설정
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // 네트워크 재연결 시 자동 재조회
-      refetchOnWindowFocus: false,
-      // 오래된 데이터 허용 시간 (30초)
-      staleTime: 30_000,
-      // 재시도 1회
-      retry: 1,
-    },
-  },
-});
 
 // 뒤로 가기 시, 탭으로 이동되도록 설정
 export const unstable_settings = {
@@ -109,6 +96,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const sessionId = useAuthStore((s) => s.sessionId);
   // SafeAreaProvider — react-native-safe-area-context의 inset 컨텍스트를 트리에 주입.
   // 트리 상단에 Provider가 없으면 useSafeAreaInsets() - SafeAreaView가 inset을 0으로
   // 계산하여 갤럭시(Android)의 OS 네비바 영역을 침범한다.
@@ -116,7 +104,7 @@ function RootLayoutNav() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <AppNavigator />
+          <AppNavigator key={sessionId} />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

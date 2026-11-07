@@ -344,10 +344,13 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         // given: 공개·비공개 공지와 만료·위조 토큰을 준비
         Notice main = save("MAIN", "공통 공지", "일반");
         Notice hidden = save("PRIVATE", "비공개 공지", "일반");
-        String expired = Jwts.builder().subject("1").claim("type", "access")
+        var member = jwtUtil.parseAccessToken(memberToken()).orElseThrow();
+        String expired = Jwts.builder().subject(String.valueOf(member.userId()))
+                .claim("type", "access").claim("sv", member.sessionVersion())
                 .expiration(new Date(System.currentTimeMillis() - 60_000))
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(signingKey))).compact();
-        String forged = Jwts.builder().subject("1").claim("type", "access")
+        String forged = Jwts.builder().subject(String.valueOf(member.userId()))
+                .claim("type", "access").claim("sv", member.sessionVersion())
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
                 .signWith(Keys.hmacShaKeyFor(new byte[32])).compact();
 
@@ -406,7 +409,8 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
             verifiedEmails.remove(VerificationPurpose.SIGNUP, email);
         }
         users.flush();
-        return jwtUtil.generateAccessToken(users.findByEmail(email).orElseThrow().getId());
+        var user = users.findByEmail(email).orElseThrow();
+        return jwtUtil.generateAccessToken(user.getId(), user.getSessionVersion());
     }
 
     private Notice save(String source, String title, String category) {

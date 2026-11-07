@@ -9,17 +9,23 @@ import java.util.Collections;
 public class CustomUserDetails implements UserDetails {
 
     private final Long userId;
+    private final long sessionVersion;
     private final String email;
     private final String password;
 
-    public CustomUserDetails(Long userId, String email, String password) {
+    public CustomUserDetails(Long userId, long sessionVersion, String email, String password) {
         this.userId = userId;
+        this.sessionVersion = sessionVersion;
         this.email = email;
         this.password = password;
     }
 
     public Long getUserId() {
         return userId;
+    }
+
+    public long getSessionVersion() {
+        return sessionVersion;
     }
 
     @Override

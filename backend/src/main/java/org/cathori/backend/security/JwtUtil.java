@@ -1,7 +1,6 @@
 package org.cathori.backend.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -10,13 +9,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.Instant;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class JwtUtil {
 
     private static final String CLAIM_TYPE = "type";
+    private static final String CLAIM_SESSION_VERSION = "sv";
     private static final String TOKEN_TYPE_ACCESS = "access";
     private static final String TOKEN_TYPE_REFRESH = "refresh";
 
@@ -39,92 +41,61 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
     }
 
-    /**
-     * 액세스 토큰을 생성한다. (최초 로그인 시 호출)
-     * payload에 userId를 subject로 담고, 서명 후 문자열로 반환한다.
-     * 만료시간: application.yml의 jwt.access-token-expiry 값 (1시간)
-     */
-    public String generateAccessToken(Long userId) {
+    public String generateAccessToken(Long userId, long sessionVersion) {
+        return generateToken(userId, sessionVersion, TOKEN_TYPE_ACCESS, accessTokenExpiry);
+    }
+
+    public String generateRefreshToken(Long userId, long sessionVersion) {
+        return generateToken(userId, sessionVersion, TOKEN_TYPE_REFRESH, refreshTokenExpiry);
+    }
+
+    private String generateToken(Long userId, long sessionVersion, String type, long expiry) {
+        long now = System.currentTimeMillis();
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(userId))
-                .claim(CLAIM_TYPE, TOKEN_TYPE_ACCESS)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + accessTokenExpiry))
+                .claim(CLAIM_TYPE, type)
+                .claim(CLAIM_SESSION_VERSION, sessionVersion)
+                .issuedAt(new Date(now))
+                .expiration(new Date(now + expiry))
                 .signWith(getSigningKey())
                 .compact();
     }
 
-    /**
-     * 리프레시 토큰을 생성한다. (최초 로그인 시 호출)
-     * 구조는 액세스 토큰과 동일하며, 만료시간만 다르다.
-     * 만료시간: application.yml의 jwt.refresh-token-expiry 값 (30일)
-     */
-    public String generateRefreshToken(Long userId) {
-        return Jwts.builder()
-                .id(UUID.randomUUID().toString())
-                .subject(String.valueOf(userId))
-                .claim(CLAIM_TYPE, TOKEN_TYPE_REFRESH)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiry))
-                .signWith(getSigningKey())
-                .compact();
+    public Optional<TokenSession> parseAccessToken(String token) {
+        return parseToken(token, TOKEN_TYPE_ACCESS);
     }
 
-    /**
-     * 서명/포맷/허용 알고리즘을 검증하고 claims를 반환한다.
-     * exp가 지났더라도 type 클레임은 먼저 확인할 수 있도록,
-     * 만료 예외는 잡아서 claims를 그대로 반환한다 (만료 여부는 호출부에서 별도 판단).
-     */
-    private Claims parseClaims(String token) {
+    public Optional<TokenSession> parseRefreshToken(String token) {
+        return parseToken(token, TOKEN_TYPE_REFRESH);
+    }
+
+    private Optional<TokenSession> parseToken(String token, String type) {
         try {
-            return Jwts.parser()
+            Claims claims = Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-        } catch (ExpiredJwtException e) {
-            return e.getClaims();
-        }
-    }
-
-    /**
-     * 액세스 토큰 검증: 형식/서명/알고리즘 -> type=access -> 만료기한 순으로 확인한다.
-     * (subject의 사용자 유효성은 JwtFilter에서 DB 조회로 별도 확인한다)
-     */
-    public boolean validateAccessToken(String token) {
-        try {
-            Claims claims = parseClaims(token);
-            if (!TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TYPE, String.class))) {
-                return false;
-            }
             Date expiration = claims.getExpiration();
-            return expiration != null && expiration.after(new Date());
+            if (!type.equals(claims.get(CLAIM_TYPE, String.class))
+                    || expiration == null || !expiration.after(new Date())) {
+                return Optional.empty();
+            }
+            Object version = claims.get(CLAIM_SESSION_VERSION);
+            if (!(version instanceof Integer || version instanceof Long)) {
+                return Optional.empty();
+            }
+            long sessionVersion = ((Number) version).longValue();
+            long userId = Long.parseLong(claims.getSubject());
+            if (userId <= 0 || sessionVersion < 0) {
+                return Optional.empty();
+            }
+            return Optional.of(new TokenSession(userId, sessionVersion, expiration.toInstant()));
         } catch (JwtException | IllegalArgumentException e) {
-            return false;
+            return Optional.empty();
         }
     }
 
-    /**
-     * 리프레시 토큰 여부 검증: 형식/서명/알고리즘 -> type=refresh 순으로 확인한다.
-     * DB 일치 여부, 만료기한(DB 기준), subject 사용자 유효성은 AuthService에서 확인한다.
-     */
-    public boolean isRefreshToken(String token) {
-        try {
-            Claims claims = parseClaims(token);
-            return TOKEN_TYPE_REFRESH.equals(claims.get(CLAIM_TYPE, String.class));
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    public Long extractUserId(String token) {
-        String subject = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
-        return Long.parseLong(subject);
-    }
+    public record TokenSession(long userId, long sessionVersion, Instant expiresAt) {}
 }

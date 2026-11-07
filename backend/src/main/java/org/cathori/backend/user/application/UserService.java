@@ -40,12 +40,12 @@ public class UserService {
         return userRepository.existsByEmail(email);
     }
 
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
+    Optional<User> findByEmailForUpdate(String email) {
+        return userRepository.findByEmailForUpdate(email);
     }
 
-    public Optional<User> findById(Long userId) {
-        return userRepository.findById(userId);
+    Optional<User> findByIdForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId);
     }
 
     @Transactional
@@ -59,16 +59,13 @@ public class UserService {
     }
 
     @Transactional
-    public void updateDeviceToken(Long userId, String deviceToken) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-        user.updateDeviceToken(deviceToken);
+    public void updateDeviceToken(Long userId, long sessionVersion, String deviceToken) {
+        requireCurrentSessionForUpdate(userId, sessionVersion).updateDeviceToken(deviceToken);
     }
 
     @Transactional
-    public void withdraw(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+    public void withdraw(Long userId, long sessionVersion) {
+        User user = requireCurrentSessionForUpdate(userId, sessionVersion);
 
         tagRepository.deleteByUserId(userId);
         bookmarkRepository.deleteByUserId(userId);
@@ -77,9 +74,19 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    public void clearDeviceToken(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+    @Transactional
+    public void clearDeviceToken(Long userId, long sessionVersion) {
+        User user = requireCurrentSessionForUpdate(userId, sessionVersion);
         user.clearDeviceToken();
+    }
+
+    User requireCurrentSessionForUpdate(Long userId, long sessionVersion) {
+        return requireCurrentSession(findByIdForUpdate(userId), sessionVersion);
+    }
+
+    private User requireCurrentSession(Optional<User> user, long sessionVersion) {
+        return user
+                .filter(candidate -> candidate.getSessionVersion() == sessionVersion)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.SESSION_INVALID));
     }
 }

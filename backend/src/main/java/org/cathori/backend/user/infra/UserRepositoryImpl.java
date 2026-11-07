@@ -1,5 +1,6 @@
 package org.cathori.backend.user.infra;
 
+import jakarta.persistence.EntityManager;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.domain.UserRepository;
 import org.springframework.stereotype.Repository;
@@ -13,9 +14,11 @@ import java.util.stream.Collectors;
 public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository jpaRepository;
+    private final EntityManager entityManager;
 
-    public UserRepositoryImpl(UserJpaRepository jpaRepository) {
+    public UserRepositoryImpl(UserJpaRepository jpaRepository, EntityManager entityManager) {
         this.jpaRepository = jpaRepository;
+        this.entityManager = entityManager;
     }
 
     @Override
@@ -36,6 +39,22 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findById(Long id) {
         return jpaRepository.findById(id);
+    }
+
+    @Override
+    public Optional<User> findByEmailForUpdate(String email) {
+        return refreshLockedUser(jpaRepository.findByEmailForUpdate(email));
+    }
+
+    @Override
+    public Optional<User> findByIdForUpdate(Long id) {
+        return refreshLockedUser(jpaRepository.findByIdForUpdate(id));
+    }
+
+    private Optional<User> refreshLockedUser(Optional<User> user) {
+        // 잠금 조회가 영속성 컨텍스트에 이미 있는 엔티티를 반환할 수 있다.
+        user.ifPresent(entityManager::refresh);
+        return user;
     }
 
     @Override

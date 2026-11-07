@@ -34,6 +34,10 @@ import {
   useNotices,
   useToggleBookmark,
 } from '@/src/features/notices';
+import {
+  AndroidReviewPromptModal,
+  useAndroidReviewPrompt,
+} from '@/src/features/reviews';
 import { useRefreshTags } from '@/src/features/settings/hooks';
 import { EmptyState, MainHeader } from '@/src/shared/components';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -96,6 +100,12 @@ const FeedHeader = FeedHeaderComponent;
 // ─── 메인 화면 ────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  const {
+    visible: isReviewPromptVisible,
+    handleDismiss: handleReviewPromptDismiss,
+    handleReviewPress,
+  } = useAndroidReviewPrompt();
+
   // 필터 상태 (Zustand) — 데이터 조회용
   const selectedCategory = useNoticeFilterStore((s) => s.selectedCategory);
   const selectedTag = useNoticeFilterStore((s) => s.selectedTag);
@@ -223,6 +233,12 @@ export default function HomeScreen() {
             colors={[Colors.primary]}
           />
         }
+      />
+
+      <AndroidReviewPromptModal
+        visible={isReviewPromptVisible}
+        onDismiss={handleReviewPromptDismiss}
+        onReviewPress={handleReviewPress}
       />
     </View>
   );

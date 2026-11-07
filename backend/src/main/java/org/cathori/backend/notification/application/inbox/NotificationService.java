@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZoneOffset;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 @Service
@@ -50,6 +51,27 @@ public class NotificationService {
     @Transactional
     public void markRead(Long userId, Long alertHistoryId) {
         AlertHistory alertHistory = alertHistoryRepository.findByIdAndUserId(alertHistoryId, userId)
+                .orElseThrow(() -> new BusinessException(AlertErrorCode.ALERT_NOT_FOUND));
+        alertHistory.markRead();
+        alertHistoryRepository.save(alertHistory);
+    }
+
+    @Transactional
+    public List<Long> markRead(Long userId, List<Long> alertHistoryIds) {
+        List<Long> distinctIds = new LinkedHashSet<>(alertHistoryIds).stream().toList();
+        List<AlertHistory> alertHistories = alertHistoryRepository.findAllByIdInAndUserId(distinctIds, userId);
+
+        alertHistories.forEach(AlertHistory::markRead);
+        alertHistoryRepository.saveAll(alertHistories);
+
+        return alertHistories.stream()
+                .map(AlertHistory::getId)
+                .toList();
+    }
+
+    @Transactional
+    public void markReadByNoticeId(Long userId, Long noticeId) {
+        AlertHistory alertHistory = alertHistoryRepository.findByUserIdAndNoticeId(userId, noticeId)
                 .orElseThrow(() -> new BusinessException(AlertErrorCode.ALERT_NOT_FOUND));
         alertHistory.markRead();
         alertHistoryRepository.save(alertHistory);

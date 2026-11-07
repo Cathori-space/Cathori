@@ -65,6 +65,16 @@ public class AlertHistoryRepositoryImpl implements AlertHistoryRepository {
     }
 
     @Override
+    public List<AlertHistory> findAllByIdInAndUserId(List<Long> ids, Long userId) {
+        return jpaRepository.findAllByIdInAndUserId(ids, userId);
+    }
+
+    @Override
+    public Optional<AlertHistory> findByUserIdAndNoticeId(Long userId, Long noticeId) {
+        return jpaRepository.findByUserIdAndNoticeId(userId, noticeId);
+    }
+
+    @Override
     public boolean existsUnreadSuccessByUserId(Long userId) {
         return jpaRepository.existsByUserIdAndAlarmStatusAndIsReadFalse(userId, "SUCCESS");
     }

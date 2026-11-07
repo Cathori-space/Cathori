@@ -17,8 +17,15 @@
  * - 카드 탭 → 공지 상세(/notice/{noticeId})
  */
 
-import React from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, View } from 'react-native';
+import React, { useRef } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StyleSheet,
+  View,
+  type ViewToken,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, type Href } from 'expo-router';
 
@@ -27,6 +34,7 @@ import {
   NotificationItem,
   useDeleteNotification,
   useMarkNotificationRead,
+  useMarkNotificationsRead,
   useNotifications,
 } from '@/src/features/notifications';
 import { EmptyState, SubHeader } from '@/src/shared/components';
@@ -47,6 +55,41 @@ export default function NotificationScreen() {
   } = useNotifications();
   const deleteNotificationMutation = useDeleteNotification();
   const markNotificationReadMutation = useMarkNotificationRead();
+  const markNotificationsReadMutation = useMarkNotificationsRead();
+  const markingIdsRef = useRef(new Set<number>());
+  const markVisibleNotificationsRef = useRef(
+    markNotificationsReadMutation.mutateAsync,
+  );
+  markVisibleNotificationsRef.current = markNotificationsReadMutation.mutateAsync;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 300,
+  }).current;
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken<NotificationListItem>[] }) => {
+      const unreadIds = viewableItems
+        .filter(
+          ({ isViewable, item }) =>
+            isViewable &&
+            !item.isRead &&
+            !markingIdsRef.current.has(item.alertHistoryId),
+        )
+        .map(({ item }) => item.alertHistoryId);
+
+      if (unreadIds.length === 0) return;
+      unreadIds.forEach((id) => markingIdsRef.current.add(id));
+
+      void markVisibleNotificationsRef.current(unreadIds)
+        .catch(() => {
+          // 실패한 카드는 미읽음 색상을 유지하고 다음 노출 때 재시도한다.
+        })
+        .finally(() => {
+          unreadIds.forEach((id) => markingIdsRef.current.delete(id));
+        });
+    },
+  ).current;
 
   // 커서 페이지네이션 응답(pages)을 단일 목록으로 평탄화
   const notifications = data?.pages.flatMap((page) => page.alerts) ?? [];
@@ -132,6 +175,8 @@ export default function NotificationScreen() {
           refreshing={isRefetching}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.4}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           ListFooterComponent={
             isFetchingNextPage ? (
               <ActivityIndicator

@@ -15,6 +15,16 @@ export const Colors = {
   background: '#F9F9F9',
   /** 카드 배경 */
   cardBg: '#FFFFFF',
+  /** 카드 테두리 */
+  cardBorder: '#ECEEF3',
+  /** 미읽음 알림 카드 배경 */
+  notificationUnreadBg: '#FFFBEA',
+  /** 미읽음 알림 카드 테두리 */
+  notificationUnreadBorder: '#F0CF63',
+  /** 미읽음 알림 배지 배경 */
+  notificationUnreadBadgeBg: '#FFF0B8',
+  /** 미읽음 알림 강조 텍스트 */
+  notificationUnreadText: '#765900',
   /** Today's Highlight 카드 배경 */
   highlightBg: '#FFDF9C',
 

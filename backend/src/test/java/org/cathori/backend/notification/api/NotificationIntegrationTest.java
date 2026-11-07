@@ -24,7 +24,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -199,6 +201,86 @@ class NotificationIntegrationTest extends IntegrationTestBase {
     void markRead_withoutJwt_returns401() throws Exception {
         mockMvc.perform(patch("/api/notifications/1/read"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("NI-8-1: PATCH /read → 내 알림만 일괄 읽음 처리하고 처리된 ID 반환")
+    void markReadBatch_marksOnlyMyAlerts() throws Exception {
+        Notice unreadNotice = saveNotice();
+        Notice readNotice = saveNotice();
+        Notice otherNotice = saveNotice();
+        Long unreadId = insertAlertHistory(userAId, unreadNotice.getId(), "SUCCESS", null);
+        Long readId = insertAlertHistory(userAId, readNotice.getId(), "SUCCESS", null, true);
+        Long otherId = insertAlertHistory(userBId, otherNotice.getId(), "SUCCESS", null);
+
+        String requestBody = """
+                {"alertHistoryIds":[%d,%d,%d,99999,%d]}
+                """.formatted(unreadId, readId, otherId, unreadId);
+
+        mockMvc.perform(patch("/api/notifications/read")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.readAlertHistoryIds.length()").value(2))
+                .andExpect(jsonPath("$.readAlertHistoryIds", containsInAnyOrder(
+                        unreadId.intValue(), readId.intValue())));
+
+        org.assertj.core.api.Assertions.assertThat(
+                alertHistoryJpaRepository.findById(unreadId).orElseThrow().isRead()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(
+                alertHistoryJpaRepository.findById(otherId).orElseThrow().isRead()).isFalse();
+
+        mockMvc.perform(get("/api/notifications/unread-exists")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasUnread").value(false));
+    }
+
+    @Test
+    @DisplayName("NI-8-2: PATCH /read 빈 ID 목록 → 400")
+    void markReadBatch_withEmptyIds_returns400() throws Exception {
+        mockMvc.perform(patch("/api/notifications/read")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"alertHistoryIds\":[]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    @DisplayName("NI-8-3: PATCH /read JWT 없음 → 401")
+    void markReadBatch_withoutJwt_returns401() throws Exception {
+        mockMvc.perform(patch("/api/notifications/read")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"alertHistoryIds\":[1]}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("NI-8-4: PATCH /notices/{noticeId}/read → 해당 알림 읽음 처리")
+    void markReadByNoticeId_marksMyAlert() throws Exception {
+        Notice notice = saveNotice();
+        Long historyId = insertAlertHistory(userAId, notice.getId(), "SUCCESS", null);
+
+        mockMvc.perform(patch("/api/notifications/notices/" + notice.getId() + "/read")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNoContent());
+
+        org.assertj.core.api.Assertions.assertThat(
+                alertHistoryJpaRepository.findById(historyId).orElseThrow().isRead()).isTrue();
+    }
+
+    @Test
+    @DisplayName("NI-8-5: PATCH /notices/{noticeId}/read 내 이력 없음 → 404")
+    void markReadByNoticeId_withoutMyAlert_returns404() throws Exception {
+        Notice notice = saveNotice();
+        insertAlertHistory(userBId, notice.getId(), "SUCCESS", null);
+
+        mockMvc.perform(patch("/api/notifications/notices/" + notice.getId() + "/read")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ALERT_NOT_FOUND"));
     }
 
     @Test

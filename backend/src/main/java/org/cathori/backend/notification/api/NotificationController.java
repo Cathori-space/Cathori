@@ -1,6 +1,9 @@
 package org.cathori.backend.notification.api;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.cathori.backend.notification.api.dto.MarkNotificationsReadRequest;
+import org.cathori.backend.notification.api.dto.MarkNotificationsReadResponse;
 import org.cathori.backend.notification.api.dto.NotificationListResponse;
 import org.cathori.backend.notification.api.dto.UnreadNotificationStatusResponse;
 import org.cathori.backend.notification.application.inbox.NotificationService;
@@ -41,6 +44,25 @@ public class NotificationController {
             @PathVariable Long alertHistoryId
     ) {
         notificationService.markRead(userDetails.getUserId(), alertHistoryId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/read")
+    public ResponseEntity<MarkNotificationsReadResponse> markRead(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody @Valid MarkNotificationsReadRequest request
+    ) {
+        var readAlertHistoryIds = notificationService.markRead(
+                userDetails.getUserId(), request.alertHistoryIds());
+        return ResponseEntity.ok(new MarkNotificationsReadResponse(readAlertHistoryIds));
+    }
+
+    @PatchMapping("/notices/{noticeId}/read")
+    public ResponseEntity<Void> markReadByNoticeId(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long noticeId
+    ) {
+        notificationService.markReadByNoticeId(userDetails.getUserId(), noticeId);
         return ResponseEntity.noContent().build();
     }
 

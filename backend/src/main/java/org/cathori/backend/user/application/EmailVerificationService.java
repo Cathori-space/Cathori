@@ -29,7 +29,7 @@ public class EmailVerificationService {
                                     VerifiedEmailStore verifiedEmailStore,
                                     NotificationPort notificationPort,
                                     EmailDomainPolicy emailDomainPolicy,
-                                    @Value("${auth.email.code-ttl:PT3M}") Duration codeTtl) {
+                                    @Value("${auth.email.code-ttl:PT10M}") Duration codeTtl) {
         this.verificationCodeStore = verificationCodeStore;
         this.verifiedEmailStore = verifiedEmailStore;
         this.notificationPort = notificationPort;

@@ -21,7 +21,7 @@ public class CaffeineVerificationCodeStore implements VerificationCodeStore {
 
     private final Cache<VerificationKey, VerificationCode> cache;
 
-    public CaffeineVerificationCodeStore(@Value("${auth.email.code-ttl:PT3M}") Duration ttl) {
+    public CaffeineVerificationCodeStore(@Value("${auth.email.code-ttl:PT10M}") Duration ttl) {
         this.cache = Caffeine.newBuilder()
                 .expireAfterWrite(ttl)
                 .build();

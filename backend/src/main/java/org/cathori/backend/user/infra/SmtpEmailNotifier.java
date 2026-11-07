@@ -18,7 +18,7 @@ public class SmtpEmailNotifier implements NotificationPort {
 
     public SmtpEmailNotifier(JavaMailSender mailSender,
                              @Value("${mail.from:${spring.mail.username}}") String fromAddress,
-                             @Value("${auth.email.code-ttl:PT3M}") Duration codeTtl) {
+                             @Value("${auth.email.code-ttl:PT10M}") Duration codeTtl) {
         this.mailSender = mailSender;
         this.fromAddress = fromAddress;
         this.codeTtl = codeTtl;

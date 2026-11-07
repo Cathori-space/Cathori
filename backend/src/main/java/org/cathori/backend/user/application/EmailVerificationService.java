@@ -36,7 +36,7 @@ public class EmailVerificationService {
                                     EmailDomainPolicy emailDomainPolicy,
                                     EmailSendLimitPolicy emailSendLimitPolicy,
                                     UserRepository userRepository,
-                                    @Value("${auth.email.code-ttl:PT3M}") Duration codeTtl) {
+                                    @Value("${auth.email.code-ttl:PT10M}") Duration codeTtl) {
         this.verificationCodeStore = verificationCodeStore;
         this.verifiedEmailStore = verifiedEmailStore;
         this.notificationPort = notificationPort;

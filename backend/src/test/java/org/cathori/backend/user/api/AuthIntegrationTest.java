@@ -170,8 +170,8 @@ class AuthIntegrationTest extends IntegrationTestBase {
     @DisplayName("A-9: DB에 저장되지 않은 refreshToken으로 재발급 시도 시 401 REFRESH_TOKEN_INVALID 반환")
     void reissue_rejectsUnknownRefreshToken() throws Exception {
         createVerifiedUser(EMAIL, PASSWORD);
-        Long userId = userJpaRepository.findByEmail(EMAIL).orElseThrow().getId();
-        String unstoredRefreshToken = jwtUtil.generateRefreshToken(userId);
+        var user = userJpaRepository.findByEmail(EMAIL).orElseThrow();
+        String unstoredRefreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getSessionVersion());
 
         mockMvc.perform(post("/api/auth/reissue")
                         .contentType(MediaType.APPLICATION_JSON)

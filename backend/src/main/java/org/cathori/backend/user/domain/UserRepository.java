@@ -9,6 +9,8 @@ public interface UserRepository {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
     Optional<User> findById(Long id);
+    Optional<User> findByEmailForUpdate(String email);
+    Optional<User> findByIdForUpdate(Long id);
     List<User> findUsersWithTagMatchingTitle(String title);
     Map<Long, String> findFirstMatchedTagsByTitle(String title);
     Map<Long, String> findDeviceTokensByIds(List<Long> userIds);

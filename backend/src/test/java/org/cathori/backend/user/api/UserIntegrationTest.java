@@ -59,8 +59,9 @@ class UserIntegrationTest extends IntegrationTestBase {
     void setUp() {
         verifiedEmailStore.markVerified(EMAIL);
         authService.register(new RegisterRequest(EMAIL, PASSWORD, "ComputerScience", null, 2, "ENROLLED"));
-        userId = userJpaRepository.findByEmail(EMAIL).orElseThrow().getId();
-        accessToken = jwtUtil.generateAccessToken(userId);
+        var user = userJpaRepository.findByEmail(EMAIL).orElseThrow();
+        userId = user.getId();
+        accessToken = jwtUtil.generateAccessToken(userId, user.getSessionVersion());
     }
 
     @AfterEach

@@ -50,13 +50,13 @@ class NoticeSearchIntegrationTest extends IntegrationTestBase {
     void setUp() {
         verifiedEmailStore.markVerified(EMAIL_A);
         authService.register(new RegisterRequest(EMAIL_A, PASSWORD, "컴퓨터정보공학부", "인공지능학과", 2, "재학"));
-        Long userAId = userJpaRepository.findByEmail(EMAIL_A).orElseThrow().getId();
-        tokenA = jwtUtil.generateAccessToken(userAId);
+        var userA = userJpaRepository.findByEmail(EMAIL_A).orElseThrow();
+        tokenA = jwtUtil.generateAccessToken(userA.getId(), userA.getSessionVersion());
 
         verifiedEmailStore.markVerified(EMAIL_B);
         authService.register(new RegisterRequest(EMAIL_B, PASSWORD, "컴퓨터정보공학부", "전공심화", 2, "재학"));
-        Long userBId = userJpaRepository.findByEmail(EMAIL_B).orElseThrow().getId();
-        tokenB = jwtUtil.generateAccessToken(userBId);
+        var userB = userJpaRepository.findByEmail(EMAIL_B).orElseThrow();
+        tokenB = jwtUtil.generateAccessToken(userB.getId(), userB.getSessionVersion());
     }
 
     @AfterEach

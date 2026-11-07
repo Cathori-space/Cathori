@@ -24,20 +24,20 @@ public class UserController {
     public ResponseEntity<Void> updateDeviceToken(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody @Valid UpdateDeviceTokenRequest request) {
-        userService.updateDeviceToken(userDetails.getUserId(), request.deviceToken());
+        userService.updateDeviceToken(userDetails.getUserId(), userDetails.getSessionVersion(), request.deviceToken());
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/me")
     public ResponseEntity<Void> withdraw(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        userService.withdraw(userDetails.getUserId());
+        userService.withdraw(userDetails.getUserId(), userDetails.getSessionVersion());
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/device-token")
     public ResponseEntity<Void> clearDeviceToken(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        userService.clearDeviceToken(userDetails.getUserId());
+        userService.clearDeviceToken(userDetails.getUserId(), userDetails.getSessionVersion());
         return ResponseEntity.noContent().build();
     }
 }

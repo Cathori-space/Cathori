@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -63,15 +64,16 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        User user = userService.findByEmail(request.email())
+        User user = userService.findByEmailForUpdate(request.email())
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new BusinessException(UserErrorCode.USER_INVALID_PASSWORD);
         }
 
-        String accessToken = jwtUtil.generateAccessToken(user.getId());
-        String refreshTokenValue = jwtUtil.generateRefreshToken(user.getId());
+        user.rotateSession();
+        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getSessionVersion());
+        String refreshTokenValue = jwtUtil.generateRefreshToken(user.getId(), user.getSessionVersion());
 
         refreshTokenRepository.deleteByUserId(user.getId());
         refreshTokenRepository.save(RefreshToken.create(user.getId(), tokenHasher.hash(refreshTokenValue), refreshTokenExpiry));
@@ -89,25 +91,9 @@ public class AuthService {
 
     @Transactional
     public ReissueResponse reissue(ReissueRequest request) {
-        String refreshTokenValue = request.refreshToken();
-
-        if (!jwtUtil.isRefreshToken(refreshTokenValue)) {
-            throw new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID);
-        }
-
-        RefreshToken stored = refreshTokenRepository.findByToken(tokenHasher.hash(refreshTokenValue))
-                .orElseThrow(() -> new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID));
-
-        if (stored.isExpired()) {
-            refreshTokenRepository.deleteByUserId(stored.getUserId());
-            throw new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID);
-        }
-
-        User user = userService.findById(stored.getUserId())
-                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-
-        String newAccessToken = jwtUtil.generateAccessToken(user.getId());
-        String newRefreshTokenValue = jwtUtil.generateRefreshToken(user.getId());
+        User user = requireCurrentRefreshUser(request.refreshToken());
+        String newAccessToken = jwtUtil.generateAccessToken(user.getId(), user.getSessionVersion());
+        String newRefreshTokenValue = jwtUtil.generateRefreshToken(user.getId(), user.getSessionVersion());
 
         refreshTokenRepository.deleteByUserId(user.getId());
         refreshTokenRepository.save(RefreshToken.create(user.getId(), tokenHasher.hash(newRefreshTokenValue), refreshTokenExpiry));
@@ -116,7 +102,31 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(Long userId) {
-        refreshTokenRepository.deleteByUserId(userId);
+    public void logout(Long userId, long sessionVersion) {
+        revokeSession(userService.requireCurrentSessionForUpdate(userId, sessionVersion));
+    }
+
+    @Transactional
+    public void logoutWithRefreshToken(String refreshTokenValue) {
+        revokeSession(requireCurrentRefreshUser(refreshTokenValue));
+    }
+
+    private User requireCurrentRefreshUser(String refreshTokenValue) {
+        JwtUtil.TokenSession session = jwtUtil.parseRefreshToken(refreshTokenValue)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID));
+        User user = userService.findByIdForUpdate(session.userId())
+                .filter(candidate -> candidate.getSessionVersion() == session.sessionVersion())
+                .orElseThrow(() -> new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID));
+
+        refreshTokenRepository.findByToken(tokenHasher.hash(refreshTokenValue))
+                .filter(stored -> stored.getUserId().equals(user.getId()) && !stored.isExpired()
+                        && session.expiresAt().isAfter(Instant.now()))
+                .orElseThrow(() -> new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID));
+        return user;
+    }
+
+    private void revokeSession(User user) {
+        user.rotateSession();
+        refreshTokenRepository.deleteByUserId(user.getId());
     }
 }

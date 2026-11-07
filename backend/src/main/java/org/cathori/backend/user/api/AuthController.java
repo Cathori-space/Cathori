@@ -1,10 +1,13 @@
 package org.cathori.backend.user.api;
 
 import jakarta.validation.Valid;
+import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.security.CustomUserDetails;
+import org.cathori.backend.user.UserErrorCode;
 import org.cathori.backend.user.api.dto.*;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.EmailVerificationService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -55,7 +58,17 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        authService.logout(userDetails.getUserId());
+        authService.logout(userDetails.getUserId(), userDetails.getSessionVersion());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/logout/refresh")
+    public ResponseEntity<Void> logoutWithRefreshToken(
+            @RequestHeader(name = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new BusinessException(UserErrorCode.REFRESH_TOKEN_INVALID);
+        }
+        authService.logoutWithRefreshToken(authorization.substring(7));
         return ResponseEntity.noContent().build();
     }
 }

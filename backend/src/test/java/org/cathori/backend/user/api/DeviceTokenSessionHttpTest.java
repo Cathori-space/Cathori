@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.security.TokenHasher;
 import org.cathori.backend.user.application.NotificationPort;
+import org.cathori.backend.user.application.VerifiedEmailStore;
 import org.cathori.backend.user.domain.RefreshToken;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.infra.RefreshTokenJpaRepository;
@@ -84,6 +85,7 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired RequestProbes probes;
+    @Autowired VerifiedEmailStore verifiedEmails;
     @MockitoBean NotificationPort notificationPort;
 
     private final HttpClient http = HttpClient.newHttpClient();
@@ -465,6 +467,251 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
         var relogged = login(memberA);
         assertThat(version(relogged.access())).isEqualTo(version(session.access()) + 1);
         put(relogged, "post-relogin-device");
+    }
+
+    @Test
+    @DisplayName("회원 A에서 게스트를 거쳐 회원 B로 전환해도 A의 토큰이 살아나지 않는다")
+    void isolatesGuestAndNextMember() throws Exception {
+        var sessionA = login(memberA);
+        put(sessionA, "device-a");
+        assertStatus(send("POST", LOGOUT, sessionA.access(), null), 204);
+        assertStatus(send("GET", "/api/public/notices", null, null), 200);
+        assertStatus(send("PUT", DEVICE_TOKEN, null, Map.of("deviceToken", "guest")), 401);
+
+        var sessionB = login(memberB);
+        put(sessionB, "device-b");
+        assertStatus(send("PUT", DEVICE_TOKEN, sessionA.access(), Map.of("deviceToken", "device-a")), 401);
+        assertThat(deviceToken(memberA)).isNull();
+        assertThat(deviceToken(memberB)).isEqualTo("device-b");
+    }
+
+    @Test
+    @DisplayName("이전 등록은 유지되지만 현재 세션의 PUT 성공 뒤에만 발송 가능하다")
+    void legacyRegistrationNeedsSuccessfulPutToBecomeEligible() throws Exception {
+        var session = login(memberA);
+        long version = version(session.access());
+        jdbc.update("UPDATE users SET device_token = ? WHERE id = ?", "legacy-device", memberA.getId());
+        jdbc.update("""
+                INSERT INTO device_token_claims (token_hash, user_id, session_version, latest_claim)
+                VALUES (?, ?, ?, true)
+                """, tokenHasher.hash("legacy-device"), memberA.getId(), version);
+
+        assertThat(deviceToken(memberA)).isEqualTo("legacy-device");
+        assertStatus(send("PUT", DEVICE_TOKEN, session.access(), Map.of("deviceToken", " ")), 400);
+        assertThat(users.findDeviceTokensByIds(List.of(memberA.getId()))).isEmpty();
+        put(session, "legacy-device");
+        assertThat(users.findDeviceTokensByIds(List.of(memberA.getId())))
+                .singleElement().satisfies(target -> assertThat(target.getDeviceToken()).isEqualTo("legacy-device"));
+        assertStatus(send("DELETE", DEVICE_TOKEN, session.access(), null), 204);
+        assertThat(jdbc.queryForObject("""
+                SELECT confirmed_session_version FROM device_token_claims WHERE user_id = ?
+                """, Long.class, memberA.getId())).isNull();
+    }
+
+    @Test
+    @DisplayName("신규 가입 회원이 첫 로그인 후 FCM 토큰을 등록할 수 있다")
+    void newMemberCanRegisterDeviceTokenAfterLogin() throws Exception {
+        String email = UUID.randomUUID() + "@catholic.ac.kr";
+        verifiedEmails.markVerified(email);
+        try {
+            assertStatus(send("POST", "/api/auth/register", null, Map.of(
+                    "email", email, "password", PASSWORD, "major1", "컴퓨터정보공학부", "grade", 2, "status", "재학")), 201);
+            User newMember = users.findByEmail(email).orElseThrow();
+            assertThat(sessionVersion(newMember)).isZero();
+            var session = login(newMember);
+            assertThat(version(session.access())).isEqualTo(1);
+            put(session, "new-member-device");
+            assertThat(deviceToken(newMember)).isEqualTo("new-member-device");
+        } finally {
+            verifiedEmails.remove(email);
+            users.findByEmail(email).ifPresent(user -> {
+                jdbc.update("DELETE FROM refresh_tokens WHERE user_id = ?", user.getId());
+                users.delete(user);
+            });
+        }
+    }
+
+    @Test
+    @DisplayName("A의 로그아웃 실패 후 B는 A 토큰을 가져갈 수 없고 새 토큰을 등록할 수 있다")
+    void requiresFreshDeviceTokenAfterFailedLogout() throws Exception {
+        var sessionA = login(memberA);
+        put(sessionA, "shared-device");
+        String expiredAccess = signedToken(memberA, "access", version(sessionA.access()), Instant.now().minusSeconds(60));
+        assertStatus(send("POST", LOGOUT, expiredAccess, null), 401);
+        assertThat(deviceToken(memberA)).isEqualTo("shared-device");
+        assertStatus(send("GET", "/api/public/notices", null, null), 200);
+
+        var sessionB = login(memberB);
+        assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "shared-device")), 409);
+        put(sessionB, "rotated-device");
+
+        assertThat(sessionVersion(memberA)).isEqualTo(version(sessionA.access()));
+        assertThat(storedRefreshHash(memberA)).isEqualTo(tokenHasher.hash(sessionA.refresh()));
+        assertThat(deviceToken(memberA)).isEqualTo("shared-device");
+        assertThat(deviceToken(memberB)).isEqualTo("rotated-device");
+        assertStatus(send("POST", REFRESH_LOGOUT, sessionA.refresh(), null), 204);
+        assertThat(users.findDeviceTokensByIds(List.of(memberA.getId(), memberB.getId())))
+                .singleElement().satisfies(target -> {
+                    assertThat(target.getId()).isEqualTo(memberB.getId());
+                    assertThat(target.getDeviceToken()).isEqualTo("rotated-device");
+                });
+    }
+
+    @Test
+    @DisplayName("이력 없는 A의 첫 지연 PUT은 B의 등록과 발송 자격을 가져가지 못한다")
+    void delayedFirstPutCannotTakeTokenBack() throws Exception {
+        var sessionA = login(memberA);
+        var sessionB = login(memberB);
+        var delayed = probes.pauseAt(CONTROLLER::equals, memberA.getId());
+        var put = http.sendAsync(request("PUT", DEVICE_TOKEN, sessionA.access(),
+                Map.of("deviceToken", "shared-device"), delayed), HttpResponse.BodyHandlers.ofString());
+        try {
+            delayed.awaitReached();
+            put(sessionB, "shared-device");
+        } finally {
+            delayed.resume();
+        }
+
+        var result = put.get(WAIT.toSeconds(), TimeUnit.SECONDS);
+        assertStatus(result, 409);
+        assertThat(json.readTree(result.body()).get("code").asText()).isEqualTo("DEVICE_TOKEN_OWNERSHIP_CONFLICT");
+        assertThat(deviceToken(memberA)).isNull();
+        assertThat(deviceToken(memberB)).isEqualTo("shared-device");
+        assertThat(users.findDeviceTokensByIds(List.of(memberA.getId(), memberB.getId())))
+                .singleElement().satisfies(target -> assertThat(target.getId()).isEqualTo(memberB.getId()));
+        put(sessionB, "shared-device");
+        put(login(memberB), "shared-device");
+    }
+
+    @Test
+    @DisplayName("두 계정의 동시 최초 등록이 같은 토큰의 중복 소유를 만들지 않는다")
+    void simultaneousDeviceTokenRegistrationHasOnlyOneOwner() throws Exception {
+        var sessionA = login(memberA);
+        var sessionB = login(memberB);
+        var holding = probes.pauseAt(sql -> sql.contains(" from users ") && sql.contains(".device_token="), null);
+        var putA = http.sendAsync(request("PUT", DEVICE_TOKEN, sessionA.access(),
+                Map.of("deviceToken", "shared-device"), holding), HttpResponse.BodyHandlers.ofString());
+        CompletableFuture<HttpResponse<String>> putB;
+        try {
+            holding.awaitReached();
+            putB = http.sendAsync(request("PUT", DEVICE_TOKEN, sessionB.access(),
+                    Map.of("deviceToken", "shared-device"), null), HttpResponse.BodyHandlers.ofString());
+            await().atMost(WAIT).until(() -> Boolean.TRUE.equals(jdbc.queryForObject("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_stat_activity
+                        WHERE datname = current_database()
+                          AND wait_event_type = 'Lock'
+                          AND lower(query) LIKE '%pg_advisory_xact_lock%'
+                    )
+                    """, Boolean.class)));
+        } finally {
+            holding.resume();
+        }
+
+        assertStatus(putA.get(WAIT.toSeconds(), TimeUnit.SECONDS), 204);
+        assertStatus(putB.get(WAIT.toSeconds(), TimeUnit.SECONDS), 409);
+        assertThat(jdbc.queryForList("SELECT id FROM users WHERE device_token = ?", Long.class, "shared-device"))
+                .containsExactly(memberA.getId());
+    }
+
+    @Test
+    @DisplayName("서로의 토큰을 동시에 요청해도 소유권을 바꾸거나 교착하지 않는다")
+    void concurrentTokenSwapCompletesWithoutDeadlock() throws Exception {
+        var sessionA = login(memberA);
+        var sessionB = login(memberB);
+        put(sessionA, "device-x");
+        put(sessionB, "device-y");
+        putConcurrently(sessionA, "device-y", sessionB, "device-x");
+
+        assertThat(deviceToken(memberA)).isEqualTo("device-x");
+        assertThat(deviceToken(memberB)).isEqualTo("device-y");
+    }
+
+    private void putConcurrently(Tokens sessionA, String tokenA, Tokens sessionB, String tokenB) throws Exception {
+        var probeA = probes.pauseAt(RequestProbes::isUserLock, null);
+        var probeB = probes.pauseAt(RequestProbes::isUserLock, null);
+        var putA = http.sendAsync(request("PUT", DEVICE_TOKEN, sessionA.access(),
+                Map.of("deviceToken", tokenA), probeA), HttpResponse.BodyHandlers.ofString());
+        var putB = http.sendAsync(request("PUT", DEVICE_TOKEN, sessionB.access(),
+                Map.of("deviceToken", tokenB), probeB), HttpResponse.BodyHandlers.ofString());
+        try {
+            probeA.awaitReached();
+            probeB.awaitReached();
+        } finally {
+            probeA.resume();
+            probeB.resume();
+        }
+
+        assertStatus(putA.get(WAIT.toSeconds(), TimeUnit.SECONDS), 409);
+        assertStatus(putB.get(WAIT.toSeconds(), TimeUnit.SECONDS), 409);
+    }
+
+    @Test
+    @DisplayName("이전 소유자 A의 로그아웃은 B가 가진 토큰에 영향을 주지 않는다")
+    void priorOwnerLogoutDoesNotClearNewOwnerToken() throws Exception {
+        var sessionA = login(memberA);
+        var sessionB = login(memberB);
+        put(sessionA, "shared-device");
+        put(sessionB, "rotated-device");
+
+        assertStatus(send("POST", REFRESH_LOGOUT, sessionA.refresh(), null), 204);
+        assertThat(deviceToken(memberA)).isNull();
+        assertThat(deviceToken(memberB)).isEqualTo("rotated-device");
+        assertThat(refreshCount(memberA)).isZero();
+        assertThat(storedRefreshHash(memberB)).isEqualTo(tokenHasher.hash(sessionB.refresh()));
+    }
+
+    @Test
+    @DisplayName("반납된 토큰도 다른 계정에 재할당되지 않고 원래 계정은 다시 등록할 수 있다")
+    void claimSurvivesTokenRelease() throws Exception {
+        var sessionA = login(memberA);
+        var sessionB = login(memberB);
+        put(sessionA, "shared-device");
+        assertStatus(send("DELETE", DEVICE_TOKEN, sessionA.access(), null), 204);
+        put(sessionA, "shared-device");
+        assertStatus(send("DELETE", DEVICE_TOKEN, sessionA.access(), null), 204);
+        assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "shared-device")), 409);
+        assertThat(deviceToken(memberA)).isNull();
+        assertThat(deviceToken(memberB)).isNull();
+        put(login(memberA), "shared-device");
+        assertThat(deviceToken(memberA)).isEqualTo("shared-device");
+        assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "shared-device")), 409);
+    }
+
+    @Test
+    @DisplayName("새 토큰 저장 실패는 확인 이력도 롤백하고 다른 계정에 영향을 주지 않는다")
+    void tokenTransferRollsBackOnAssignmentFailure() throws Exception {
+        var sessionA = login(memberA);
+        var sessionB = login(memberB);
+        put(sessionA, "shared-device");
+        jdbc.execute("""
+                CREATE FUNCTION reject_test_device_token_transfer() RETURNS trigger LANGUAGE plpgsql AS $$
+                BEGIN
+                    IF NEW.id = %d AND NEW.device_token = 'rotated-device' THEN
+                        RAISE EXCEPTION 'synthetic transfer failure';
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$
+                """.formatted(memberB.getId()));
+        try {
+            jdbc.execute("""
+                    CREATE TRIGGER reject_test_device_token_transfer BEFORE UPDATE OF device_token ON users
+                    FOR EACH ROW EXECUTE FUNCTION reject_test_device_token_transfer()
+                    """);
+            assertStatus(send("PUT", DEVICE_TOKEN, sessionB.access(), Map.of("deviceToken", "rotated-device")), 500);
+            assertThat(deviceToken(memberA)).isEqualTo("shared-device");
+            assertThat(deviceToken(memberB)).isNull();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM device_token_claims WHERE user_id = ?",
+                    Long.class, memberB.getId())).isZero();
+            put(sessionA, "shared-device");
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS reject_test_device_token_transfer ON users");
+            jdbc.execute("DROP FUNCTION reject_test_device_token_transfer()");
+        }
+        put(sessionB, "rotated-device");
+        assertThat(deviceToken(memberA)).isEqualTo("shared-device");
+        assertThat(deviceToken(memberB)).isEqualTo("rotated-device");
     }
 
     private void awaitUserLockWait() {

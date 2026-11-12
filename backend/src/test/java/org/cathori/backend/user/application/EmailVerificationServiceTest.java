@@ -98,7 +98,8 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("PASSWORD_RESET 인증은 SIGNUP 인증 상태를 만들지 않는다")
     void passwordResetVerificationDoesNotMarkSignup() {
-        // given
+        // given — 가입된 회원
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
         service.sendCode(PASSWORD_RESET, EMAIL);
         String code = sentCode(PASSWORD_RESET, EMAIL);
 
@@ -169,7 +170,8 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("PASSWORD_RESET — 비학교 도메인도 발송·인증된다 (기존 회원 복구 경로, ADR D1)")
     void passwordResetIgnoresDomainPolicy() {
-        // given
+        // given — gmail로 가입한 기존 회원
+        when(userRepository.existsByEmail(GMAIL)).thenReturn(true);
         service.sendCode(PASSWORD_RESET, GMAIL);
         String code = sentCode(PASSWORD_RESET, GMAIL);
 
@@ -204,18 +206,20 @@ class EmailVerificationServiceTest {
     @Test
     @DisplayName("발송 제한은 purpose와 무관하게 이메일 단위로 센다 — 막힌 요청은 메일도, 기록도 남기지 않는다")
     void sendLimitIsSharedAcrossPurposes() {
-        // given — SIGNUP 2번 + PASSWORD_RESET 1번
+        // given — 가입 전 SIGNUP 2번, 가입한 뒤 PASSWORD_RESET 1번
         service.sendCode(SIGNUP, EMAIL);
         service.sendCode(SIGNUP, EMAIL);
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
         service.sendCode(PASSWORD_RESET, EMAIL);
 
         // when — 1분 안의 4번째
         BusinessException e = catchThrowableOfType(BusinessException.class,
-                () -> service.sendCode(SIGNUP, EMAIL));
+                () -> service.sendCode(PASSWORD_RESET, EMAIL));
 
         // then
         assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.EMAIL_SEND_TOO_FREQUENT);
         verify(notificationPort, times(2)).sendVerificationCode(eq(SIGNUP), eq(EMAIL), anyString());
+        verify(notificationPort, times(1)).sendVerificationCode(eq(PASSWORD_RESET), eq(EMAIL), anyString());
         assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofMinutes(1))).isEqualTo(3);
     }
 
@@ -327,6 +331,22 @@ class EmailVerificationServiceTest {
 
         // then
         assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_EMAIL_DUPLICATE);
+        verify(notificationPort, never()).sendVerificationCode(any(), anyString(), anyString());
+        assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofHours(1))).isZero();
+    }
+
+    @Test
+    @DisplayName("PASSWORD_RESET — 가입하지 않은 이메일이면 메일을 보내지 않고 404, 발송 횟수에도 넣지 않는다 (비밀번호 ADR D5)")
+    void passwordResetSendRejectsUnregisteredEmail() {
+        // given — 가입 이력이 없다
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+
+        // when
+        BusinessException e = catchThrowableOfType(BusinessException.class,
+                () -> service.sendCode(PASSWORD_RESET, EMAIL));
+
+        // then
+        assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND);
         verify(notificationPort, never()).sendVerificationCode(any(), anyString(), anyString());
         assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofHours(1))).isZero();
     }

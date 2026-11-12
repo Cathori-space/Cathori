@@ -52,6 +52,10 @@ public class EmailVerificationService {
         if (purpose == VerificationPurpose.SIGNUP && userRepository.existsByEmail(email)) {
             throw new BusinessException(UserErrorCode.USER_EMAIL_DUPLICATE);
         }
+        // 가입하지 않은 이메일이면 재설정 메일 없이 404 (비밀번호 ADR D5). 마찬가지로 발송 횟수에 넣지 않는다.
+        if (purpose == VerificationPurpose.PASSWORD_RESET && !userRepository.existsByEmail(email)) {
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
         emailSendLimitPolicy.requireSendable(email);
 
         String code = issueNewCode(purpose, email);

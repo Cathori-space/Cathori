@@ -38,6 +38,7 @@ import static org.cathori.backend.user.application.email.VerificationPurpose.SIG
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -349,5 +350,44 @@ class EmailVerificationServiceTest {
         assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND);
         verify(notificationPort, never()).sendVerificationCode(any(), anyString(), anyString());
         assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofHours(1))).isZero();
+    }
+
+    @Test
+    @DisplayName("메일 발송이 느려도, 같은 이메일로 동시에 온 12건 중 1분 한도인 3건만 발송된다")
+    void concurrentSendsRespectLimit() throws Exception {
+        // given — 메일 1통에 200ms가 걸린다 (보낸 뒤에 세면 12건 모두 한도를 통과하는 조건)
+        doAnswer(invocation -> {
+            Thread.sleep(200);
+            return null;
+        }).when(notificationPort).sendVerificationCode(any(), anyString(), anyString());
+        int threads = 12;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger tooFrequent = new AtomicInteger();
+
+        // when — 12건을 한꺼번에 출발시킨다
+        try {
+            for (int i = 0; i < threads; i++) {
+                pool.submit(() -> {
+                    start.await();
+                    BusinessException e = catchThrowableOfType(BusinessException.class,
+                            () -> service.sendCode(SIGNUP, EMAIL));
+                    if (e != null && e.getErrorCode() == UserErrorCode.EMAIL_SEND_TOO_FREQUENT) {
+                        tooFrequent.incrementAndGet();
+                    }
+                    return null;
+                });
+            }
+            start.countDown();
+            pool.shutdown();
+            assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            pool.shutdownNow();
+        }
+
+        // then — 3건만 발송, 나머지 9건은 429
+        verify(notificationPort, times(3)).sendVerificationCode(eq(SIGNUP), eq(EMAIL), anyString());
+        assertThat(tooFrequent).hasValue(threads - 3);
+        assertThat(sendRateLimiter.countWithin(EMAIL, Duration.ofMinutes(1))).isEqualTo(3);
     }
 }

@@ -1,6 +1,7 @@
 package org.cathori.backend.user.application.email;
 
 import java.time.Duration;
+import java.time.Instant;
 
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.user.UserErrorCode;
@@ -34,18 +35,28 @@ public class EmailSendLimitPolicy {
         this.perHour = perHour;
     }
 
-    /** 보낼 수 없으면 429. 남은 시간은 계산하지 않으므로 둘 다 걸리면 더 보수적인 1시간 상한을 알린다. */
-    public void requireSendable(String email) {
+    /**
+     * 한도를 확인하고, 통과하면 발송 1건을 바로 기록해 둔다(선점). 보낼 수 없으면 429.
+     * 둘 다 걸리면 더 보수적인 1시간 상한을 알린다.
+     *
+     * <p>확인과 기록을 한 번에 해야 동시에 온 요청이 같은 빈자리를 보고 함께 통과하지 않는다.
+     * 메일 발송(수 초)은 이 잠금 밖에서 한다 — 잠금 안에는 메모리 연산만 있다.
+     * 서버 1대 전제다. 여러 대로 늘리면 공유 저장소(Redis 등)의 원자 연산으로 옮긴다.
+     *
+     * @return 선점한 기록. 발송에 실패하면 {@link #release}에 넘긴다.
+     */
+    public synchronized Instant reserve(String email) {
         if (sendRateLimiter.countWithin(email, HOUR_WINDOW) >= perHour) {
             throw new BusinessException(UserErrorCode.EMAIL_SEND_LIMIT_EXCEEDED);
         }
         if (sendRateLimiter.countWithin(email, MINUTE_WINDOW) >= perMinute) {
             throw new BusinessException(UserErrorCode.EMAIL_SEND_TOO_FREQUENT);
         }
+        return sendRateLimiter.record(email);
     }
 
-    /** 메일을 실제로 보낸 뒤에 호출한다. 발송에 실패한 요청은 횟수에 넣지 않는다. */
-    public void recordSent(String email) {
-        sendRateLimiter.record(email);
+    /** 발송에 실패하면 선점한 1건을 되돌린다 — 실패한 발송은 횟수에 넣지 않는다. */
+    public void release(String email, Instant reservedAt) {
+        sendRateLimiter.remove(email, reservedAt);
     }
 }

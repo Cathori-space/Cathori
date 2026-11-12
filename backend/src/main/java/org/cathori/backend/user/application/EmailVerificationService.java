@@ -56,11 +56,16 @@ public class EmailVerificationService {
         if (purpose == VerificationPurpose.PASSWORD_RESET && !userRepository.existsByEmail(email)) {
             throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
         }
-        emailSendLimitPolicy.requireSendable(email);
 
-        String code = issueNewCode(purpose, email);
-        notificationPort.sendVerificationCode(purpose, email, code);
-        emailSendLimitPolicy.recordSent(email);
+        // 보내기 전에 발송 1건을 선점하고, 실패하면 되돌린다 — 보낸 뒤에 세면 동시 요청이 한도를 함께 통과한다.
+        Instant reservedAt = emailSendLimitPolicy.reserve(email);
+        try {
+            String code = issueNewCode(purpose, email);
+            notificationPort.sendVerificationCode(purpose, email, code);
+        } catch (RuntimeException e) {
+            emailSendLimitPolicy.release(email, reservedAt);
+            throw e;
+        }
     }
 
     /**

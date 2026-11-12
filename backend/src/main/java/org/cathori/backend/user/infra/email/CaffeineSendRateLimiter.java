@@ -31,7 +31,7 @@ public class CaffeineSendRateLimiter implements SendRateLimiter {
 
     /** compute는 키 단위로 원자적이라 동시 발송 기록이 유실되지 않는다 — 조회·저장으로 나누지 말 것. */
     @Override
-    public void record(String email) {
+    public Instant record(String email) {
         Instant now = Instant.now();
         Instant cutoff = now.minus(retention);
         cache.asMap().compute(email, (key, history) -> {
@@ -41,6 +41,16 @@ public class CaffeineSendRateLimiter implements SendRateLimiter {
             }
             next.add(now);
             return List.copyOf(next);
+        });
+        return now;
+    }
+
+    @Override
+    public void remove(String email, Instant recordedAt) {
+        cache.asMap().computeIfPresent(email, (key, history) -> {
+            List<Instant> next = new ArrayList<>(history);
+            next.remove(recordedAt); // 같은 시각이 둘이어도 1건만 지운다
+            return next.isEmpty() ? null : List.copyOf(next);
         });
     }
 

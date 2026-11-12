@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.time.Instant;
 
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.user.UserErrorCode;
@@ -27,13 +28,12 @@ class EmailSendLimitPolicyTest {
         SendRateLimiter limiter = new CaffeineSendRateLimiter(Duration.ofHours(1));
         EmailSendLimitPolicy policy = new EmailSendLimitPolicy(limiter, 3, 10);
         for (int i = 0; i < 3; i++) {
-            assertThatCode(() -> policy.requireSendable(EMAIL)).doesNotThrowAnyException();
-            policy.recordSent(EMAIL);
+            assertThatCode(() -> policy.reserve(EMAIL)).doesNotThrowAnyException();
         }
 
         // when
         BusinessException e = catchThrowableOfType(BusinessException.class,
-                () -> policy.requireSendable(EMAIL));
+                () -> policy.reserve(EMAIL));
 
         // then
         assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.EMAIL_SEND_TOO_FREQUENT);
@@ -50,9 +50,27 @@ class EmailSendLimitPolicyTest {
 
         // when
         BusinessException e = catchThrowableOfType(BusinessException.class,
-                () -> policy.requireSendable(EMAIL));
+                () -> policy.reserve(EMAIL));
 
         // then
         assertThat(e.getErrorCode()).isEqualTo(UserErrorCode.EMAIL_SEND_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("되돌린 선점은 횟수에서 빠져, 그 자리로 다시 보낼 수 있다")
+    void releasedReservationFreesSlot() {
+        // given — 3번 선점해 1분 한도가 찼다
+        SendRateLimiter limiter = new CaffeineSendRateLimiter(Duration.ofHours(1));
+        EmailSendLimitPolicy policy = new EmailSendLimitPolicy(limiter, 3, 10);
+        policy.reserve(EMAIL);
+        policy.reserve(EMAIL);
+        Instant failed = policy.reserve(EMAIL);
+
+        // when — 마지막 발송이 실패해 되돌린다
+        policy.release(EMAIL, failed);
+
+        // then — 한 자리가 비어 다시 선점할 수 있다
+        assertThat(limiter.countWithin(EMAIL, Duration.ofMinutes(1))).isEqualTo(2);
+        assertThatCode(() -> policy.reserve(EMAIL)).doesNotThrowAnyException();
     }
 }

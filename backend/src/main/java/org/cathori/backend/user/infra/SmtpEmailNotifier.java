@@ -40,7 +40,7 @@ public class SmtpEmailNotifier implements NotificationPort {
             mailSender.send(message);
         } catch (MailException e) {
             // SMTP 장애·타임아웃(ADR D7)은 사용자 입력 문제가 아니라 일시적 장애다 — 500이 아니라 503으로 알린다.
-            // 예외가 발송 기록 전에 올라가므로 발송 횟수에도 들어가지 않는다.
+            // 예외가 올라가면 서비스가 선점한 발송 1건을 되돌리므로 발송 횟수에 들어가지 않는다.
             log.warn("Verification mail send failed: purpose={}, cause={}", purpose, e.getClass().getSimpleName());
             throw new BusinessException(UserErrorCode.EMAIL_SEND_FAILED);
         }

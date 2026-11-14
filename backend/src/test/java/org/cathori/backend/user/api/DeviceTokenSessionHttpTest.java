@@ -8,7 +8,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.security.TokenHasher;
 import org.cathori.backend.user.application.NotificationPort;
-import org.cathori.backend.user.application.VerifiedEmailStore;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.domain.RefreshToken;
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.infra.RefreshTokenJpaRepository;
@@ -512,7 +513,7 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
     @DisplayName("신규 가입 회원이 첫 로그인 후 FCM 토큰을 등록할 수 있다")
     void newMemberCanRegisterDeviceTokenAfterLogin() throws Exception {
         String email = UUID.randomUUID() + "@catholic.ac.kr";
-        verifiedEmails.markVerified(email);
+        verifiedEmails.markVerified(VerificationPurpose.SIGNUP, email);
         try {
             assertStatus(send("POST", "/api/auth/register", null, Map.of(
                     "email", email, "password", PASSWORD, "major1", "컴퓨터정보공학부", "grade", 2, "status", "재학")), 201);
@@ -523,7 +524,7 @@ class DeviceTokenSessionHttpTest extends IntegrationTestBase {
             put(session, "new-member-device");
             assertThat(deviceToken(newMember)).isEqualTo("new-member-device");
         } finally {
-            verifiedEmails.remove(email);
+            verifiedEmails.remove(VerificationPurpose.SIGNUP, email);
             users.findByEmail(email).ifPresent(user -> {
                 jdbc.update("DELETE FROM refresh_tokens WHERE user_id = ?", user.getId());
                 users.delete(user);

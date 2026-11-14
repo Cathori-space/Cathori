@@ -10,7 +10,8 @@ import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.security.JwtUtil;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
-import org.cathori.backend.user.application.VerifiedEmailStore;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.infra.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -51,7 +52,7 @@ class NoticeDetailIntegrationTest extends IntegrationTestBase {
 
     @BeforeEach
     void setUp() {
-        verifiedEmailStore.markVerified(EMAIL);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL);
         authService.register(new RegisterRequest(EMAIL, PASSWORD, "컴퓨터정보공학부", null, 2, "재학"));
         userId = userJpaRepository.findByEmail(EMAIL).orElseThrow().getId();
         token = jwtUtil.generateAccessToken(userId);
@@ -62,7 +63,7 @@ class NoticeDetailIntegrationTest extends IntegrationTestBase {
         bookmarkJpaRepository.deleteAll();
         noticeRepository.deleteAll();
         userJpaRepository.findByEmail(EMAIL).ifPresent(userJpaRepository::delete);
-        verifiedEmailStore.remove(EMAIL);
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, EMAIL);
     }
 
     private Notice saveNotice(String category, String title, LocalDate postedAt) {

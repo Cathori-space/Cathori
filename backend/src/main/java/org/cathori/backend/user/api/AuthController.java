@@ -26,14 +26,14 @@ public class AuthController {
     @PostMapping("/email/send")
     public ResponseEntity<EmailSendResponse> sendVerificationEmail(
             @RequestBody @Valid EmailSendRequest request) {
-        emailVerificationService.sendCode(request.email());
+        emailVerificationService.sendCode(request.purpose(), request.email());
         return ResponseEntity.ok(new EmailSendResponse(request.email()));
     }
 
     @PostMapping("/email/verify")
     public ResponseEntity<EmailSendResponse> verifyCode(
             @RequestBody @Valid EmailVerifyRequest request) {
-        emailVerificationService.verifyCode(request.email(), request.code());
+        emailVerificationService.verifyCode(request.purpose(), request.email(), request.code());
         return ResponseEntity.ok(new EmailSendResponse(request.email()));
     }
 

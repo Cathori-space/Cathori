@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 
 public enum UserErrorCode implements ErrorCode {
     USER_EMAIL_DUPLICATE(HttpStatus.CONFLICT, "USER_EMAIL_DUPLICATE", "이미 사용중인 이메일입니다"),
+    USER_EMAIL_DOMAIN_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "USER_EMAIL_DOMAIN_NOT_ALLOWED", "가톨릭대학교 이메일(@catholic.ac.kr)만 사용할 수 있어요"),
     USER_INVALID_VERIFY_CODE(HttpStatus.BAD_REQUEST, "USER_INVALID_VERIFY_CODE", "인증번호가 올바르지 않습니다"),
     USER_VERIFY_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "USER_VERIFY_CODE_EXPIRED", "인증번호가 만료되었습니다"),
     USER_NOT_VERIFIED(HttpStatus.FORBIDDEN, "USER_NOT_VERIFIED", "이메일 인증이 완료되지 않았습니다"),

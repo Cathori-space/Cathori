@@ -14,7 +14,8 @@ import org.cathori.backend.tag.infra.TagJpaRepository;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
-import org.cathori.backend.user.application.VerifiedEmailStore;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.domain.RefreshToken;
 import org.cathori.backend.user.infra.RefreshTokenJpaRepository;
 import org.cathori.backend.user.infra.UserJpaRepository;
@@ -57,7 +58,7 @@ class UserIntegrationTest extends IntegrationTestBase {
 
     @BeforeEach
     void setUp() {
-        verifiedEmailStore.markVerified(EMAIL);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL);
         authService.register(new RegisterRequest(EMAIL, PASSWORD, "ComputerScience", null, 2, "ENROLLED"));
         userId = userJpaRepository.findByEmail(EMAIL).orElseThrow().getId();
         accessToken = jwtUtil.generateAccessToken(userId);
@@ -71,7 +72,7 @@ class UserIntegrationTest extends IntegrationTestBase {
         refreshTokenJpaRepository.deleteAll();
         noticeRepository.deleteAll();
         userJpaRepository.findByEmail(EMAIL).ifPresent(userJpaRepository::delete);
-        verifiedEmailStore.remove(EMAIL);
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, EMAIL);
     }
 
     @Test

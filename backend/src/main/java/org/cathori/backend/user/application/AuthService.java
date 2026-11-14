@@ -6,6 +6,9 @@ import org.cathori.backend.security.TokenHasher;
 import org.cathori.backend.tag.application.TagService;
 import org.cathori.backend.tag.api.dto.TagDto;
 import org.cathori.backend.user.UserErrorCode;
+import org.cathori.backend.user.application.email.EmailDomainPolicy;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.api.dto.LoginRequest;
 import org.cathori.backend.user.api.dto.LoginResponse;
 import org.cathori.backend.user.api.dto.RegisterRequest;
@@ -31,13 +34,15 @@ public class AuthService {
     private final TokenHasher tokenHasher;
     private final TagService tagService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final EmailDomainPolicy emailDomainPolicy;
 
     @Value("${jwt.refresh-token-expiry}")
     private long refreshTokenExpiry;
 
     public AuthService(VerifiedEmailStore verifiedEmailStore, UserService userService,
                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil, TokenHasher tokenHasher,
-                       TagService tagService, RefreshTokenRepository refreshTokenRepository) {
+                       TagService tagService, RefreshTokenRepository refreshTokenRepository,
+                       EmailDomainPolicy emailDomainPolicy) {
         this.verifiedEmailStore = verifiedEmailStore;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
@@ -45,10 +50,17 @@ public class AuthService {
         this.tokenHasher = tokenHasher;
         this.tagService = tagService;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.emailDomainPolicy = emailDomainPolicy;
     }
 
     public RegisterResponse register(RegisterRequest request) {
-        if (!verifiedEmailStore.isVerified(request.email())) {
+        // 인증 확인 단계와 별개로 가입 시점에도 본다 — 정책 변경 전에 만들어진 SIGNUP 인증 상태로
+        // 가입하는 경로를 막는다(인증 상태가 재시작 후에도 남는 저장소로 바뀌면 실제로 생기는 경로다).
+        emailDomainPolicy.requireAllowed(VerificationPurpose.SIGNUP, request.email());
+
+        // purpose를 SIGNUP으로 고정한다 — PASSWORD_RESET으로 받은 인증 상태로는
+        // 가입이 통과되지 않아야 한다 (그러면 학교 도메인 제한이 무력화된다).
+        if (!verifiedEmailStore.isVerified(VerificationPurpose.SIGNUP, request.email())) {
             throw new BusinessException(UserErrorCode.USER_NOT_VERIFIED);
         }
 
@@ -57,7 +69,7 @@ public class AuthService {
         }
 
         User saved = userService.save(request);
-        verifiedEmailStore.remove(request.email());
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, request.email());
         return new RegisterResponse(saved.getId(), saved.getEmail());
     }
 

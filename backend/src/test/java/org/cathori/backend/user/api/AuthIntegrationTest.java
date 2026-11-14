@@ -4,8 +4,9 @@ import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.security.JwtUtil;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
-import org.cathori.backend.user.application.VerificationStore;
-import org.cathori.backend.user.application.VerifiedEmailStore;
+import org.cathori.backend.user.application.email.VerificationCodeStore;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.api.dto.LoginRequest;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.api.dto.ReissueRequest;
@@ -21,7 +22,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,7 +34,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     ObjectMapper objectMapper;
     @Autowired AuthService authService;
     @Autowired VerifiedEmailStore verifiedEmailStore;
-    @Autowired VerificationStore verificationStore;
+    @Autowired VerificationCodeStore verificationCodeStore;
     @Autowired UserJpaRepository userJpaRepository;
     @Autowired JwtUtil jwtUtil;
     @MockitoBean
@@ -49,19 +49,19 @@ class AuthIntegrationTest extends IntegrationTestBase {
     @AfterEach
     void cleanup() {
         userJpaRepository.findByEmail(EMAIL).ifPresent(userJpaRepository::delete);
-        verifiedEmailStore.remove(EMAIL);
-        verificationStore.remove(EMAIL);
+        verifiedEmailStore.remove(VerificationPurpose.SIGNUP, EMAIL);
+        verificationCodeStore.remove(VerificationPurpose.SIGNUP, EMAIL);
     }
 
     private void createVerifiedUser(String email, String password) {
-        verifiedEmailStore.markVerified(email);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, email);
         authService.register(new RegisterRequest(email, password, MAJOR, null, GRADE, STATUS));
     }
 
     @Test
     @DisplayName("A-1: 이메일 인증 완료 후 회원가입 성공 시 201과 userId/email 반환")
     void register_success() throws Exception {
-        verifiedEmailStore.markVerified(EMAIL);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL);
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -89,7 +89,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     void register_duplicateEmail() throws Exception {
         createVerifiedUser(EMAIL, PASSWORD);
 
-        verifiedEmailStore.markVerified(EMAIL);
+        verifiedEmailStore.markVerified(VerificationPurpose.SIGNUP, EMAIL);
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
@@ -225,5 +225,19 @@ class AuthIntegrationTest extends IntegrationTestBase {
     private String extractField(MvcResult result, String field) throws Exception {
         JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
         return root.get(field).asText();
+    }
+
+    @Test
+    @DisplayName("purpose 없이(1.0.1 앱) 비학교 도메인으로 인증번호 요청 시 400 USER_EMAIL_DOMAIN_NOT_ALLOWED")
+    void sendCode_nonSchoolDomainWithoutPurpose_rejected() throws Exception {
+        // given — purpose 필드가 없는 구버전 요청 본문
+        String body = "{\"email\":\"someone@gmail.com\"}";
+
+        // when & then — SIGNUP으로 처리되어 도메인 제한에 걸린다
+        mockMvc.perform(post("/api/auth/email/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("USER_EMAIL_DOMAIN_NOT_ALLOWED"));
     }
 }

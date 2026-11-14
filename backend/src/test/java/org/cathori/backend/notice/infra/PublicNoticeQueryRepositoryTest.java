@@ -3,6 +3,9 @@ package org.cathori.backend.notice.infra;
 import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.notice.application.AiSummaryResult;
 import org.cathori.backend.notice.application.crawling.CrawledNotice;
+import org.cathori.backend.notice.application.query.PublicNoticeQueryPort;
+import org.cathori.backend.notice.application.query.PublicNoticeRow;
+import org.cathori.backend.notice.application.query.PublicNoticeSearchRow;
 import org.cathori.backend.notice.model.Notice;
 import org.cathori.backend.notice.model.NoticeRepository;
 import org.cathori.backend.user.application.NotificationPort;
@@ -22,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class PublicNoticeQueryRepositoryTest extends IntegrationTestBase {
 
-    @Autowired PublicNoticeQueryRepository repository;
+    @Autowired PublicNoticeQueryPort repository;
     @Autowired NoticeRepository notices;
     @MockitoBean NotificationPort notificationPort;
 
@@ -34,11 +37,11 @@ class PublicNoticeQueryRepositoryTest extends IntegrationTestBase {
         Notice second = save("MAIN", "B", "장학", LocalDate.of(2026, 11, 4));
         Notice first = save("MAIN", "A", "장학", LocalDate.of(2026, 11, 4));
 
-        assertThat(repository.findFeed(null, 0, 1)).extracting(PublicNoticeQueryRepository.PublicNoticeRow::id)
+        assertThat(repository.findFeed(null, 0, 1)).extracting(PublicNoticeRow::id)
                 .containsExactly(first.getId(), second.getId());
-        assertThat(repository.findFeed(null, 1, 1)).extracting(PublicNoticeQueryRepository.PublicNoticeRow::id)
+        assertThat(repository.findFeed(null, 1, 1)).extracting(PublicNoticeRow::id)
                 .containsExactly(second.getId(), older.getId());
-        assertThat(repository.findFeed(null, 2, 1)).extracting(PublicNoticeQueryRepository.PublicNoticeRow::id)
+        assertThat(repository.findFeed(null, 2, 1)).extracting(PublicNoticeRow::id)
                 .containsExactly(older.getId());
     }
 
@@ -48,7 +51,7 @@ class PublicNoticeQueryRepositoryTest extends IntegrationTestBase {
         save("MAIN", "학사 공지", "학사", LocalDate.now());
         save("DEPARTMENT", "장학 공지", "장학", LocalDate.now());
         save("FUTURE_SOURCE", "장학 공지", "장학", LocalDate.now());
-        assertThat(repository.findFeed("장학", 0, 20)).extracting(PublicNoticeQueryRepository.PublicNoticeRow::id)
+        assertThat(repository.findFeed("장학", 0, 20)).extracting(PublicNoticeRow::id)
                 .containsExactly(main.getId());
     }
 
@@ -61,7 +64,7 @@ class PublicNoticeQueryRepositoryTest extends IntegrationTestBase {
         save("PRIVATE", "앞 " + keyword + " 뒤", "일반", LocalDate.now());
 
         assertThat(repository.findSearch(keyword, 0, 20))
-                .extracting(PublicNoticeQueryRepository.PublicNoticeSearchRow::id)
+                .extracting(PublicNoticeSearchRow::id)
                 .containsExactly(match.getId());
     }
 
@@ -69,10 +72,10 @@ class PublicNoticeQueryRepositoryTest extends IntegrationTestBase {
     void equalDateAndTitleHaveStableIdOrderingForFeedAndSearch() {
         Notice olderId = save("MAIN", "같은 공지", "일반", LocalDate.now());
         Notice newerId = save("MAIN", "같은 공지", "일반", LocalDate.now());
-        assertThat(repository.findFeed(null, 0, 20)).extracting(PublicNoticeQueryRepository.PublicNoticeRow::id)
+        assertThat(repository.findFeed(null, 0, 20)).extracting(PublicNoticeRow::id)
                 .containsExactly(newerId.getId(), olderId.getId());
         assertThat(repository.findSearch("공지", 0, 20))
-                .extracting(PublicNoticeQueryRepository.PublicNoticeSearchRow::id)
+                .extracting(PublicNoticeSearchRow::id)
                 .containsExactly(newerId.getId(), olderId.getId());
     }
 
@@ -83,10 +86,10 @@ class PublicNoticeQueryRepositoryTest extends IntegrationTestBase {
         Notice second = save("MAIN", "C 공지", "일반", LocalDate.now());
         Notice third = save("MAIN", "D 공지", "일반", LocalDate.now());
         assertThat(repository.findSearch("공지", 0, 1))
-                .extracting(PublicNoticeQueryRepository.PublicNoticeSearchRow::id)
+                .extracting(PublicNoticeSearchRow::id)
                 .containsExactly(first.getId(), second.getId());
         assertThat(repository.findSearch("공지", 1, 1))
-                .extracting(PublicNoticeQueryRepository.PublicNoticeSearchRow::id)
+                .extracting(PublicNoticeSearchRow::id)
                 .containsExactly(second.getId(), third.getId());
         assertThat(repository.findSearch("공지", 3, 1)).isEmpty();
     }

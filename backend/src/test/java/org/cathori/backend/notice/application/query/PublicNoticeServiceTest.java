@@ -2,9 +2,6 @@ package org.cathori.backend.notice.application.query;
 
 import org.cathori.backend.common.exception.BusinessException;
 import org.cathori.backend.notice.application.NoticeErrorCode;
-import org.cathori.backend.notice.infra.PublicNoticeQueryRepository;
-import org.cathori.backend.notice.infra.PublicNoticeQueryRepository.PublicNoticeRow;
-import org.cathori.backend.notice.infra.PublicNoticeQueryRepository.PublicNoticeSearchRow;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,7 +23,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PublicNoticeServiceTest {
 
-    @Mock PublicNoticeQueryRepository repository;
+    @Mock PublicNoticeQueryPort repository;
     @InjectMocks PublicNoticeService service;
 
     @Test

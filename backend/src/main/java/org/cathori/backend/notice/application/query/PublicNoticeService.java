@@ -8,8 +8,6 @@ import org.cathori.backend.notice.api.dto.PublicNoticeFeedResponse;
 import org.cathori.backend.notice.api.dto.PublicNoticeSearchItem;
 import org.cathori.backend.notice.api.dto.PublicNoticeSearchResponse;
 import org.cathori.backend.notice.application.NoticeErrorCode;
-import org.cathori.backend.notice.infra.PublicNoticeQueryRepository;
-import org.cathori.backend.notice.infra.PublicNoticeQueryRepository.PublicNoticeRow;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +20,7 @@ import java.util.Set;
 public class PublicNoticeService {
 
     private static final Set<String> CATEGORIES = Set.of("일반", "장학", "학사", "취창업");
-    private final PublicNoticeQueryRepository publicNoticeQueryRepository;
+    private final PublicNoticeQueryPort publicNoticeQueryPort;
 
     public PublicNoticeFeedResponse getFeed(String category, int page, int size) {
         validatePage(page, size);
@@ -30,7 +28,7 @@ public class PublicNoticeService {
             throw new BusinessException(NoticeErrorCode.PUBLIC_NOTICE_INVALID_INPUT);
         }
 
-        var rows = publicNoticeQueryRepository.findFeed(category, page, size);
+        var rows = publicNoticeQueryPort.findFeed(category, page, size);
         boolean hasNext = rows.size() > size;
         var content = rows.stream().limit(size).map(row -> new PublicNoticeFeedItem(
                 row.id().toString(), row.category(), row.title(), row.department(), row.postedAt(),
@@ -46,7 +44,7 @@ public class PublicNoticeService {
             throw new BusinessException(NoticeErrorCode.PUBLIC_NOTICE_INVALID_INPUT);
         }
 
-        var rows = publicNoticeQueryRepository.findSearch(keyword, page, size);
+        var rows = publicNoticeQueryPort.findSearch(keyword, page, size);
         boolean hasNext = rows.size() > size;
         var content = rows.stream().limit(size).map(row -> new PublicNoticeSearchItem(
                 row.id().toString(), row.category(), row.title(), row.department(), row.postedAt(),
@@ -59,14 +57,14 @@ public class PublicNoticeService {
         if (noticeId == null || noticeId <= 0) {
             throw new BusinessException(NoticeErrorCode.PUBLIC_NOTICE_INVALID_INPUT);
         }
-        String sourceType = publicNoticeQueryRepository.findSourceType(noticeId)
+        String sourceType = publicNoticeQueryPort.findSourceType(noticeId)
                 .orElseThrow(() -> new BusinessException(NoticeErrorCode.NOTICE_NOT_FOUND));
         if (!"MAIN".equals(sourceType)) {
             throw new BusinessException(NoticeErrorCode.NOTICE_ACCESS_DENIED);
         }
 
         // 상세 데이터 조회에서도 MAIN 조건을 재확인하며, 출처 정보 확인만으로 전체 데이터 조회를 허용하지 않는다.
-        PublicNoticeRow row = publicNoticeQueryRepository.findMainDetail(noticeId)
+        PublicNoticeRow row = publicNoticeQueryPort.findMainDetail(noticeId)
                 .orElseThrow(() -> new BusinessException(NoticeErrorCode.NOTICE_NOT_FOUND));
         return new PublicNoticeDetailResponse(
                 row.id().toString(), row.category(), row.title(), row.department(), row.postedAt(),

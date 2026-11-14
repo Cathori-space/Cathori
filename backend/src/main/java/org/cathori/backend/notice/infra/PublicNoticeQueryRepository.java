@@ -1,6 +1,9 @@
 package org.cathori.backend.notice.infra;
 
 import lombok.RequiredArgsConstructor;
+import org.cathori.backend.notice.application.query.PublicNoticeQueryPort;
+import org.cathori.backend.notice.application.query.PublicNoticeRow;
+import org.cathori.backend.notice.application.query.PublicNoticeSearchRow;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -12,7 +15,7 @@ import java.util.Optional;
 /** 공개 데이터 조회는 필터링과 페이지네이션에 앞서 항상 MAIN 조건을 적용한다. */
 @Repository
 @RequiredArgsConstructor
-public class PublicNoticeQueryRepository {
+public class PublicNoticeQueryRepository implements PublicNoticeQueryPort {
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -31,6 +34,7 @@ public class PublicNoticeQueryRepository {
             rs.getString("ai_summary_status"), rs.getString("url"), rs.getLong("view_count")
     );
 
+    @Override
     public List<PublicNoticeRow> findFeed(String category, int page, int size) {
         long offset = (long) page * size;
         if (category == null) {
@@ -40,6 +44,7 @@ public class PublicNoticeQueryRepository {
                 ROW_MAPPER, category, size + 1, offset);
     }
 
+    @Override
     public List<PublicNoticeSearchRow> findSearch(String keyword, int page, int size) {
         // LIKE 검색의 이스케이프 문자로 !를 사용하며, ! 자체도 이스케이프 처리한다.
         String pattern = "%" + keyword.replace("!", "!!").replace("%", "!%")
@@ -56,23 +61,15 @@ public class PublicNoticeQueryRepository {
     }
 
     /** 403과 404를 구분하기 위해 MAIN 외 공지는 출처 정보만 조회할 수 있다. */
+    @Override
     public Optional<String> findSourceType(Long noticeId) {
         return jdbcTemplate.query("SELECT source_type FROM notices WHERE id = ?",
                 (rs, rowNum) -> rs.getString("source_type"), noticeId).stream().findFirst();
     }
 
+    @Override
     public Optional<PublicNoticeRow> findMainDetail(Long noticeId) {
         return jdbcTemplate.query(PUBLIC_COLUMNS + " AND id = ?", ROW_MAPPER, noticeId)
                 .stream().findFirst();
     }
-
-    public record PublicNoticeRow(
-            Long id, String category, String title, String department, LocalDate postedAt,
-            LocalDate deadlineAt, String aiSummary, String aiSummaryStatus, String url, Long viewCount
-    ) {}
-
-    public record PublicNoticeSearchRow(
-            Long id, String category, String title, String department, LocalDate postedAt,
-            LocalDate deadlineAt
-    ) {}
 }

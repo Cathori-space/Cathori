@@ -4,6 +4,7 @@ import org.cathori.backend.IntegrationTestBase;
 import org.cathori.backend.security.JwtUtil;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
+import org.cathori.backend.user.application.email.SendRateLimiter;
 import org.cathori.backend.user.application.email.VerificationCodeStore;
 import org.cathori.backend.user.application.email.VerificationPurpose;
 import org.cathori.backend.user.application.email.VerifiedEmailStore;
@@ -35,6 +36,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     @Autowired AuthService authService;
     @Autowired VerifiedEmailStore verifiedEmailStore;
     @Autowired VerificationCodeStore verificationCodeStore;
+    @Autowired SendRateLimiter sendRateLimiter;
     @Autowired UserJpaRepository userJpaRepository;
     @Autowired JwtUtil jwtUtil;
     @MockitoBean
@@ -51,6 +53,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
         userJpaRepository.findByEmail(EMAIL).ifPresent(userJpaRepository::delete);
         verifiedEmailStore.remove(VerificationPurpose.SIGNUP, EMAIL);
         verificationCodeStore.remove(VerificationPurpose.SIGNUP, EMAIL);
+        sendRateLimiter.clear(EMAIL);
     }
 
     private void createVerifiedUser(String email, String password) {
@@ -239,5 +242,25 @@ class AuthIntegrationTest extends IntegrationTestBase {
                         .content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("USER_EMAIL_DOMAIN_NOT_ALLOWED"));
+    }
+
+    @Test
+    @DisplayName("1분 안에 4번째 인증번호 요청은 429 EMAIL_SEND_TOO_FREQUENT")
+    void sendCode_fourthWithinMinute_tooManyRequests() throws Exception {
+        // given — 1분 안에 3번 보냈다
+        String body = "{\"email\":\"" + EMAIL + "\"}";
+        for (int i = 0; i < 3; i++) {
+            mockMvc.perform(post("/api/auth/email/send")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+        }
+
+        // when & then
+        mockMvc.perform(post("/api/auth/email/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("EMAIL_SEND_TOO_FREQUENT"));
     }
 }

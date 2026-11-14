@@ -15,7 +15,8 @@ import org.cathori.backend.security.JwtUtil;
 import org.cathori.backend.user.api.dto.RegisterRequest;
 import org.cathori.backend.user.application.AuthService;
 import org.cathori.backend.user.application.NotificationPort;
-import org.cathori.backend.user.application.VerifiedEmailStore;
+import org.cathori.backend.user.application.email.VerificationPurpose;
+import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.infra.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -339,11 +340,11 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
 
     private String memberToken() {
         String email = "guest-public-test@catholic.ac.kr";
-        verifiedEmails.markVerified(email);
+        verifiedEmails.markVerified(VerificationPurpose.SIGNUP, email);
         try {
             authService.register(new RegisterRequest(email, "password123!", "컴퓨터정보공학부", null, 2, "재학"));
         } finally {
-            verifiedEmails.remove(email);
+            verifiedEmails.remove(VerificationPurpose.SIGNUP, email);
         }
         users.flush();
         return jwtUtil.generateAccessToken(users.findByEmail(email).orElseThrow().getId());

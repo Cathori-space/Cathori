@@ -23,6 +23,10 @@ public interface AlertHistoryRepository {
 
     Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
 
+    List<AlertHistory> findAllByIdInAndUserId(List<Long> ids, Long userId);
+
+    Optional<AlertHistory> findByUserIdAndNoticeId(Long userId, Long noticeId);
+
     boolean existsUnreadSuccessByUserId(Long userId);
 
     void delete(AlertHistory alertHistory);

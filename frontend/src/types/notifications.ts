@@ -6,7 +6,7 @@
  */
 
 export interface NotificationListItem {
-  /** alert_history PK — 리스트 key, 읽음 처리(Phase 6 PATCH) 식별자, 커서 산출 기준 */
+  /** alert_history PK — 리스트 key, 읽음 처리 식별자, 커서 산출 기준 */
   alertHistoryId: number;
   /** 연결된 공지 ID — 카드 탭 시 공지 상세로 이동 */
   noticeId: number;
@@ -16,7 +16,7 @@ export interface NotificationListItem {
   matchedTag: string | null;
   /** 공지 마감일 (없으면 null) — 표시는 date.ts로 연산 */
   deadlineAt: string | null;
-  /** 읽음 여부 — Phase 5에서는 읽음 처리 미구현으로 항상 false */
+  /** 서버에 저장된 읽음 여부 */
   isRead: boolean;
   /** 알림 수신 시각 (ISO 8601) */
   createdAt: string;
@@ -38,4 +38,9 @@ export interface NotificationPage {
 /** 인증 사용자의 미읽음 알림 존재 여부 */
 export interface UnreadNotificationStatus {
   hasUnread: boolean;
+}
+
+/** 여러 알림 읽음 처리 응답 */
+export interface MarkNotificationsReadResponse {
+  readAlertHistoryIds: number[];
 }

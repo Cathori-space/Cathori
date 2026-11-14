@@ -42,6 +42,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/src/constants/colors';
+import { openStoreReviewPage } from '@/src/features/reviews';
 import { logout, withdraw } from '@/src/services/auth';
 import { unregisterDeviceToken } from '@/src/services/pushToken';
 import { MainHeader } from '@/src/shared/components';
@@ -95,6 +96,7 @@ export default function SettingsScreen() {
   // ── 회원탈퇴 모달 ──
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const appStateRef = useRef(AppState.currentState);
+  const reviewLinkOpeningRef = useRef(false);
 
   /** OS 알림 권한 확인 */
   /** OS 알림 권한 확인 */
@@ -155,6 +157,23 @@ const checkNotificationPermission = async () => {
   /** 시스템 알림 설정 — OS 설정으로 외부 진입 */
   const handleSystemNotification = () => {
     Linking.openSettings();
+  };
+
+  /** 현재 플랫폼의 Cathori 스토어 리뷰 작성 페이지로 이동 */
+  const handleReviewPress = async () => {
+    if (reviewLinkOpeningRef.current) return;
+
+    reviewLinkOpeningRef.current = true;
+    try {
+      await openStoreReviewPage();
+    } catch {
+      Alert.alert(
+        '스토어를 열 수 없습니다',
+        '잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      reviewLinkOpeningRef.current = false;
+    }
   };
 
   /** 알림 권한 배너 → OS 설정 이동 */
@@ -382,6 +401,24 @@ const checkNotificationPermission = async () => {
         <View style={styles.sectionGroup}>
           <Text style={styles.sectionTitle}>기타</Text>
           <View style={styles.sectionCard}>
+            {/* 스토어 리뷰 작성 페이지 이동 */}
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={[styles.settingsRow, styles.settingsRowBorder]}
+              onPress={handleReviewPress}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsRowLeft}>
+                <Feather name="star" size={18} color={Colors.primary} />
+                <Text style={styles.settingsRowText}>리뷰 남기기</Text>
+              </View>
+              <Feather
+                name="external-link"
+                size={17}
+                color={Colors.textSecondary}
+              />
+            </TouchableOpacity>
+
             {/* 버전 정보 */}
             <View style={[styles.settingsRow, styles.settingsRowBorder]}>
               <View style={styles.settingsRowLeft}>

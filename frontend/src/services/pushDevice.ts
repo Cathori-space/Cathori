@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deleteToken, getMessaging, getToken, registerDeviceForRemoteMessages, setAutoInitEnabled, unregisterDeviceForRemoteMessages } from '@react-native-firebase/messaging';
+import { deleteToken, getAPNSToken, getMessaging, getToken, registerDeviceForRemoteMessages, setAutoInitEnabled, unregisterDeviceForRemoteMessages } from '@react-native-firebase/messaging';
 import { CanceledError } from 'axios';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -60,12 +60,33 @@ export function getManagedDevicePushToken(canUse: () => boolean): Promise<string
     if (resetRequired || persistedReset === 'true') await resetDeviceRegistration();
     assertActive();
     const messaging = getMessaging();
+    if (Platform.OS === 'ios') {
+      // 미등록 기기에서는 getAPNSToken 자체가 거부될 수 있으므로 등록 여부를 먼저 확인한다.
+      let apnsToken = messaging.isDeviceRegisteredForRemoteMessages
+        ? await getAPNSToken(messaging).catch((error: unknown) => {
+          if (error != null && typeof error === 'object' && 'code' in error
+              && error.code === 'messaging/unregistered') return null;
+          throw error;
+        })
+        : null;
+      assertActive();
+      if (!messaging.isDeviceRegisteredForRemoteMessages || !apnsToken) {
+        // SDK 등록 플래그는 시도 시점에 true가 되므로 APNs 토큰 준비를 보장하지 않는다.
+        if (messaging.isDeviceRegisteredForRemoteMessages && !apnsToken) {
+          await unregisterDeviceForRemoteMessages(messaging);
+          assertActive();
+        }
+        await registerDeviceForRemoteMessages(messaging);
+        assertActive();
+        apnsToken = await getAPNSToken(messaging);
+        assertActive();
+      }
+      if (!apnsToken) {
+        throw Object.assign(new Error('Firebase에 APNs 기기 토큰이 반영되지 않았습니다.'), { code: 'push/apns-token-not-ready' });
+      }
+    }
     await setAutoInitEnabled(messaging, true);
     assertActive();
-    if (Platform.OS === 'ios' && !messaging.isDeviceRegisteredForRemoteMessages) {
-      await registerDeviceForRemoteMessages(messaging);
-      assertActive();
-    }
     // 양 플랫폼에서 서버에 등록하는 값과 삭제하는 값을 기본 Firebase 앱의 FCM 토큰으로 통일한다.
     const token = await getToken(messaging);
     issuedToken = token;

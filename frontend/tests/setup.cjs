@@ -59,6 +59,7 @@ jest.mock('@react-native-firebase/messaging', () => {
   let generation = 0;
   return {
     getMessaging: jest.fn(() => ({ isDeviceRegisteredForRemoteMessages: false })),
+    getAPNSToken: jest.fn(async () => 'apns-ready'),
     getToken: jest.fn(async () => `device-${generation}`),
     deleteToken: jest.fn(async () => { generation += 1; }),
     setAutoInitEnabled: jest.fn(async () => {}),

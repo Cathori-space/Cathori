@@ -14,7 +14,7 @@ import RootLayout from '@/app/_layout';
 import { MainHeader } from '@/src/shared/components/MainHeader';
 import { MembershipPrompt } from '@/src/features/auth/components/MembershipPrompt';
 import { openStoreReviewPage, useReviewSessionTimer } from '@/src/features/reviews';
-import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
+import { useGuestSearchHistoryStore, useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
 import { cleanup, flush, member, pressText, publicNotice, rejectStatus, render, response, textOf, transport } from './helpers';
@@ -169,7 +169,7 @@ describe('공개 공지 화면', () => {
     expect(textOf(tree)).toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
     expect(textOf(tree)).toContain('+ 관심 키워드 추가');
   });
-  it('게스트 검색 화면에서 공개 검색 결과를 표시하고 기록은 저장하지 않는다', async () => {
+  it('게스트 검색은 공개 결과를 표시하고 검색어는 게스트 기록에만 저장한다', async () => {
     await guest();
     transport.mockImplementation(async (config) => response(config, { content: [publicNotice], page: 0, size: 20, hasNext: false }));
     const tree = await render(<SearchScreen />);
@@ -180,7 +180,51 @@ describe('공개 공지 화면', () => {
     expect(textOf(tree)).toContain('장학금 공지');
     expect(transport.mock.calls[0][0].url).toBe('/api/public/notices/search');
     await act(async () => { tree.root.findAll((n) => String(n.type) === 'TextInput')[0].props.onSubmitEditing(); });
+    expect(useGuestSearchHistoryStore.getState().history).toEqual(['장학']);
     expect(useSearchHistoryStore.getState().history).toEqual([]);
+  });
+  it('게스트 최근 검색어를 선택하고 개별 삭제·전체 삭제할 수 있다', async () => {
+    await guest();
+    useGuestSearchHistoryStore.getState().addEntry('장학');
+    useGuestSearchHistoryStore.getState().addEntry('학사');
+    transport.mockImplementation(async (config) => response(config, { content: [], page: 0, size: 20, hasNext: false }));
+    const tree = await render(<SearchScreen />);
+    expect(textOf(tree)).toContain('최근 검색어');
+    await pressText(tree, '장학');
+    expect(useGuestSearchHistoryStore.getState().history).toEqual(['장학', '학사']);
+    const input = () => tree.root.findAll((node) => String(node.type) === 'TextInput')[0];
+    expect(input().props.value).toBe('장학');
+    await act(async () => { input().props.onChangeText(''); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 350)); });
+    const text = tree.root.findAll((node) => String(node.type) === 'Text' && node.children.join('') === '학사')[0];
+    let row = text.parent;
+    while (row && String(row.type) !== 'Pressable') row = row.parent;
+    const icon = row!.findAll((node) => String(node.type) === 'Icon' && node.props.name === 'x')[0];
+    let remove = icon.parent;
+    while (remove && String(remove.type) !== 'Pressable') remove = remove.parent;
+    await act(async () => { remove!.props.onPress(); });
+    expect(useGuestSearchHistoryStore.getState().history).toEqual(['장학']);
+    await pressText(tree, '전체 지우기');
+    expect(useGuestSearchHistoryStore.getState().history).toEqual([]);
+    expect(textOf(tree)).toContain('검색어를 입력해주세요');
+  });
+  it('검색 화면에서 현재 모드의 기록만 보여주고 회원 전환 시 이전 기록을 숨긴다', async () => {
+    await guest();
+    useGuestSearchHistoryStore.getState().addEntry('게스트 검색');
+    useSearchHistoryStore.getState().addEntry('회원 전용 검색');
+    const tree = await render(<SearchScreen />);
+    expect(textOf(tree)).toContain('게스트 검색');
+    expect(textOf(tree)).not.toContain('회원 전용 검색');
+    await act(async () => {
+      await useAuthStore.getState().setAuth(member);
+      useSearchHistoryStore.getState().addEntry('회원의 새 검색');
+    });
+    expect(textOf(tree)).toContain('회원의 새 검색');
+    expect(textOf(tree)).not.toContain('게스트 검색');
+    await act(async () => { await useAuthStore.getState().clearAuth(); });
+    await guest();
+    expect(textOf(tree)).not.toContain('회원의 새 검색');
+    expect(textOf(tree)).toContain('검색어를 입력해주세요');
   });
   it('상세 화면에서 저장된 AI 요약과 원문 링크를 사용할 수 있다', async () => {
     await guest();

@@ -42,7 +42,7 @@ import { useToggleBookmark } from '@/src/features/notices';
 import { EmptyState, MainHeader } from '@/src/shared/components';
 import { useDebounce } from '@/src/shared/hooks';
 import { useAuthStore } from '@/src/store/useAuthStore';
-import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
+import { useGuestSearchHistoryStore, useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
 import type { SearchNoticeListItem } from '@/src/types/api';
 
 /** SearchResultItem 한 행의 추정 높이 (paddingVertical 14*2 + 내용 약 40 = 68) */
@@ -54,12 +54,14 @@ export default function SearchScreen() {
   const debouncedQuery = useDebounce(query, 300);
 
   // 검색 기록 스토어 — 영속화는 AsyncStorage가 담당
-  const isMember = useAuthStore((s) => s.status === 'authenticated');
-  const storedHistory = useSearchHistoryStore((s) => s.history);
-  const history = isMember ? storedHistory : [];
-  const addEntry = useSearchHistoryStore((s) => s.addEntry);
-  const removeEntry = useSearchHistoryStore((s) => s.removeEntry);
-  const clearAll = useSearchHistoryStore((s) => s.clearAll);
+  const status = useAuthStore((s) => s.status);
+  const useHistoryStore = status === 'guest' ? useGuestSearchHistoryStore : useSearchHistoryStore;
+  const storedHistory = useHistoryStore((s) => s.history);
+  const canUseHistory = status === 'guest' || status === 'authenticated';
+  const history = canUseHistory ? storedHistory : [];
+  const addEntry = useHistoryStore((s) => s.addEntry);
+  const removeEntry = useHistoryStore((s) => s.removeEntry);
+  const clearAll = useHistoryStore((s) => s.clearAll);
 
   const {
     data,                  // ← 검색 결과 데이터
@@ -82,14 +84,14 @@ export default function SearchScreen() {
   // 엔터/제출 시점에만 히스토리 추가 (디바운스 키 입력으로는 추가 안 함 — 노이즈 방지)
   const handleSubmit = (text: string) => {
       const t = text.trim();
-      if (t && isMember) addEntry(t);
+      if (t && t.length <= 100 && canUseHistory) addEntry(t);
   };
 
   // 히스토리 행 탭 → 입력값을 해당 키워드로 채워 검색 트리거 + 최상단으로 이동
   // addEntry 내부 dedup 로직이 기존 항목을 제거하고 최상단에 재삽입함
   const handleSelectHistory = (keyword: string) => {
     setQuery(keyword);
-    if (isMember) addEntry(keyword);
+    if (canUseHistory) addEntry(keyword);
   };
 
   const handleEndReached = () => {

@@ -13,7 +13,7 @@ import SettingsScreen from '@/app/(tabs)/settings';
 import { usePushNotifications } from '@/src/features/notifications/hooks/usePushNotifications';
 import apiClient from '@/src/services/api';
 import { registerDeviceToken, type PushCleanupResult } from '@/src/services/pushToken';
-import { getManagedDevicePushToken } from '@/src/services/pushDevice';
+import { getManagedDevicePushToken, invalidateDevicePushToken } from '@/src/services/pushDevice';
 import { getSessionId } from '@/src/services/session';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { cleanup, deferred, flush, member, pressText, rejectStatus, render, renderHook, response, transport } from './helpers';
@@ -103,6 +103,26 @@ describe('iOS APNs 준비 상태 복구', () => {
     expect(getToken).not.toHaveBeenCalled();
   });
 
+  it('수동 등록이 응답하지 않아도 10초 뒤 큐를 풀어 기기를 정리한다', async () => {
+    jest.useFakeTimers();
+    const registration = deferred<void>();
+    try {
+      jest.mocked(registerDeviceForRemoteMessages).mockImplementationOnce(() => registration.promise);
+      const outcome = getManagedDevicePushToken(() => true).catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(10_000);
+      expect(await outcome).toMatchObject({ code: 'push/apns-registration-timeout' });
+      await invalidateDevicePushToken().completion;
+      expect(unregisterDeviceForRemoteMessages).toHaveBeenCalled();
+      registration.resolve();
+      await jest.advanceTimersByTimeAsync(1);
+      expect(getToken).not.toHaveBeenCalled();
+      expect(setAPNSToken).not.toHaveBeenCalled();
+    } finally {
+      registration.resolve();
+      jest.useRealTimers();
+    }
+  });
+
   it('Android는 APNs 경로 없이 기존 FCM 발급·서버 등록을 유지한다', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     await registerPush();
@@ -189,7 +209,26 @@ describe('iOS APNs 준비 상태 복구', () => {
     expect(getToken).not.toHaveBeenCalled();
   });
 
-
+  it('APNs 무응답은 10초 후 종료하고 늦게 온 토큰을 연결하지 않는다', async () => {
+    jest.useFakeTimers();
+    const registration = deferred<Notifications.DevicePushToken>();
+    try {
+      jest.mocked(getAPNSToken).mockResolvedValue(null);
+      jest.mocked(Notifications.getDevicePushTokenAsync).mockImplementationOnce(() => registration.promise);
+      jest.mocked(getToken).mockClear();
+      jest.mocked(setAPNSToken).mockClear();
+      const outcome = getManagedDevicePushToken(() => true).catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(10_000);
+      expect(await outcome).toMatchObject({ code: 'push/apns-registration-timeout' });
+      registration.resolve({ type: 'ios', data: 'ab'.repeat(32) });
+      await jest.advanceTimersByTimeAsync(1);
+      expect(setAPNSToken).not.toHaveBeenCalled();
+      expect(getToken).not.toHaveBeenCalled();
+    } finally {
+      registration.resolve({ type: 'ios', data: 'ab'.repeat(32) });
+      jest.useRealTimers();
+    }
+  });
 });
 async function authenticate() {
   await act(async () => { await useAuthStore.getState().setAuth(member); });

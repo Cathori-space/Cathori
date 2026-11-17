@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 const RESET_REQUIRED_KEY = 'cathori-push-reset-required';
+const APNS_REGISTRATION_TIMEOUT_MS = 10_000;
 let nativeTask: Promise<unknown> = Promise.resolve();
 let resetRequired = false;
 let issuedToken: string | null = null;
@@ -14,6 +15,24 @@ function enqueueNative<T>(operation: () => Promise<T>): Promise<T> {
   const pending = nativeTask.then(operation, operation);
   nativeTask = pending.catch(() => {});
   return pending;
+}
+
+async function withApnsTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    // APNs 응답이 없어도 다음 세션의 기기 정리 큐를 무기한 막지 않는다.
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(
+          new Error('APNs 기기 등록 응답을 기다리는 시간이 초과됐습니다.'),
+          { code: 'push/apns-registration-timeout' },
+        )), APNS_REGISTRATION_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function resetDeviceRegistration() {
@@ -76,14 +95,14 @@ export function getManagedDevicePushToken(canUse: () => boolean): Promise<string
           await unregisterDeviceForRemoteMessages(messaging);
           assertActive();
         }
-        await registerDeviceForRemoteMessages(messaging);
+        await withApnsTimeout(registerDeviceForRemoteMessages(messaging));
         assertActive();
         apnsToken = await getAPNSToken(messaging);
         assertActive();
       }
       if (!apnsToken) {
         // Expo가 받은 실제 APNs 토큰을 Firebase에 연결한다. 서버 등록에는 이 값을 쓰지 않는다.
-        const nativeToken = await Notifications.getDevicePushTokenAsync();
+        const nativeToken = await withApnsTimeout(Notifications.getDevicePushTokenAsync());
         assertActive();
         if (nativeToken.type !== 'ios' || typeof nativeToken.data !== 'string'
             || !/^[0-9a-f]+$/i.test(nativeToken.data) || nativeToken.data.length % 2 !== 0) {

@@ -14,7 +14,7 @@ import RootLayout from '@/app/_layout';
 import { MainHeader } from '@/src/shared/components/MainHeader';
 import { MembershipPrompt } from '@/src/features/auth/components/MembershipPrompt';
 import { openStoreReviewPage, useReviewSessionTimer } from '@/src/features/reviews';
-import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
+import { useGuestSearchHistoryStore, useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
 import { cleanup, flush, member, pressText, publicNotice, rejectStatus, render, response, textOf, transport } from './helpers';
@@ -68,7 +68,10 @@ describe('게스트 진입과 인증 화면 복귀', () => {
 });
 
 describe('회원 전용 가입 안내와 게스트 설정', () => {
-  it.each(['bookmark', 'bell'])('%s 접근은 회원 API 대신 안내창을 연다', async (name) => {
+  it.each([
+    ['bookmark', 'bookmark', '북마크로 중요한 공지를 모아두세요'],
+    ['bell', 'notification', '관심 키워드에 맞는 새 공지를 알림으로 받아보세요'],
+  ])('%s 접근은 회원 API 대신 해당 기능의 안내창을 연다', async (name, feature, message) => {
     await guest();
     const tree = await render(<><MainHeader /><MembershipPrompt /></>);
     const icon = tree.root.findAll((n) => String(n.type) === 'Icon' && n.props.name === name)[0];
@@ -76,19 +79,24 @@ describe('회원 전용 가입 안내와 게스트 설정', () => {
     while (button && String(button.type) !== 'TouchableOpacity') button = button.parent;
     await act(async () => { button!.props.onPress(); });
     expect(textOf(tree)).toContain('회원 전용 기능이에요');
+    expect(textOf(tree)).toContain(message);
     expect(transport).not.toHaveBeenCalled();
     expect(router.push).not.toHaveBeenCalled();
     await pressText(tree, '닫기');
     expect(useMembershipPromptStore.getState().visible).toBe(false);
+    expect(useMembershipPromptStore.getState().feature).toBe(feature);
     expect(useAuthStore.getState().status).toBe('guest');
+    await act(async () => { useMembershipPromptStore.getState().open(); });
+    expect(textOf(tree)).toContain('로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.');
   });
   it.each([['로그인', '/login'], ['회원가입', '/register']])('안내창에서 %s 화면으로 이동한다', async (label, path) => {
     await guest();
-    useMembershipPromptStore.getState().open();
+    useMembershipPromptStore.getState().open('keyword');
     const tree = await render(<MembershipPrompt />);
     await pressText(tree, label);
     expect(router.push).toHaveBeenCalledWith(path);
     expect(useMembershipPromptStore.getState().visible).toBe(false);
+    expect(useMembershipPromptStore.getState().feature).toBe('keyword');
     expect(useAuthStore.getState().status).toBe('guest');
   });
   it('게스트 설정에는 버전만 표시하고 회원 정보와 알림 설정을 숨긴다', async () => {
@@ -128,7 +136,7 @@ describe('기존 회원 로그아웃', () => {
 });
 
 describe('공개 공지 화면', () => {
-  it('게스트 홈에 공개 공지가 표시되고 기존 태그 버튼은 가입 안내만 연다', async () => {
+  it('게스트 피드의 가입 안내와 키워드 추가는 회원 전환 후 기존 태그 동작으로 바뀐다', async () => {
     await guest();
     transport.mockImplementation(async (config) => response(config, { content: [publicNotice], page: 0, size: 20, hasNext: false }));
     const tree = await render(<><HomeScreen /><MembershipPrompt /></>);
@@ -137,13 +145,21 @@ describe('공개 공지 화면', () => {
     await pressText(tree, '로그인');
     expect(router.push).toHaveBeenCalledWith('/login');
     expect(useAuthStore.getState().status).toBe('guest');
-    await pressText(tree, '+태그');
+    await pressText(tree, '+ 관심 키워드 추가');
     expect(useMembershipPromptStore.getState().visible).toBe(true);
+    expect(textOf(tree)).toContain('관심 키워드를 등록하면 새 공지를 알림으로 받아볼 수 있어요');
     expect(transport.mock.calls.every(([c]) => c.url === '/api/public/notices')).toBe(true);
+    await pressText(tree, '닫기');
+    expect(useMembershipPromptStore.getState().visible).toBe(false);
+    expect(useMembershipPromptStore.getState().feature).toBe('keyword');
 
     await act(async () => { await useAuthStore.getState().setAuth(member); });
     await flush();
     expect(textOf(tree)).not.toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
+    expect(textOf(tree)).not.toContain('+ 관심 키워드 추가');
+    expect(textOf(tree)).toContain('+태그');
+    await pressText(tree, '+태그');
+    expect(router.push).toHaveBeenLastCalledWith('/settings/keywords');
 
     await act(async () => { await useAuthStore.getState().clearAuth(); });
     await flush();
@@ -151,8 +167,9 @@ describe('공개 공지 화면', () => {
     await guest();
     await flush();
     expect(textOf(tree)).toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
+    expect(textOf(tree)).toContain('+ 관심 키워드 추가');
   });
-  it('게스트 검색 화면에서 공개 검색 결과를 표시하고 기록은 저장하지 않는다', async () => {
+  it('게스트 검색은 공개 결과를 표시하고 검색어는 게스트 기록에만 저장한다', async () => {
     await guest();
     transport.mockImplementation(async (config) => response(config, { content: [publicNotice], page: 0, size: 20, hasNext: false }));
     const tree = await render(<SearchScreen />);
@@ -163,7 +180,51 @@ describe('공개 공지 화면', () => {
     expect(textOf(tree)).toContain('장학금 공지');
     expect(transport.mock.calls[0][0].url).toBe('/api/public/notices/search');
     await act(async () => { tree.root.findAll((n) => String(n.type) === 'TextInput')[0].props.onSubmitEditing(); });
+    expect(useGuestSearchHistoryStore.getState().history).toEqual(['장학']);
     expect(useSearchHistoryStore.getState().history).toEqual([]);
+  });
+  it('게스트 최근 검색어를 선택하고 개별 삭제·전체 삭제할 수 있다', async () => {
+    await guest();
+    useGuestSearchHistoryStore.getState().addEntry('장학');
+    useGuestSearchHistoryStore.getState().addEntry('학사');
+    transport.mockImplementation(async (config) => response(config, { content: [], page: 0, size: 20, hasNext: false }));
+    const tree = await render(<SearchScreen />);
+    expect(textOf(tree)).toContain('최근 검색어');
+    await pressText(tree, '장학');
+    expect(useGuestSearchHistoryStore.getState().history).toEqual(['장학', '학사']);
+    const input = () => tree.root.findAll((node) => String(node.type) === 'TextInput')[0];
+    expect(input().props.value).toBe('장학');
+    await act(async () => { input().props.onChangeText(''); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 350)); });
+    const text = tree.root.findAll((node) => String(node.type) === 'Text' && node.children.join('') === '학사')[0];
+    let row = text.parent;
+    while (row && String(row.type) !== 'Pressable') row = row.parent;
+    const icon = row!.findAll((node) => String(node.type) === 'Icon' && node.props.name === 'x')[0];
+    let remove = icon.parent;
+    while (remove && String(remove.type) !== 'Pressable') remove = remove.parent;
+    await act(async () => { remove!.props.onPress(); });
+    expect(useGuestSearchHistoryStore.getState().history).toEqual(['장학']);
+    await pressText(tree, '전체 지우기');
+    expect(useGuestSearchHistoryStore.getState().history).toEqual([]);
+    expect(textOf(tree)).toContain('검색어를 입력해주세요');
+  });
+  it('검색 화면에서 현재 모드의 기록만 보여주고 회원 전환 시 이전 기록을 숨긴다', async () => {
+    await guest();
+    useGuestSearchHistoryStore.getState().addEntry('게스트 검색');
+    useSearchHistoryStore.getState().addEntry('회원 전용 검색');
+    const tree = await render(<SearchScreen />);
+    expect(textOf(tree)).toContain('게스트 검색');
+    expect(textOf(tree)).not.toContain('회원 전용 검색');
+    await act(async () => {
+      await useAuthStore.getState().setAuth(member);
+      useSearchHistoryStore.getState().addEntry('회원의 새 검색');
+    });
+    expect(textOf(tree)).toContain('회원의 새 검색');
+    expect(textOf(tree)).not.toContain('게스트 검색');
+    await act(async () => { await useAuthStore.getState().clearAuth(); });
+    await guest();
+    expect(textOf(tree)).not.toContain('회원의 새 검색');
+    expect(textOf(tree)).toContain('검색어를 입력해주세요');
   });
   it('상세 화면에서 저장된 AI 요약과 원문 링크를 사용할 수 있다', async () => {
     await guest();

@@ -5,9 +5,17 @@ import { Colors } from '@/src/constants/colors';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
 
+const MEMBERSHIP_MESSAGES = {
+  general: '로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.',
+  bookmark: '북마크로 중요한 공지를 모아두세요',
+  keyword: '관심 키워드를 등록하면 새 공지를 알림으로 받아볼 수 있어요',
+  notification: '관심 키워드에 맞는 새 공지를 알림으로 받아보세요',
+};
+
 export function MembershipPrompt() {
   const router = useRouter();
   const visible = useMembershipPromptStore((s) => s.visible);
+  const feature = useMembershipPromptStore((s) => s.feature);
   const close = useMembershipPromptStore((s) => s.close);
   const status = useAuthStore((s) => s.status);
   const navigate = (path: '/login' | '/register') => {
@@ -19,7 +27,7 @@ export function MembershipPrompt() {
       <View style={styles.overlay}>
         <View style={styles.card} accessibilityViewIsModal>
           <Text style={styles.title}>회원 전용 기능이에요</Text>
-          <Text style={styles.message}>로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.</Text>
+          <Text style={styles.message}>{MEMBERSHIP_MESSAGES[feature]}</Text>
           <TouchableOpacity style={styles.button} onPress={() => navigate('/register')} accessibilityRole="button">
             <Text style={styles.buttonText}>회원가입</Text>
           </TouchableOpacity>

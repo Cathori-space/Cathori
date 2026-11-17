@@ -8,7 +8,7 @@ import { assertCurrentSession, getSessionId, rotateSession } from '@/src/service
 import { clearTokens, getTokens, saveTokens } from '@/src/services/tokenStorage';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
 import { useNoticeFilterStore } from '@/src/store/useNoticeFilterStore';
-import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
+import { useGuestSearchHistoryStore, useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
 import type { AuthUser, LoginResponse, ReissueResponse, UserTag } from '@/src/types/auth';
 
 export type AuthStatus = 'initializing' | 'unauthenticated' | 'guest' | 'authenticated';
@@ -45,7 +45,15 @@ function resetSession() {
   useMembershipPromptStore.getState().close();
   useNoticeFilterStore.setState({ selectedCategory: null, selectedTag: null });
   useSearchHistoryStore.getState().clearAll();
+  useGuestSearchHistoryStore.getState().clearAll();
   return id;
+}
+
+function flushSearchHistory() {
+  return Promise.all([
+    useSearchHistoryStore.getState().flush(),
+    useGuestSearchHistoryStore.getState().flush(),
+  ]);
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -61,6 +69,7 @@ export const useAuthStore = create<AuthState>()(
         set({ ...EMPTY_AUTH, status: 'initializing', sessionId: id });
         try {
           await enqueueStorage(async () => {
+            await flushSearchHistory();
             assertCurrentSession(id);
             await clearGuestSelection();
             assertCurrentSession(id);
@@ -100,6 +109,7 @@ export const useAuthStore = create<AuthState>()(
         return enqueueStorage(async () => {
           try {
             await clearTokens();
+            await flushSearchHistory();
           } finally {
             await clearGuestSelection();
           }
@@ -113,6 +123,7 @@ export const useAuthStore = create<AuthState>()(
         set({ ...EMPTY_AUTH, status: 'initializing', sessionId: id });
         try {
           await enqueueStorage(async () => {
+            await flushSearchHistory();
             assertCurrentSession(id);
             await clearTokens();
             assertCurrentSession(id);

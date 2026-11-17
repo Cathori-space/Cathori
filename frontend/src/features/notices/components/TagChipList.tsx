@@ -12,9 +12,17 @@ interface TagChipListProps {
   onSelect: (tag: string) => void;
   /** 키워드 추가(+) 버튼 클릭 콜백 */
   onAddPress?: () => void;
+  /** 추가 버튼에 표시할 문구 */
+  addButtonLabel?: string;
 }
 
-function TagChipListComponent({ tags, selectedTag, onSelect, onAddPress }: TagChipListProps) {
+function TagChipListComponent({
+  tags,
+  selectedTag,
+  onSelect,
+  onAddPress,
+  addButtonLabel = '+태그',
+}: TagChipListProps) {
   return (
     <View style={styles.wrapper}>
       <ScrollView
@@ -40,8 +48,9 @@ function TagChipListComponent({ tags, selectedTag, onSelect, onAddPress }: TagCh
             style={styles.addButton}
             onPress={onAddPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
           >
-            <Text style={styles.chipText}>{'+태그'}</Text>
+            <Text style={styles.chipText}>{addButtonLabel}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

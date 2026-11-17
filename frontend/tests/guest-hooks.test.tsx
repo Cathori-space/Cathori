@@ -95,6 +95,7 @@ describe('회원 전용 조회와 낙관적 변경', () => {
     const h = await renderHook(useToggleBookmark);
     await act(async () => { h.current.mutate('213'); });
     expect(useMembershipPromptStore.getState().visible).toBe(true);
+    expect(useMembershipPromptStore.getState().feature).toBe('bookmark');
     expect(queryClient.getQueryData(['notice', '213'])).toEqual(cached);
     expect(transport).not.toHaveBeenCalled();
   });

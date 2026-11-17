@@ -62,6 +62,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           await enqueueStorage(async () => {
             assertCurrentSession(id);
+            await clearGuestSelection();
+            assertCurrentSession(id);
             await saveTokens(response);
           });
           assertCurrentSession(id);
@@ -131,7 +133,10 @@ export const useAuthStore = create<AuthState>()(
             assertCurrentSession(id);
             const tokens = await getTokens();
             assertCurrentSession(id);
-            if (tokens) return { ...tokens, status: 'authenticated' as const };
+            if (tokens) {
+              await clearGuestSelection();
+              return { ...tokens, status: 'authenticated' as const };
+            }
             const guestSelected = await getGuestSelection();
             return { ...EMPTY_AUTH, status: guestSelected ? 'guest' as const : 'unauthenticated' as const };
           });

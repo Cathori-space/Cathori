@@ -81,6 +81,8 @@ docker compose up -d
 - 서버 주소: `http://localhost:8080`
 - Swagger UI (API 직접 테스트 가능): `http://localhost:8080/swagger-ui.html`
 
+- [게스트 공개 공지 API 명세](https://github.com/Cathori-space/Cathori/wiki/게스트-공개-공지-API-명세): 공개 범위와 관련 명세·테스트 위치
+
 ### 자주 하는 실수
 
 | 상황 | 원인 | 해결 |

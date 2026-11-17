@@ -69,9 +69,9 @@ describe('게스트 진입과 인증 화면 복귀', () => {
 
 describe('회원 전용 가입 안내와 게스트 설정', () => {
   it.each([
-    ['bookmark', '북마크로 중요한 공지를 모아두세요'],
-    ['bell', '로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.'],
-  ])('%s 접근은 회원 API 대신 해당 기능의 안내창을 연다', async (name, message) => {
+    ['bookmark', 'bookmark', '북마크로 중요한 공지를 모아두세요'],
+    ['bell', 'general', '로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.'],
+  ])('%s 접근은 회원 API 대신 해당 기능의 안내창을 연다', async (name, feature, message) => {
     await guest();
     const tree = await render(<><MainHeader /><MembershipPrompt /></>);
     const icon = tree.root.findAll((n) => String(n.type) === 'Icon' && n.props.name === name)[0];
@@ -84,7 +84,7 @@ describe('회원 전용 가입 안내와 게스트 설정', () => {
     expect(router.push).not.toHaveBeenCalled();
     await pressText(tree, '닫기');
     expect(useMembershipPromptStore.getState().visible).toBe(false);
-    expect(useMembershipPromptStore.getState().feature).toBe('general');
+    expect(useMembershipPromptStore.getState().feature).toBe(feature);
     expect(useAuthStore.getState().status).toBe('guest');
     await act(async () => { useMembershipPromptStore.getState().open(); });
     expect(textOf(tree)).toContain('로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.');
@@ -96,7 +96,7 @@ describe('회원 전용 가입 안내와 게스트 설정', () => {
     await pressText(tree, label);
     expect(router.push).toHaveBeenCalledWith(path);
     expect(useMembershipPromptStore.getState().visible).toBe(false);
-    expect(useMembershipPromptStore.getState().feature).toBe('general');
+    expect(useMembershipPromptStore.getState().feature).toBe('keyword');
     expect(useAuthStore.getState().status).toBe('guest');
   });
   it('게스트 설정에는 버전만 표시하고 회원 정보와 알림 설정을 숨긴다', async () => {
@@ -149,6 +149,9 @@ describe('공개 공지 화면', () => {
     expect(useMembershipPromptStore.getState().visible).toBe(true);
     expect(textOf(tree)).toContain('관심 키워드를 등록하면 새 공지를 알림으로 받아볼 수 있어요');
     expect(transport.mock.calls.every(([c]) => c.url === '/api/public/notices')).toBe(true);
+    await pressText(tree, '닫기');
+    expect(useMembershipPromptStore.getState().visible).toBe(false);
+    expect(useMembershipPromptStore.getState().feature).toBe('keyword');
 
     await act(async () => { await useAuthStore.getState().setAuth(member); });
     await flush();

@@ -11,5 +11,6 @@ export const useMembershipPromptStore = create<{
   visible: false,
   feature: 'general',
   open: (feature = 'general') => set({ visible: true, feature }),
-  close: () => set({ visible: false, feature: 'general' }),
+  // 닫힘 애니메이션 중에는 기존 안내 문구를 유지한다.
+  close: () => set({ visible: false }),
 }));

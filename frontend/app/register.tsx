@@ -27,7 +27,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
-import { DEPARTMENTS } from '@/src/constants/departments';
+import { getDepartmentOptions, NO_SECOND_MAJOR } from '@/src/features/auth/utils/departmentOptions';
 import { useEmailVerification, useRegister } from '@/src/features/auth/hooks';
 import { SubHeader } from '@/src/shared/components';
 
@@ -95,11 +95,9 @@ export default function RegisterScreen() {
   };
 
   const openDropdown = (target: 'major1' | 'major2') => {
-    const list: string[] = target === 'major2'
-      ? ['선택 안 함', ...DEPARTMENTS]
-      : [...DEPARTMENTS];
+    const list = getDepartmentOptions(target === 'major2');
     const current = target === 'major1' ? major1 : major2;
-    const search = target === 'major2' && current === '' ? '선택 안 함' : current;
+    const search = target === 'major2' && current === '' ? NO_SECOND_MAJOR : current;
     const idx = list.indexOf(search);
     dropdownScrollIdx.current = Math.max(0, idx);
     setDropdownTarget(target);
@@ -447,14 +445,14 @@ export default function RegisterScreen() {
           >
             <FlatList
               ref={flatListRef}
-              data={dropdownTarget === 'major2' ? ['선택 안 함', ...DEPARTMENTS] : [...DEPARTMENTS]}
+              data={getDepartmentOptions(dropdownTarget === 'major2')}
               keyExtractor={(item) => item}
               getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
               renderItem={({ item }) => {
                 const isSelected =
                   dropdownTarget === 'major1'
                     ? item === major1
-                    : item === '선택 안 함'
+                    : item === NO_SECOND_MAJOR
                     ? major2 === ''
                     : item === major2;
                 return (
@@ -464,7 +462,7 @@ export default function RegisterScreen() {
                       if (dropdownTarget === 'major1') {
                         setMajor1(item);
                       } else {
-                        setMajor2(item === '선택 안 함' ? '' : item);
+                        setMajor2(item === NO_SECOND_MAJOR ? '' : item);
                       }
                       closeDropdown();
                     }}

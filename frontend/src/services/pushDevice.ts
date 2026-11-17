@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deleteToken, getAPNSToken, getMessaging, getToken, registerDeviceForRemoteMessages, setAutoInitEnabled, unregisterDeviceForRemoteMessages } from '@react-native-firebase/messaging';
+import { deleteToken, getAPNSToken, getMessaging, getToken, registerDeviceForRemoteMessages, setAPNSToken, setAutoInitEnabled, unregisterDeviceForRemoteMessages } from '@react-native-firebase/messaging';
 import { CanceledError } from 'axios';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -82,7 +82,20 @@ export function getManagedDevicePushToken(canUse: () => boolean): Promise<string
         assertActive();
       }
       if (!apnsToken) {
-        throw Object.assign(new Error('Firebase에 APNs 기기 토큰이 반영되지 않았습니다.'), { code: 'push/apns-token-not-ready' });
+        // Expo가 받은 실제 APNs 토큰을 Firebase에 연결한다. 서버 등록에는 이 값을 쓰지 않는다.
+        const nativeToken = await Notifications.getDevicePushTokenAsync();
+        assertActive();
+        if (nativeToken.type !== 'ios' || typeof nativeToken.data !== 'string'
+            || !/^[0-9a-f]+$/i.test(nativeToken.data) || nativeToken.data.length % 2 !== 0) {
+          throw Object.assign(new Error('유효한 iOS APNs 기기 토큰을 받지 못했습니다.'), { code: 'push/invalid-apns-token' });
+        }
+        await setAPNSToken(messaging, nativeToken.data);
+        assertActive();
+        apnsToken = await getAPNSToken(messaging);
+        assertActive();
+        if (!apnsToken) {
+          throw Object.assign(new Error('Firebase에 APNs 기기 토큰이 반영되지 않았습니다.'), { code: 'push/apns-token-not-ready' });
+        }
       }
     }
     await setAutoInitEnabled(messaging, true);

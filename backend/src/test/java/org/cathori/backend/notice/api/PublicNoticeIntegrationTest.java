@@ -19,6 +19,7 @@ import org.cathori.backend.user.application.email.VerificationPurpose;
 import org.cathori.backend.user.application.email.VerifiedEmailStore;
 import org.cathori.backend.user.infra.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -44,6 +45,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Transactional
+@DisplayName("공개 공지 API 통합 테스트")
 class PublicNoticeIntegrationTest extends IntegrationTestBase {
 
     private static final String BASE = "/api/public/notices";
@@ -64,12 +66,15 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         verifyNoInteractions(aiPort, notificationPort);
     }
 
+    @DisplayName("PN-1: 비인증 피드와 검색은 학교 공통 공지와 공개 필드만 반환한다")
     @Test
     void anonymousFeedAndSearchOnlyExposeMainAndPublicFields() throws Exception {
+        // given
         Notice main = save("MAIN", "공통 공지", "장학");
         save("DEPARTMENT", "학과 공지", "장학");
         save("PRIVATE", "비공개 공지", "장학");
 
+        // when & then
         ResultActions feed = mockMvc.perform(get(BASE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
@@ -88,24 +93,32 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         search.andExpect(jsonPath("$.content[0].aiSummary").doesNotExist());
     }
 
+    @DisplayName("PN-2: 카테고리로 필터링해도 학교 공통 공지만 반환한다")
     @ParameterizedTest
     @ValueSource(strings = {"일반", "장학", "학사", "취창업"})
     void categoryOnlyFiltersMain(String category) throws Exception {
+        // given
         save("MAIN", "대상 공지", category);
         save("MAIN", "다른 카테고리", "기타");
         save("DEPARTMENT", "학과 공지", category);
+
+        // when & then
         mockMvc.perform(get(BASE).param("category", category))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].title").value("대상 공지"));
     }
 
+    @DisplayName("PN-3: 학교 공통 공지만을 기준으로 페이지와 다음 페이지 여부를 계산한다")
     @Test
     void paginationAndHasNextAreCalculatedAfterMainRestriction() throws Exception {
+        // given
         save("PRIVATE", "A 공지", "일반");
         save("DEPARTMENT", "B 공지", "일반");
         Notice first = save("MAIN", "C 공지", "일반");
         Notice second = save("MAIN", "D 공지", "일반");
+
+        // when & then
         for (String path : List.of(BASE, BASE + "/search")) {
             mockMvc.perform(get(path).param("q", "공지").param("size", "1"))
                     .andExpect(status().isOk())
@@ -122,14 +135,17 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         }
     }
 
+    @DisplayName("PN-4: 공개 상세는 저장된 요약을 반환하고 조회수를 증가시키지 않는다")
     @Test
     void anonymousDetailReturnsStoredSummaryAndDoesNotChangeViews() throws Exception {
+        // given
         Notice notice = save("MAIN", "공통 공지", "장학");
         notice.applySummary(new AiSummaryResult(List.of("첫 줄", "둘째 줄", "셋째 줄"), "2026-11-10"));
         notice.increaseViewCount();
         notices.saveAndFlush(notice);
         long before = notice.getViewCount();
 
+        // when & then
         for (int i = 0; i < 2; i++) {
             ResultActions result = mockMvc.perform(get(BASE + "/" + notice.getId()))
                     .andExpect(status().isOk())
@@ -144,12 +160,16 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
                 Long.class, notice.getId())).isEqualTo(before);
     }
 
+    @DisplayName("PN-5: 요약 생성에 실패한 공지는 기존 요약 본문을 노출하지 않는다")
     @Test
     void unsuccessfulSummaryBodyIsNotExposed() throws Exception {
+        // given
         Notice notice = save("MAIN", "공통 공지", "일반");
         notice.applySummary(new AiSummaryResult(List.of("stale summary"), null));
         notice.markSummaryFailed();
         notices.saveAndFlush(notice);
+
+        // when & then
         mockMvc.perform(get(BASE)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].aiSummary").value(nullValue()));
         mockMvc.perform(get(BASE + "/" + notice.getId())).andExpect(status().isOk())
@@ -157,10 +177,14 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.aiSummaryStatus").value("FAILED"));
     }
 
+    @DisplayName("PN-6: 학교 공통 이외 출처의 상세는 내용을 노출하지 않고 403을 반환한다")
     @ParameterizedTest
     @ValueSource(strings = {"DEPARTMENT", "PRIVATE", "FUTURE_SOURCE"})
     void allNonMainSourcesAreForbiddenWithoutDisclosingDetails(String sourceType) throws Exception {
+        // given
         Notice notice = save(sourceType, "비공개 제목", "일반");
+
+        // when & then
         mockMvc.perform(get(BASE + "/" + notice.getId()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("NOTICE_ACCESS_DENIED"))
@@ -169,34 +193,54 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.url").doesNotExist());
     }
 
+    @DisplayName("PN-7: 존재하지 않는 공지 상세는 404를 반환한다")
     @Test
     void nonexistentDetailReturns404() throws Exception {
+        // given: 존재하지 않는 공지 ID로 요청
+
+        // when & then
         mockMvc.perform(get(BASE + "/9223372036854775807"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOTICE_NOT_FOUND"));
     }
 
+    @DisplayName("PN-8: 잘못된 페이지 번호와 크기는 피드와 검색에서 400을 반환한다")
     @ParameterizedTest
     @CsvSource({"page,-1", "page,abc", "page,2147483648", "size,0", "size,-1", "size,51", "size,abc"})
     void invalidPaginationReturns400(String key, String value) throws Exception {
+        // given: 잘못된 페이지 입력은 매개변수로 제공
+
+        // when & then
         invalid(mockMvc.perform(get(BASE).param(key, value)));
         invalid(mockMvc.perform(get(BASE + "/search").param("q", "공지").param(key, value)));
     }
 
+    @DisplayName("PN-9: 양수가 아니거나 숫자로 변환할 수 없는 공지 ID는 400을 반환한다")
     @ParameterizedTest
     @ValueSource(strings = {"0", "-1", "abc", "1.5", "9223372036854775808"})
     void invalidIdReturns400(String id) throws Exception {
+        // given: 잘못된 공지 ID는 매개변수로 제공
+
+        // when & then
         invalid(mockMvc.perform(get(BASE + "/" + id)));
     }
 
+    @DisplayName("PN-10: 비어 있거나 허용하지 않는 카테고리는 400을 반환한다")
     @ParameterizedTest
     @ValueSource(strings = {"", " ", "학과공지", "취업", "MAIN"})
     void invalidCategoryReturns400(String category) throws Exception {
+        // given: 잘못된 카테고리는 매개변수로 제공
+
+        // when & then
         invalid(mockMvc.perform(get(BASE).param("category", category)));
     }
 
+    @DisplayName("PN-11: 검색어 누락·공백·100자 초과는 거부하고 공백 제거 후 100자는 허용한다")
     @Test
     void missingBlankAndLongSearchReturn400() throws Exception {
+        // given: 검색어 누락·공백·길이 경계값으로 요청
+
+        // when & then
         invalid(mockMvc.perform(get(BASE + "/search")));
         for (String keyword : List.of("", " \t ", "가".repeat(101))) {
             invalid(mockMvc.perform(get(BASE + "/search").param("q", keyword)));
@@ -205,18 +249,26 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk());
     }
 
+    @DisplayName("PN-12: 최대 크기와 큰 페이지 번호는 오버플로 없이 처리한다")
     @Test
     void maximumSizeAndLargePageAreAcceptedWithoutIntegerOverflow() throws Exception {
+        // given: 허용하는 최대 크기와 페이지 번호로 요청
+
+        // when & then
         mockMvc.perform(get(BASE).param("size", "50").param("page", "2147483647"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", empty()))
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    @DisplayName("PN-13: 추가 쿼리 파라미터로 공개 조회 범위를 확장할 수 없다")
     @Test
     void extraParametersCannotExpandPublicScope() throws Exception {
+        // given
         save("MAIN", "공통 공지", "일반");
         save("DEPARTMENT", "학과 공지", "일반");
+
+        // when & then
         mockMvc.perform(get(BASE).param("sourceType", "DEPARTMENT").param("sourceId", "CSIE")
                         .param("major", "CSIE").param("userId", "1").param("tags", "학과"))
                 .andExpect(status().isOk())
@@ -227,18 +279,26 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
                 .andExpect(jsonPath("$.content", empty()));
     }
 
+    @DisplayName("PN-14: 비인증 공개 경로의 GET 이외 요청은 401을 반환한다")
     @ParameterizedTest
     @ValueSource(strings = {"POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"})
     void nonGetMethodsAreNeverPublic(String method) throws Exception {
+        // given: GET 이외 메서드는 매개변수로 제공
+
+        // when & then
         for (String path : List.of(BASE, BASE + "/search", BASE + "/1")) {
             mockMvc.perform(request(HttpMethod.valueOf(method), path))
                     .andExpect(status().isUnauthorized());
         }
     }
 
+    @DisplayName("PN-15: 회원 토큰이 있어도 공개 경로의 GET 이외 요청은 403을 반환한다")
     @Test
     void nonGetMethodsAreDeniedEvenWithMemberToken() throws Exception {
+        // given
         String token = memberToken();
+
+        // when & then
         for (String method : List.of("POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")) {
             for (String path : List.of(BASE, BASE + "/search", BASE + "/1")) {
                 mockMvc.perform(request(HttpMethod.valueOf(method), path)
@@ -248,16 +308,24 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         }
     }
 
+    @DisplayName("PN-16: 회원 전용 조회와 공개 경로의 북마크 요청은 인증이 필요하다")
     @ParameterizedTest
     @ValueSource(strings = {"/api/notices", "/api/notices/search?q=공지", "/api/notices/1",
             "/api/notices/bookmarks", "/api/tags", "/api/notifications", "/api/notifications/unread-exists",
             "/api/public/notices/1/bookmark"})
     void protectedGetRequestsStillRequireAuthentication(String path) throws Exception {
+        // given: 인증이 필요한 조회 경로는 매개변수로 제공
+
+        // when & then
         mockMvc.perform(get(path)).andExpect(status().isUnauthorized());
     }
 
+    @DisplayName("PN-17: 회원 전용 변경 요청은 인증이 필요하다")
     @Test
     void memberWriteRequestsStillRequireAuthentication() throws Exception {
+        // given: 인증 없이 회원 전용 변경 경로로 요청
+
+        // when & then
         mockMvc.perform(post("/api/notices/1/bookmark")).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/tags")).andExpect(status().isUnauthorized());
         mockMvc.perform(patch("/api/notifications/1/read")).andExpect(status().isUnauthorized());
@@ -268,14 +336,17 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         mockMvc.perform(post("/api/auth/logout")).andExpect(status().isUnauthorized());
     }
 
+    @DisplayName("PN-18: 회원 토큰으로도 공개 API에서 개인화 정보와 학과 공지를 조회할 수 없다")
     @Test
     void memberJwtCannotExposePersonalizationOrNonMainDataThroughPublicApi() throws Exception {
+        // given
         String token = memberToken();
         Notice main = save("MAIN", "공통 공지", "일반");
         Notice department = save("DEPARTMENT", "학과 공지", "학과공지");
         Long userId = users.findByEmail("guest-public-test@catholic.ac.kr").orElseThrow().getId();
         bookmarks.saveAndFlush(Bookmark.create(userId, main.getId()));
 
+        // when & then
         noPersonalFields(mockMvc.perform(get(BASE).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.content", hasSize(1))));
         noPersonalFields(mockMvc.perform(get(BASE + "/search").param("q", "공지")
@@ -287,8 +358,10 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isForbidden());
     }
 
+    @DisplayName("PN-19: 유효하지 않은 JWT도 공개 조회 범위는 유지하고 회원 API는 401을 반환한다")
     @Test
     void invalidAndExpiredJwtKeepPublicScopeWhileMemberApiReturns401() throws Exception {
+        // given
         Notice main = save("MAIN", "공통 공지", "일반");
         Notice hidden = save("PRIVATE", "비공개 공지", "일반");
         String expired = Jwts.builder().subject("1").claim("type", "access")
@@ -297,6 +370,8 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         String forged = Jwts.builder().subject("1").claim("type", "access")
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
                 .signWith(Keys.hmacShaKeyFor(new byte[32])).compact();
+
+        // when & then
         for (String token : List.of("invalid-token", expired, forged)) {
             mockMvc.perform(get(BASE).header("Authorization", "Bearer " + token))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.content", hasSize(1)));
@@ -311,13 +386,17 @@ class PublicNoticeIntegrationTest extends IntegrationTestBase {
         }
     }
 
+    @DisplayName("PN-20: 기존 회원 상세는 조회수를 증가시키고 북마크 상태를 반환한다")
     @Test
     void memberDetailStillIncrementsViewCountAndIncludesBookmarkState() throws Exception {
+        // given
         String token = memberToken();
         Notice notice = save("MAIN", "회원 조회 공지", "일반");
         Long userId = users.findByEmail("guest-public-test@catholic.ac.kr").orElseThrow().getId();
         bookmarks.saveAndFlush(Bookmark.create(userId, notice.getId()));
         long before = notice.getViewCount();
+
+        // when & then
         mockMvc.perform(get("/api/notices/" + notice.getId()).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.viewCount").value(before + 1))

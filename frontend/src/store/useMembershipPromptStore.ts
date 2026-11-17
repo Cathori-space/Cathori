@@ -1,11 +1,15 @@
 import { create } from 'zustand';
 
+export type MembershipFeature = 'general' | 'bookmark' | 'keyword';
+
 export const useMembershipPromptStore = create<{
   visible: boolean;
-  open: () => void;
+  feature: MembershipFeature;
+  open: (feature?: MembershipFeature) => void;
   close: () => void;
 }>((set) => ({
   visible: false,
-  open: () => set({ visible: true }),
-  close: () => set({ visible: false }),
+  feature: 'general',
+  open: (feature = 'general') => set({ visible: true, feature }),
+  close: () => set({ visible: false, feature: 'general' }),
 }));

@@ -75,7 +75,7 @@ function FeedHeaderComponent() {
   }, [selectedTag, tagNames, toggleTag]);
 
   const handleAddPress = () => {
-    if (requireMembership()) router.push('/settings/keywords' as never);
+    if (requireMembership('keyword')) router.push('/settings/keywords' as never);
   };
 
   return (
@@ -108,7 +108,7 @@ function FeedHeaderComponent() {
       <TagChipList
         tags={tagNames}
         selectedTag={selectedTag}
-        onSelect={(tag) => { if (requireMembership()) toggleTag(tag); }}
+        onSelect={(tag) => { if (requireMembership('keyword')) toggleTag(tag); }}
         onAddPress={handleAddPress}
       />
     </View>

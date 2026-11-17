@@ -211,10 +211,10 @@ export function useToggleBookmark() {
   return {
     ...mutation,
     mutate: (...args: Parameters<typeof mutation.mutate>) => {
-      if (requireMembership()) mutation.mutate(...args);
+      if (requireMembership('bookmark')) mutation.mutate(...args);
     },
     mutateAsync: (...args: Parameters<typeof mutation.mutateAsync>) => {
-      if (!requireMembership()) return Promise.reject(new Error('회원 전용 기능입니다.'));
+      if (!requireMembership('bookmark')) return Promise.reject(new Error('회원 전용 기능입니다.'));
       return mutation.mutateAsync(...args);
     },
   };

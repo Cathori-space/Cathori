@@ -48,7 +48,7 @@ function MainHeaderComponent({ showBookmark = true }: MainHeaderProps) {
           {showBookmark && (
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => { if (requireMembership()) router.push('/bookmark' as Href); }}
+              onPress={() => { if (requireMembership('bookmark')) router.push('/bookmark' as Href); }}
               hitSlop={8}
               activeOpacity={0.7}
             >

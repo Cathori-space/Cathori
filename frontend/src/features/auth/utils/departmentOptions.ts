@@ -10,6 +10,12 @@ const sortedDepartments = [...DEPARTMENTS].sort((a, b) => {
   return collator.compare(a, b);
 });
 
-export function getDepartmentOptions(includeNone = false): string[] {
-  return includeNone ? [NO_SECOND_MAJOR, ...sortedDepartments] : [...sortedDepartments];
+const normalize = (value: string) => value.normalize('NFC').replace(/\s+/g, '').toLowerCase();
+
+export function getDepartmentOptions(query = '', includeNone = false): string[] {
+  const options: string[] = includeNone
+    ? [NO_SECOND_MAJOR, ...sortedDepartments]
+    : [...sortedDepartments];
+  const keyword = normalize(query);
+  return keyword ? options.filter((department) => normalize(department).includes(keyword)) : options;
 }

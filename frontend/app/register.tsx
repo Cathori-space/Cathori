@@ -9,14 +9,16 @@
 
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,8 +29,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/src/constants/colors';
-import { getDepartmentOptions, NO_SECOND_MAJOR } from '@/src/features/auth/utils/departmentOptions';
 import { useEmailVerification, useRegister } from '@/src/features/auth/hooks';
+import { getDepartmentOptions, NO_SECOND_MAJOR } from '@/src/features/auth/utils/departmentOptions';
 import { SubHeader } from '@/src/shared/components';
 
 /** 가입 가능한 학교 이메일 도메인 (서버 auth.email.allowed-domains와 같다) */
@@ -59,6 +61,8 @@ export default function RegisterScreen() {
   const [selectedStatus, setSelectedStatus] = useState<string>('재학');
   const [passwordError, setPasswordError] = useState('');
   const [dropdownTarget, setDropdownTarget] = useState<'major1' | 'major2' | null>(null);
+  const [departmentQuery, setDepartmentQuery] = useState('');
+  const departmentOptions = getDepartmentOptions(departmentQuery, dropdownTarget === 'major2');
 
   const flatListRef = useRef<FlatList<string>>(null);
   const dropdownScrollIdx = useRef(0);
@@ -95,25 +99,33 @@ export default function RegisterScreen() {
   };
 
   const openDropdown = (target: 'major1' | 'major2') => {
-    const list = getDepartmentOptions(target === 'major2');
+    const list = getDepartmentOptions('', target === 'major2');
     const current = target === 'major1' ? major1 : major2;
     const search = target === 'major2' && current === '' ? NO_SECOND_MAJOR : current;
     const idx = list.indexOf(search);
     dropdownScrollIdx.current = Math.max(0, idx);
+    setDepartmentQuery('');
     setDropdownTarget(target);
   };
 
-  const closeDropdown = () => setDropdownTarget(null);
+  const closeDropdown = () => {
+    Keyboard.dismiss();
+    setDropdownTarget(null);
+  };
 
-  useEffect(() => {
-    if (dropdownTarget === null) return;
-    const idx = dropdownScrollIdx.current;
-    if (idx <= 0) return;
-    const timer = setTimeout(() => {
-      flatListRef.current?.scrollToIndex({ index: idx, animated: false });
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [dropdownTarget]);
+  const handleDepartmentSearch = (query: string) => {
+    dropdownScrollIdx.current = 0;
+    setDepartmentQuery(query);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  };
+
+  const scrollToSelectedDepartment = () => {
+    if (departmentOptions.length === 0) return;
+    flatListRef.current?.scrollToIndex({
+      index: Math.min(dropdownScrollIdx.current, departmentOptions.length - 1),
+      animated: false,
+    });
+  };
 
   /** 완료 버튼 — 회원가입 + 자동 로그인 */
   const handleComplete = () => {
@@ -433,20 +445,49 @@ export default function RegisterScreen() {
         transparent
         animationType="fade"
         onRequestClose={closeDropdown}
+        onShow={scrollToSelectedDepartment}
       >
-        <TouchableOpacity
+        <KeyboardAvoidingView
           style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeDropdown}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View
-            style={styles.dropdownContainer}
-            onStartShouldSetResponder={() => true}
-          >
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeDropdown}
+            accessibilityRole="button"
+            accessibilityLabel="학과 선택 닫기"
+          />
+          <View style={styles.dropdownContainer}>
+            <View style={styles.departmentSearch}>
+              <Feather name="search" size={18} color={Colors.textSecondary} />
+              <TextInput
+                style={styles.departmentSearchInput}
+                value={departmentQuery}
+                onChangeText={handleDepartmentSearch}
+                placeholder="학과명 검색"
+                accessibilityLabel="학과 검색"
+                autoCorrect={false}
+                autoCapitalize="none"
+                returnKeyType="search"
+              />
+              {departmentQuery.length > 0 && (
+                <TouchableOpacity
+                  style={styles.departmentSearchClear}
+                  onPress={() => handleDepartmentSearch('')}
+                  accessibilityRole="button"
+                  accessibilityLabel="학과 검색어 지우기"
+                >
+                  <Feather name="x" size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
             <FlatList
               ref={flatListRef}
-              data={getDepartmentOptions(dropdownTarget === 'major2')}
+              data={departmentOptions}
               keyExtractor={(item) => item}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              ListEmptyComponent={<Text style={styles.departmentEmpty}>검색 결과가 없어요</Text>}
               getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
               renderItem={({ item }) => {
                 const isSelected =
@@ -458,6 +499,8 @@ export default function RegisterScreen() {
                 return (
                   <TouchableOpacity
                     style={[styles.dropdownItem, isSelected && styles.dropdownItemSelected]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                     onPress={() => {
                       if (dropdownTarget === 'major1') {
                         setMajor1(item);
@@ -475,7 +518,7 @@ export default function RegisterScreen() {
               }}
             />
           </View>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── BottomNavBar (absolute) ── */}
@@ -867,7 +910,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     maxHeight: 320,
+    flexShrink: 1,
     overflow: 'hidden',
+  },
+  departmentSearch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.separator,
+  },
+  departmentSearchInput: {
+    flex: 1,
+    minHeight: 52,
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  departmentSearchClear: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  departmentEmpty: {
+    padding: 24,
+    textAlign: 'center',
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
   dropdownItem: {
     height: 48,

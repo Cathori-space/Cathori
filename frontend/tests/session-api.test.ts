@@ -18,11 +18,7 @@ beforeEach(cleanup);
 afterEach(async () => { await cleanup(); jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null); });
 
 describe('명시적 인증 상태와 저장소', () => {
-  it('토큰이 없으면 unauthenticated이며 게스트 선택은 재실행 후 복원하지 않는다', async () => {
-    await useAuthStore.getState().initializeAuth();
-    expect(useAuthStore.getState().status).toBe('unauthenticated');
-    await useAuthStore.getState().enterGuest();
-    expect(useAuthStore.getState()).toMatchObject({ status: 'guest', accessToken: null, refreshToken: null });
+  it('토큰과 게스트 선택 기록이 없으면 로그인 대기 상태로 시작한다', async () => {
     await useAuthStore.getState().initializeAuth();
     expect(useAuthStore.getState().status).toBe('unauthenticated');
   });

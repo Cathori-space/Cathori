@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { queryClient } from '@/src/lib/queryClient';
+import { clearGuestSelection, getGuestSelection, saveGuestSelection } from '@/src/services/guestSelectionStorage';
 import { assertCurrentSession, getSessionId, rotateSession } from '@/src/services/session';
 import { clearTokens, getTokens, saveTokens } from '@/src/services/tokenStorage';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
@@ -61,6 +62,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           await enqueueStorage(async () => {
             assertCurrentSession(id);
+            await clearGuestSelection();
+            assertCurrentSession(id);
             await saveTokens(response);
           });
           assertCurrentSession(id);
@@ -94,7 +97,13 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: async () => {
         const id = resetSession();
         set({ ...EMPTY_AUTH, status: 'unauthenticated', sessionId: id });
-        return enqueueStorage(clearTokens);
+        return enqueueStorage(async () => {
+          try {
+            await clearTokens();
+          } finally {
+            await clearGuestSelection();
+          }
+        });
       },
 
       enterGuest: async () => {
@@ -103,7 +112,12 @@ export const useAuthStore = create<AuthState>()(
         const id = resetSession();
         set({ ...EMPTY_AUTH, status: 'initializing', sessionId: id });
         try {
-          await enqueueStorage(clearTokens);
+          await enqueueStorage(async () => {
+            assertCurrentSession(id);
+            await clearTokens();
+            assertCurrentSession(id);
+            await saveGuestSelection();
+          });
           assertCurrentSession(id);
           set({ status: 'guest' });
         } catch (error) {
@@ -115,11 +129,19 @@ export const useAuthStore = create<AuthState>()(
       initializeAuth: async () => {
         const id = getSessionId();
         try {
-          const tokens = await enqueueStorage(getTokens);
+          const restored = await enqueueStorage(async () => {
+            assertCurrentSession(id);
+            const tokens = await getTokens();
+            assertCurrentSession(id);
+            if (tokens) {
+              await clearGuestSelection();
+              return { ...tokens, status: 'authenticated' as const };
+            }
+            const guestSelected = await getGuestSelection();
+            return { ...EMPTY_AUTH, status: guestSelected ? 'guest' as const : 'unauthenticated' as const };
+          });
           assertCurrentSession(id);
-          set(tokens
-            ? { ...tokens, status: 'authenticated' }
-            : { ...EMPTY_AUTH, status: 'unauthenticated' });
+          set(restored);
         } catch (error) {
           if (getSessionId() === id) set({ ...EMPTY_AUTH, status: 'unauthenticated' });
           throw error;

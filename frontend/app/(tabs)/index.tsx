@@ -54,6 +54,7 @@ const ESTIMATED_CARD_HEIGHT = 200;
 // ─── 리스트 헤더 별도 컴포넌트 ────────────────────────────────────────
 function FeedHeaderComponent() {
   const router = useRouter();
+  const isGuest = useAuthStore((s) => s.status === 'guest');
 
   // HomeScreen에서 props로 받지 않고 직접 구독 — 재마운트 원인 제거
   const selectedCategory = useNoticeFilterStore((s) => s.selectedCategory);
@@ -79,6 +80,21 @@ function FeedHeaderComponent() {
 
   return (
     <View>
+      {isGuest && (
+        <View style={styles.guestSignupGuide}>
+          <Text style={styles.guestSignupGuideText}>
+            가입하면 내 학과 공지도 함께 볼 수 있어요
+          </Text>
+          <TouchableOpacity
+            style={styles.guestLoginButton}
+            onPress={() => router.push('/login')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.guestLoginButtonText}>로그인</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Today's Highlight — 필터 무관, 첫 번째 마감일 공지 */}
 
       {/* 대분류 카테고리 탭 — 토글 방식 (재클릭 시 해제) */}
@@ -260,6 +276,39 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  guestSignupGuide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: Colors.summaryBg,
+  },
+  guestSignupGuideText: {
+    flex: 1,
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    color: Colors.primary,
+  },
+  guestLoginButton: {
+    flexShrink: 0,
+    minWidth: 44,
+    minHeight: 44,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestLoginButtonText: {
+    fontFamily: 'Pretendard',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   highlightSection: {
     paddingTop: 16,

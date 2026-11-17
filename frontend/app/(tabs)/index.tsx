@@ -110,6 +110,7 @@ function FeedHeaderComponent() {
         selectedTag={selectedTag}
         onSelect={(tag) => { if (requireMembership('keyword')) toggleTag(tag); }}
         onAddPress={handleAddPress}
+        addButtonLabel={isGuest ? '+ 관심 키워드 추가' : '+태그'}
       />
     </View>
   );

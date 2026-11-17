@@ -136,7 +136,7 @@ describe('기존 회원 로그아웃', () => {
 });
 
 describe('공개 공지 화면', () => {
-  it('게스트 홈에 공개 공지가 표시되고 기존 태그 버튼은 가입 안내만 연다', async () => {
+  it('게스트 피드의 가입 안내와 키워드 추가는 회원 전환 후 기존 태그 동작으로 바뀐다', async () => {
     await guest();
     transport.mockImplementation(async (config) => response(config, { content: [publicNotice], page: 0, size: 20, hasNext: false }));
     const tree = await render(<><HomeScreen /><MembershipPrompt /></>);
@@ -145,7 +145,7 @@ describe('공개 공지 화면', () => {
     await pressText(tree, '로그인');
     expect(router.push).toHaveBeenCalledWith('/login');
     expect(useAuthStore.getState().status).toBe('guest');
-    await pressText(tree, '+태그');
+    await pressText(tree, '+ 관심 키워드 추가');
     expect(useMembershipPromptStore.getState().visible).toBe(true);
     expect(textOf(tree)).toContain('관심 키워드를 등록하면 새 공지를 알림으로 받아볼 수 있어요');
     expect(transport.mock.calls.every(([c]) => c.url === '/api/public/notices')).toBe(true);
@@ -153,6 +153,10 @@ describe('공개 공지 화면', () => {
     await act(async () => { await useAuthStore.getState().setAuth(member); });
     await flush();
     expect(textOf(tree)).not.toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
+    expect(textOf(tree)).not.toContain('+ 관심 키워드 추가');
+    expect(textOf(tree)).toContain('+태그');
+    await pressText(tree, '+태그');
+    expect(router.push).toHaveBeenLastCalledWith('/settings/keywords');
 
     await act(async () => { await useAuthStore.getState().clearAuth(); });
     await flush();
@@ -160,6 +164,7 @@ describe('공개 공지 화면', () => {
     await guest();
     await flush();
     expect(textOf(tree)).toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
+    expect(textOf(tree)).toContain('+ 관심 키워드 추가');
   });
   it('게스트 검색 화면에서 공개 검색 결과를 표시하고 기록은 저장하지 않는다', async () => {
     await guest();

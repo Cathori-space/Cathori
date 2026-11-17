@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type MembershipFeature = 'general' | 'bookmark' | 'keyword';
+export type MembershipFeature = 'general' | 'bookmark' | 'keyword' | 'notification';
 
 export const useMembershipPromptStore = create<{
   visible: boolean;

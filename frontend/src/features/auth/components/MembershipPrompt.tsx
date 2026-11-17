@@ -9,6 +9,7 @@ const MEMBERSHIP_MESSAGES = {
   general: '로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.',
   bookmark: '북마크로 중요한 공지를 모아두세요',
   keyword: '관심 키워드를 등록하면 새 공지를 알림으로 받아볼 수 있어요',
+  notification: '관심 키워드에 맞는 새 공지를 알림으로 받아보세요',
 };
 
 export function MembershipPrompt() {

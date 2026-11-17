@@ -70,7 +70,7 @@ describe('게스트 진입과 인증 화면 복귀', () => {
 describe('회원 전용 가입 안내와 게스트 설정', () => {
   it.each([
     ['bookmark', 'bookmark', '북마크로 중요한 공지를 모아두세요'],
-    ['bell', 'general', '로그인하거나 회원가입하면 북마크와 맞춤 알림을 이용할 수 있어요.'],
+    ['bell', 'notification', '관심 키워드에 맞는 새 공지를 알림으로 받아보세요'],
   ])('%s 접근은 회원 API 대신 해당 기능의 안내창을 연다', async (name, feature, message) => {
     await guest();
     const tree = await render(<><MainHeader /><MembershipPrompt /></>);

@@ -59,7 +59,7 @@ function MainHeaderComponent({ showBookmark = true }: MainHeaderProps) {
           {/* 알림 아이콘 + dot — 탭 시 알림 리스트로 이동 */}
           <TouchableOpacity
             style={[styles.iconButton, styles.bellSection]}
-            onPress={() => { if (requireMembership()) router.push('/notification' as Href); }}
+            onPress={() => { if (requireMembership('notification')) router.push('/notification' as Href); }}
             hitSlop={8}
             activeOpacity={0.7}
           >

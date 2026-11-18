@@ -88,15 +88,109 @@ function showToast(message: string) {
 export default function SettingsScreen() {
   const isMember = useAuthStore((s) => s.status === 'authenticated');
   if (isMember) return <MemberSettingsScreen />;
+  return <GuestSettingsScreen />;
+}
+
+function GuestSettingsScreen() {
+  const router = useRouter();
+  const handleReviewPress = useStoreReviewAction();
+
   return (
     <View style={styles.screen}>
       <MainHeader />
-      <View style={styles.settingsRow}>
-        <Text style={styles.settingsRowText}>버전 정보</Text>
-        <Text style={styles.versionText}>v{APP_VERSION}</Text>
-      </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.profileCard, styles.guestCard]}>
+          <View style={styles.guestProfileRow}>
+            <View style={styles.profileIconWrapper}>
+              <Feather name="user" size={24} color={Colors.primary} />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>게스트로 이용 중이에요</Text>
+              <Text style={[styles.profileEmail, styles.guestDescription]}>
+                로그인하면 관심 공지와 맞춤 알림을 이용할 수 있어요.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.guestActions}>
+            <TouchableOpacity
+              style={styles.guestLoginButton}
+              accessibilityRole="button"
+              onPress={() => router.push('/login')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.guestLoginText}>로그인</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.guestRegisterButton}
+              accessibilityRole="button"
+              onPress={() => router.push('/register')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.guestRegisterText}>회원가입</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionTitle}>기타</Text>
+          <View style={styles.sectionCard}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={[styles.settingsRow, styles.settingsRowBorder]}
+              onPress={handleReviewPress}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsRowLeft}>
+                <Feather name="star" size={18} color={Colors.primary} />
+                <Text style={styles.settingsRowText}>리뷰 남기기</Text>
+              </View>
+              <Feather name="external-link" size={17} color={Colors.textSecondary} />
+            </TouchableOpacity>
+            <View style={styles.settingsRow}>
+              <View style={styles.settingsRowLeft}>
+                <Feather name="info" size={18} color={Colors.primary} />
+                <Text style={styles.settingsRowText}>버전 정보</Text>
+              </View>
+              <Text style={styles.versionText}>v{APP_VERSION}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            © 2026 가톨릭대학교 팀 회광반조. 모든 권리 보유.
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
+}
+
+function useStoreReviewAction() {
+  const reviewLinkOpeningRef = useRef(false);
+
+  /** 현재 플랫폼의 Cathori 스토어 리뷰 작성 페이지로 이동 */
+  const handleReviewPress = async () => {
+    if (reviewLinkOpeningRef.current) return;
+
+    reviewLinkOpeningRef.current = true;
+    try {
+      await openStoreReviewPage();
+    } catch {
+      Alert.alert(
+        '스토어를 열 수 없습니다',
+        '잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      reviewLinkOpeningRef.current = false;
+    }
+  };
+
+  return handleReviewPress;
 }
 
 function MemberSettingsScreen() {
@@ -112,7 +206,7 @@ function MemberSettingsScreen() {
   // ── 회원탈퇴 모달 ──
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
   const appStateRef = useRef(AppState.currentState);
-  const reviewLinkOpeningRef = useRef(false);
+  const handleReviewPress = useStoreReviewAction();
 
   /** OS 알림 권한 확인 */
   /** OS 알림 권한 확인 */
@@ -173,23 +267,6 @@ const checkNotificationPermission = async () => {
   /** 시스템 알림 설정 — OS 설정으로 외부 진입 */
   const handleSystemNotification = () => {
     Linking.openSettings();
-  };
-
-  /** 현재 플랫폼의 Cathori 스토어 리뷰 작성 페이지로 이동 */
-  const handleReviewPress = async () => {
-    if (reviewLinkOpeningRef.current) return;
-
-    reviewLinkOpeningRef.current = true;
-    try {
-      await openStoreReviewPage();
-    } catch {
-      Alert.alert(
-        '스토어를 열 수 없습니다',
-        '잠시 후 다시 시도해 주세요.',
-      );
-    } finally {
-      reviewLinkOpeningRef.current = false;
-    }
   };
 
   /** 알림 권한 배너 → OS 설정 이동 */
@@ -545,6 +622,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 128, // 하단 탭바 + 여유
     gap: 32,
+  },
+
+  guestCard: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 20,
+  },
+  guestProfileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  guestDescription: {
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  guestActions: {
+    gap: 10,
+  },
+  guestLoginButton: {
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+  },
+  guestLoginText: {
+    fontFamily: 'Pretendard',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  guestRegisterButton: {
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestRegisterText: {
+    fontFamily: 'Pretendard',
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.primary,
   },
 
   // ─── 프로필 카드 ───

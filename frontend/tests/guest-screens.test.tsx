@@ -17,7 +17,7 @@ import { openStoreReviewPage, useReviewSessionTimer } from '@/src/features/revie
 import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
-import { cleanup, flush, member, pressText, publicNotice, rejectStatus, render, response, textOf, transport } from './helpers';
+import { cleanup, deferred, flush, member, pressText, publicNotice, rejectStatus, render, response, textOf, transport } from './helpers';
 
 beforeEach(cleanup);
 afterEach(cleanup);
@@ -91,16 +91,83 @@ describe('회원 전용 가입 안내와 게스트 설정', () => {
     expect(useMembershipPromptStore.getState().visible).toBe(false);
     expect(useAuthStore.getState().status).toBe('guest');
   });
-  it('게스트 설정에는 버전만 표시하고 회원 정보와 알림 설정을 숨긴다', async () => {
+  it('게스트 설정은 안내와 공통 메뉴를 표시하고 회원 기능을 숨긴다', async () => {
     await guest();
     const tree = await render(<SettingsScreen />);
     const text = textOf(tree);
-    expect(text).toContain('버전 정보');
+    ['게스트로 이용 중이에요', '로그인', '회원가입', '기타', '리뷰 남기기', '버전 정보'].forEach((label) => expect(text).toContain(label));
     expect(text).toContain('1.0.2');
-    ['가톨릭대 학생', '로그아웃', '회원탈퇴', '시스템 알림 설정', '관심 공지 태그 설정'].forEach((label) => expect(text).not.toContain(label));
+    ['가톨릭대 학생', member.email, member.major!, '로그아웃', '회원탈퇴', '공지 설정', '알림 설정', '시스템 알림 설정', '관심 공지 태그 설정', '권한 설정으로 이동'].forEach((label) => expect(text).not.toContain(label));
     expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
     expect(transport).not.toHaveBeenCalled();
   });
+
+  it.each([['로그인', '/login'], ['회원가입', '/register']])('게스트 설정에서 %s 이동 후 복귀해도 게스트 상태를 유지한다', async (label, path) => {
+    await guest();
+    const tree = await render(<SettingsScreen />);
+    await pressText(tree, label);
+    expect(router.push).toHaveBeenCalledWith(path);
+    expect(useAuthStore.getState().status).toBe('guest');
+    const authTree = await render(path === '/login' ? <LoginScreen /> : <RegisterScreen />);
+    await pressText(authTree, path === '/login' ? '게스트 화면으로 돌아가기' : '이전');
+    expect(useAuthStore.getState().status).toBe('guest');
+    expect(textOf(tree)).toContain('게스트로 이용 중이에요');
+    expect(transport).not.toHaveBeenCalled();
+  });
+
+  it('게스트도 스토어 리뷰를 열고 실패하면 안내 후 재시도할 수 있다', async () => {
+    await guest();
+    const tree = await render(<SettingsScreen />);
+    jest.mocked(openStoreReviewPage).mockRejectedValueOnce(new Error('스토어 연결 실패'));
+    await pressText(tree, '리뷰 남기기');
+    expect(Alert.alert).toHaveBeenCalledWith('스토어를 열 수 없습니다', '잠시 후 다시 시도해 주세요.');
+    await pressText(tree, '리뷰 남기기');
+    expect(openStoreReviewPage).toHaveBeenCalledTimes(2);
+    expect(useAuthStore.getState().status).toBe('guest');
+    expect(transport).not.toHaveBeenCalled();
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('리뷰 이동이 진행 중이면 반복해서 열지 않는다', async () => {
+    await guest();
+    const pending = deferred<void>();
+    jest.mocked(openStoreReviewPage).mockImplementationOnce(() => pending.promise);
+    const tree = await render(<SettingsScreen />);
+    const text = tree.root.findAll((n) => String(n.type) === 'Text' && n.children.join('') === '리뷰 남기기')[0];
+    let button = text.parent;
+    while (button && String(button.type) !== 'TouchableOpacity') button = button.parent;
+    await act(async () => {
+      const first = button!.props.onPress();
+      await button!.props.onPress();
+      expect(openStoreReviewPage).toHaveBeenCalledTimes(1);
+      pending.resolve();
+      await first;
+    });
+  });
+
+  it('A 회원에서 게스트를 거쳐 B 회원으로 전환하면 현재 계정 정보만 표시한다', async () => {
+    await act(async () => { await useAuthStore.getState().setAuth(member); });
+    const tree = await render(<SettingsScreen />);
+    expect(textOf(tree)).toContain(member.email);
+    await pressText(tree, '로그아웃');
+    const buttons = jest.mocked(Alert.alert).mock.lastCall?.[2];
+    await act(async () => { await buttons?.find((button) => button.style === 'destructive')?.onPress?.(); });
+    await guest();
+    await flush();
+    expect(textOf(tree)).toContain('게스트로 이용 중이에요');
+    expect(textOf(tree)).not.toContain(member.email);
+    expect(textOf(tree)).not.toContain(member.major!);
+    await act(async () => {
+      await useAuthStore.getState().setAuth({ ...member, userId: 2, email: 'other@catholic.ac.kr', major: '경영학과' });
+    });
+    await flush();
+    expect(textOf(tree)).toContain('other@catholic.ac.kr');
+    expect(textOf(tree)).toContain('경영학과');
+    expect(textOf(tree)).not.toContain(member.email);
+    expect(textOf(tree)).not.toContain('게스트로 이용 중이에요');
+    expect(textOf(tree)).toContain('로그아웃');
+  });
+
 });
 
 describe('기존 회원 로그아웃', () => {

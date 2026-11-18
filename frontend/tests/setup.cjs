@@ -48,7 +48,7 @@ jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(), setNotificationChannelAsync: jest.fn(async () => {}), AndroidImportance: { HIGH: 4 },
   getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
-  getDevicePushTokenAsync: jest.fn(async () => ({ data: 'device' })),
+  getDevicePushTokenAsync: jest.fn(async () => ({ type: 'ios', data: 'aa'.repeat(32) })),
   addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   getLastNotificationResponseAsync: jest.fn(async () => null),
@@ -59,6 +59,8 @@ jest.mock('@react-native-firebase/messaging', () => {
   let generation = 0;
   return {
     getMessaging: jest.fn(() => ({ isDeviceRegisteredForRemoteMessages: false })),
+    getAPNSToken: jest.fn(async () => 'apns-ready'),
+    setAPNSToken: jest.fn(async () => {}),
     getToken: jest.fn(async () => `device-${generation}`),
     deleteToken: jest.fn(async () => { generation += 1; }),
     setAutoInitEnabled: jest.fn(async () => {}),

@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deleteToken, getMessaging, getToken, registerDeviceForRemoteMessages, setAutoInitEnabled, unregisterDeviceForRemoteMessages } from '@react-native-firebase/messaging';
+import { deleteToken, getAPNSToken, getMessaging, getToken, registerDeviceForRemoteMessages, setAPNSToken, setAutoInitEnabled, unregisterDeviceForRemoteMessages } from '@react-native-firebase/messaging';
 import type { InternalAxiosRequestConfig } from 'axios';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
@@ -13,11 +13,16 @@ import SettingsScreen from '@/app/(tabs)/settings';
 import { usePushNotifications } from '@/src/features/notifications/hooks/usePushNotifications';
 import apiClient from '@/src/services/api';
 import { registerDeviceToken, type PushCleanupResult } from '@/src/services/pushToken';
+import { getManagedDevicePushToken, invalidateDevicePushToken } from '@/src/services/pushDevice';
 import { getSessionId } from '@/src/services/session';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { cleanup, deferred, flush, member, pressText, rejectStatus, render, renderHook, response, transport } from './helpers';
 
 const defaultGetToken = jest.mocked(getToken).getMockImplementation()!;
+const defaultGetAPNSToken = jest.mocked(getAPNSToken).getMockImplementation()!;
+const defaultGetMessaging = jest.mocked(getMessaging).getMockImplementation()!;
+const defaultRegister = jest.mocked(registerDeviceForRemoteMessages).getMockImplementation()!;
+const defaultNativePushToken = jest.mocked(Notifications.getDevicePushTokenAsync).getMockImplementation()!;
 const defaultDeleteToken = jest.mocked(deleteToken).getMockImplementation()!;
 const defaultSetAutoInit = jest.mocked(setAutoInitEnabled).getMockImplementation()!;
 const defaultStorageRead = jest.mocked(AsyncStorage.getItem).getMockImplementation()!;
@@ -30,6 +35,10 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   jest.mocked(getToken).mockImplementation(defaultGetToken);
+  jest.mocked(getAPNSToken).mockReset().mockImplementation(defaultGetAPNSToken);
+  jest.mocked(getMessaging).mockImplementation(defaultGetMessaging);
+  jest.mocked(registerDeviceForRemoteMessages).mockImplementation(defaultRegister);
+  jest.mocked(Notifications.getDevicePushTokenAsync).mockReset().mockImplementation(defaultNativePushToken);
   jest.mocked(deleteToken).mockImplementation(defaultDeleteToken);
   jest.mocked(setAutoInitEnabled).mockImplementation(defaultSetAutoInit);
   jest.mocked(AsyncStorage.getItem).mockImplementation(defaultStorageRead);
@@ -40,6 +49,187 @@ afterEach(async () => {
 
 const puts = () => transport.mock.calls.map(([config]) => config).filter((config) => config.url === '/api/users/device-token' && config.method === 'put');
 const deletes = () => transport.mock.calls.map(([config]) => config).filter((config) => config.url === '/api/users/device-token' && config.method === 'delete');
+
+describe('iOS APNs 준비 상태 복구', () => {
+
+  it('이미 APNs가 준비됐으면 재등록 없이 FCM을 발급한다', async () => {
+    jest.mocked(getMessaging).mockReturnValue({ ...getMessaging(), isDeviceRegisteredForRemoteMessages: true });
+    jest.mocked(unregisterDeviceForRemoteMessages).mockClear();
+    await registerPush();
+    expect(registerDeviceForRemoteMessages).not.toHaveBeenCalled();
+    expect(unregisterDeviceForRemoteMessages).not.toHaveBeenCalled();
+    expect(setAPNSToken).not.toHaveBeenCalled();
+    expect(Notifications.getDevicePushTokenAsync).not.toHaveBeenCalled();
+    expect(puts()).toHaveLength(1);
+  });
+
+  it('등록 플래그가 true여도 SDK가 미등록 오류를 반환하면 복구한다', async () => {
+    jest.mocked(getMessaging).mockReturnValue({ ...getMessaging(), isDeviceRegisteredForRemoteMessages: true });
+    jest.mocked(getAPNSToken).mockRejectedValueOnce(Object.assign(new Error('미등록 기기'), { code: 'messaging/unregistered' }));
+    await registerPush();
+    expect(registerDeviceForRemoteMessages).toHaveBeenCalledTimes(1);
+    expect(puts()).toHaveLength(1);
+  });
+
+  it.each([
+    { type: 'android', data: 'ab'.repeat(32) },
+    { type: 'ios', data: '' },
+    { type: 'ios', data: 'xyz' },
+    { type: 'ios', data: 'abc' },
+  ])('유효하지 않은 APNs 응답 %j은 Firebase에 전달하지 않는다', async (nativeToken) => {
+    jest.mocked(getAPNSToken).mockResolvedValue(null);
+    jest.mocked(Notifications.getDevicePushTokenAsync).mockResolvedValueOnce(nativeToken as Notifications.DevicePushToken);
+    await expect(getManagedDevicePushToken(() => true)).rejects.toMatchObject({ code: 'push/invalid-apns-token' });
+    expect(setAPNSToken).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+    expect(puts()).toHaveLength(0);
+  });
+
+  it('APNs 전달에 실패하면 FCM 발급을 시작하지 않는다', async () => {
+    jest.mocked(getAPNSToken).mockResolvedValue(null);
+    const failure = new Error('Firebase APNs 연결 실패');
+    jest.mocked(setAPNSToken).mockRejectedValueOnce(failure);
+    await expect(getManagedDevicePushToken(() => true)).rejects.toBe(failure);
+    expect(getToken).not.toHaveBeenCalled();
+    expect(puts()).toHaveLength(0);
+  });
+
+  it('APNs 준비 조회의 예상하지 못한 오류는 재등록으로 숨기지 않는다', async () => {
+    jest.mocked(getMessaging).mockReturnValue({ ...getMessaging(), isDeviceRegisteredForRemoteMessages: true });
+    const failure = new Error('APNs 조회 실패');
+    jest.mocked(getAPNSToken).mockRejectedValueOnce(failure);
+    await expect(getManagedDevicePushToken(() => true)).rejects.toBe(failure);
+    expect(registerDeviceForRemoteMessages).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
+  it('수동 등록이 응답하지 않아도 10초 뒤 큐를 풀어 기기를 정리한다', async () => {
+    jest.useFakeTimers();
+    const registration = deferred<void>();
+    try {
+      jest.mocked(registerDeviceForRemoteMessages).mockImplementationOnce(() => registration.promise);
+      const outcome = getManagedDevicePushToken(() => true).catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(10_000);
+      expect(await outcome).toMatchObject({ code: 'push/apns-registration-timeout' });
+      await invalidateDevicePushToken().completion;
+      expect(unregisterDeviceForRemoteMessages).toHaveBeenCalled();
+      registration.resolve();
+      await jest.advanceTimersByTimeAsync(1);
+      expect(getToken).not.toHaveBeenCalled();
+      expect(setAPNSToken).not.toHaveBeenCalled();
+    } finally {
+      registration.resolve();
+      jest.useRealTimers();
+    }
+  });
+
+  it('Android는 APNs 경로 없이 기존 FCM 발급·서버 등록을 유지한다', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    await registerPush();
+    expect(getAPNSToken).not.toHaveBeenCalled();
+    expect(setAPNSToken).not.toHaveBeenCalled();
+    expect(registerDeviceForRemoteMessages).not.toHaveBeenCalled();
+    expect(puts()).toHaveLength(1);
+  });
+
+  it('처음 등록하는 기기는 APNs 조회보다 등록을 먼저 완료한다', async () => {
+    let registered = false;
+    jest.mocked(registerDeviceForRemoteMessages).mockImplementationOnce(async () => { registered = true; });
+    jest.mocked(getAPNSToken).mockImplementation(async () => {
+      if (!registered) throw Object.assign(new Error('미등록 기기'), { code: 'messaging/unregistered' });
+      return 'apns-ready';
+    });
+    await registerPush();
+    expect(puts()).toHaveLength(1);
+    expect(getToken).toHaveBeenCalled();
+  });
+
+  it('등록 플래그가 true여도 APNs 토큰이 없으면 재등록한 뒤 FCM만 서버에 저장한다', async () => {
+    jest.mocked(getMessaging).mockReturnValue({ ...getMessaging(), isDeviceRegisteredForRemoteMessages: true });
+    jest.mocked(getAPNSToken).mockResolvedValueOnce(null).mockResolvedValue('apns-ready');
+    jest.mocked(unregisterDeviceForRemoteMessages).mockClear();
+    jest.mocked(registerDeviceForRemoteMessages).mockClear();
+    await registerPush();
+    expect(unregisterDeviceForRemoteMessages).toHaveBeenCalledTimes(1);
+    expect(registerDeviceForRemoteMessages).toHaveBeenCalledTimes(1);
+    expect(getAPNSToken).toHaveBeenCalledTimes(2);
+    expect(puts()).toHaveLength(1);
+    expect(JSON.parse(puts()[0].data).deviceToken).toMatch(/^device-/);
+    expect(Notifications.getDevicePushTokenAsync).not.toHaveBeenCalled();
+  });
+
+  it('재등록 후에도 APNs가 준비되지 않으면 FCM 발급과 서버 저장을 시작하지 않는다', async () => {
+    jest.mocked(getAPNSToken).mockResolvedValue(null);
+    jest.mocked(getToken).mockClear();
+    await registerPush();
+    expect(getToken).not.toHaveBeenCalled();
+    expect(puts()).toHaveLength(0);
+  });
+
+  it('APNs 등록을 기다리다 세션이 끝나면 이후 FCM을 발급하지 않는다', async () => {
+    const registration = deferred<void>();
+    jest.mocked(getAPNSToken).mockResolvedValue(null);
+    jest.mocked(registerDeviceForRemoteMessages).mockImplementationOnce(() => registration.promise);
+    jest.mocked(getToken).mockClear();
+    let active = true;
+    const pending = getManagedDevicePushToken(() => active);
+    const outcome = pending.catch((error: unknown) => error);
+    await flush();
+    active = false;
+    registration.resolve();
+    expect(await outcome).toMatchObject({ code: 'ERR_CANCELED' });
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
+  it('Firebase에 전달되지 않은 APNs는 실제 iOS 토큰을 연결하고 서버에는 FCM만 등록한다', async () => {
+    jest.mocked(getMessaging).mockReturnValue({ ...getMessaging(), isDeviceRegisteredForRemoteMessages: true });
+    jest.mocked(getAPNSToken).mockResolvedValueOnce(null).mockResolvedValueOnce(null).mockResolvedValue('apns-ready');
+    const apns = 'ab'.repeat(32);
+    jest.mocked(Notifications.getDevicePushTokenAsync).mockResolvedValueOnce({ type: 'ios', data: apns });
+    await registerPush();
+    expect(setAPNSToken).toHaveBeenCalledWith(getMessaging(), apns);
+    expect(puts()).toHaveLength(1);
+    expect(JSON.parse(puts()[0].data).deviceToken).toMatch(/^device-/);
+    expect(JSON.parse(puts()[0].data).deviceToken).not.toBe(apns);
+  });
+
+  it('Expo의 APNs 응답을 기다리다 세션이 끝나면 Firebase 연결과 FCM 발급을 하지 않는다', async () => {
+    const registration = deferred<Notifications.DevicePushToken>();
+    jest.mocked(getAPNSToken).mockResolvedValue(null);
+    jest.mocked(Notifications.getDevicePushTokenAsync).mockImplementationOnce(() => registration.promise);
+    jest.mocked(getToken).mockClear();
+    jest.mocked(setAPNSToken).mockClear();
+    let active = true;
+    const outcome = getManagedDevicePushToken(() => active).catch((error: unknown) => error);
+    await flush();
+    active = false;
+    registration.resolve({ type: 'ios', data: 'ab'.repeat(32) });
+    expect(await outcome).toMatchObject({ code: 'ERR_CANCELED' });
+    expect(setAPNSToken).not.toHaveBeenCalled();
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
+  it('APNs 무응답은 10초 후 종료하고 늦게 온 토큰을 연결하지 않는다', async () => {
+    jest.useFakeTimers();
+    const registration = deferred<Notifications.DevicePushToken>();
+    try {
+      jest.mocked(getAPNSToken).mockResolvedValue(null);
+      jest.mocked(Notifications.getDevicePushTokenAsync).mockImplementationOnce(() => registration.promise);
+      jest.mocked(getToken).mockClear();
+      jest.mocked(setAPNSToken).mockClear();
+      const outcome = getManagedDevicePushToken(() => true).catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(10_000);
+      expect(await outcome).toMatchObject({ code: 'push/apns-registration-timeout' });
+      registration.resolve({ type: 'ios', data: 'ab'.repeat(32) });
+      await jest.advanceTimersByTimeAsync(1);
+      expect(setAPNSToken).not.toHaveBeenCalled();
+      expect(getToken).not.toHaveBeenCalled();
+    } finally {
+      registration.resolve({ type: 'ios', data: 'ab'.repeat(32) });
+      jest.useRealTimers();
+    }
+  });
+});
 async function authenticate() {
   await act(async () => { await useAuthStore.getState().setAuth(member); });
 }

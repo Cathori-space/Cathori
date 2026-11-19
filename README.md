@@ -4,11 +4,13 @@
 
 <img width="1024" height="685" alt="image" src="https://github.com/user-attachments/assets/f53fe2ba-88b5-49fb-b739-cdd4e9b7f45b" />
 
-<h3>관심 공지를 편하게, 놓치지 않고 알람으로</h3> <p>대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
+<h2>관심 공지를 편하게, 놓치지 않고 알람으로</h2> <p>대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
 
 <a href="https://apps.apple.com/kr/app/cathori/id6803380142">🍎 App Store</a> | <a href="https://play.google.com/store/apps/details?id=site.cathori.cathoriapp&hl=ko">🤖 Google Play</a> | <a href="https://github.com/Cathori-space/Cathori/wiki">📚 팀 Wiki</a>
 
-<p>📚 기획 · 리서치 · 설계 · ADR · 운영/API 명세 · 학습 자료 · 회의록까지, 프로젝트의 모든 과정을 <a href="https://github.com/Cathori-space/Cathori/wiki"><b>팀 Wiki</b></a>에 110여 개 문서로 기록하고 있습니다.</p>
+<h3><a href="https://github.com/Cathori-space/Cathori/wiki"><b>팀 Wiki</b></h3>
+
+<p>📚 기획 · 리서치 · 설계 · ADR · 운영/API 명세 · 학습 자료 · 회의록까지, 프로젝트의 모든 과정을 팀 wiki에 문서로 기록하고 있습니다.</p>
 
 <br/>
 
@@ -250,8 +252,8 @@ graph LR
       <!-- 팀원 1: 이정훈 -->
       <td align="center" width="160">
 		    <img src="https://github.com/tomass22.png" width="120" style="border-radius: 50%;"/><br/>
-		    <a href="https://github.com/tomass22" target="_blank" style="text-decoration: none; color: inherit;"><b>이정훈</b></a><br/>
-		    <sub>리더 · 기획 · 풀스택</sub>
+		    <a href="https://github.com/tomass22" target="_blank" style="text-decoration: none; color: inherit;"><b>이정훈(리더)</b></a><br/>
+		    <sub>기획 · 풀스택</sub>
 	    </td>
       <!-- 팀원 2: 이기백 -->
       <td align="center" width="160">
@@ -269,7 +271,7 @@ graph LR
       <td align="center" width="160">
 		    <img src="https://github.com/leasenose.png" width="120" style="border-radius: 50%;"/><br/>
 		    <a href="https://github.com/leasenose" target="_blank" style="text-decoration: none; color: inherit;"><b>김재민</b></a><br/>
-		    <sub>백엔드 · 서버</sub>
+		    <sub>백엔드</sub>
       </td>
     </tr>
   </table>

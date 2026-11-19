@@ -6,7 +6,7 @@
 
 <h2>관심 공지를 편하게, 놓치지 않고 알람으로</h2> <p>대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
 
-<a href="https://apps.apple.com/kr/app/cathori/id6803380142">🍎 App Store</a> | <a href="https://play.google.com/store/apps/details?id=site.cathori.cathoriapp&hl=ko">🤖 Google Play</a> | <a href="https://github.com/Cathori-space/Cathori/wiki">📚 팀 Wiki</a>
+<a href="https://apps.apple.com/kr/app/cathori/id6803380142">🍎 App Store</a> | <a href="https://play.google.com/store/apps/details?id=site.cathori.cathoriapp&hl=ko">🤖 Google Play</a>
 
 <h3><a href="https://github.com/Cathori-space/Cathori/wiki"><b>팀 Wiki</b></h3>
 

@@ -14,6 +14,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 
+import { getSessionId, assertCurrentSession } from '@/src/services/session';
 import { login } from '@/src/services/auth';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import type { LoginRequest, LoginResponse } from '@/src/types/auth';
@@ -56,13 +57,16 @@ export function useLogin() {
   const mutation = useMutation<
     LoginResponse,
     AxiosError<ApiErrorResponse>,
-    LoginRequest
+    LoginRequest,
+    number
   >({
+    onMutate: () => getSessionId(),
     mutationFn: login,
-    onSuccess: async (response) => {
+    onSuccess: async (response, _request, sessionId) => {
+      assertCurrentSession(sessionId!);
       // 토큰은 SecureStore, 사용자 정보와 태그는 AsyncStorage에 저장
       // _layout.tsx의 useProtectedRoute가 accessToken 변경 감지 → (tabs)로 자동 이동
-      await setAuth(response);
+      await setAuth(response, sessionId);
     },
   });
 

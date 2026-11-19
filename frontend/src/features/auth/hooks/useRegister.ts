@@ -16,6 +16,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 
+import { getSessionId, assertCurrentSession } from '@/src/services/session';
 import { login, register } from '@/src/services/auth';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import type { RegisterRequest } from '@/src/types/auth';
@@ -70,6 +71,7 @@ export function useRegister() {
     RegisterRequest
   >({
     mutationFn: async (req: RegisterRequest) => {
+      const sessionId = getSessionId();
       // 1단계: 회원가입
       try {
         await register(req);
@@ -82,12 +84,13 @@ export function useRegister() {
 
       // 2단계: 자동 로그인 (트랩 #7 — 가입 응답에 JWT 없음)
       try {
+        assertCurrentSession(sessionId);
         const loginResponse = await login({
           email: req.email,
           password: req.password,
         });
         // 토큰 + 사용자 정보 + 태그 영속 저장
-        await setAuth(loginResponse);
+        await setAuth(loginResponse, sessionId);
       } catch (autoLoginError) {
         // 가입은 성공했지만 자동 로그인 실패 — 별도 에러 코드로 처리
         throw {

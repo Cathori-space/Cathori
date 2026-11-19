@@ -8,6 +8,8 @@
 
 <a href="https://apps.apple.com/kr/app/cathori/id6803380142">🍎 App Store</a> | <a href="https://play.google.com/store/apps/details?id=site.cathori.cathoriapp&hl=ko">🤖 Google Play</a> | <a href="https://github.com/Cathori-space/Cathori/wiki">📚 팀 Wiki</a>
 
+<p>📚 기획 · 리서치 · 설계 · ADR · 운영/API 명세 · 학습 자료 · 회의록까지, 프로젝트의 모든 과정을 <a href="https://github.com/Cathori-space/Cathori/wiki"><b>팀 Wiki</b></a>에 110여 개 문서로 기록하고 있습니다.</p>
+
 <br/>
 
 <img src="https://img.shields.io/badge/release-v1.0.1%20배포%20완료-3DDC84?style=flat-square"/> <img src="https://img.shields.io/badge/next-v1.0.2%20기획%20중-FABE00?style=flat-square"/> <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white"/> <img src="https://img.shields.io/badge/platform-iOS-000000?style=flat-square&logo=apple&logoColor=white"/>
@@ -170,23 +172,7 @@ graph LR
 ```
 
 
----
-
-## 📚 팀 Wiki — 기획부터 운영까지, 프로젝트의 모든 결정을 기록합니다
-
-> 저희 팀은 모두가 같은 이해도로 개발하는 것을 목표로, 구현 전에 시나리오와 명세를 먼저 정리하고 그 과정을 [**팀 Wiki**](https://github.com/Cathori-space/Cathori/wiki)에 110여 개 문서로 남기고 있습니다.
-
-|**분류**|**담긴 내용**|
-|---|---|
-|💡 **기획 · PRD**|문제 정의서, 서비스 워크플로우, 예산안 변천, 기능별 PRD|
-|🔍 **리서치**|크롤링 기술 리서치, 유사 서비스 벤치마킹|
-|📋 **설계 문서**|핵심 사용자 시나리오, 화면별 유스케이스, 핵심 기능 흐름, ERD|
-|⚖️ **ADR**|메시지 큐 · 배치 · 알림 · 인프라 등 기술 의사결정 기록 (단계별 S1~S3)|
-|🖥 **운영 · API 명세**|서버 운영 명세, API 명세|
-|🎓 **학습 자료**|팀 공통 이해를 위한 기술 학습 정리|
-|📅 **회의록**|주간 회의 진행 사항과 결정 사항|
-
-<p align="center"><a href="https://github.com/Cathori-space/Cathori/wiki"><b>👉 팀 Wiki 바로가기</b></a></p>
+### 💡 기획, 시나리오, 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/Cathori-space/Cathori/wiki)에서 자세히 확인할 수 있습니다.
 
 ---
 
@@ -265,29 +251,25 @@ graph LR
       <td align="center" width="160">
 		    <img src="https://github.com/tomass22.png" width="120" style="border-radius: 50%;"/><br/>
 		    <a href="https://github.com/tomass22" target="_blank" style="text-decoration: none; color: inherit;"><b>이정훈</b></a><br/>
-		    <sub>Team Lead</sub><br/>
-		    기획 · Full-stack
+		    <sub>리더 · 기획 · 풀스택</sub>
 	    </td>
       <!-- 팀원 2: 이기백 -->
       <td align="center" width="160">
 		    <img src="https://github.com/NiceLeeMan.png" width="120" style="border-radius: 50%;"/><br/>
 		    <a href="https://github.com/NiceLeeMan" target="_blank" style="text-decoration: none; color: inherit;"><b>이기백</b></a><br/>
-		    <sub>Full-stack</sub><br/>
-        &nbsp;
+		    <sub>풀스택</sub>
       </td>
-      <!-- 팀원 3: 김재민 -->
-      <td align="center" width="160">
-		    <img src="https://github.com/leasenose.png" width="120" style="border-radius: 50%;"/><br/>
-		    <a href="https://github.com/leasenose" target="_blank" style="text-decoration: none; color: inherit;"><b>김재민</b></a><br/>
-		    <sub>Backend</sub><br/>
-        서버
-      </td>
-      <!-- 팀원 4: 김인성 -->
+      <!-- 팀원 3: 김인성 -->
       <td align="center" width="160">
 		    <img src="https://github.com/shawn9272.png" width="120" style="border-radius: 50%;"/><br/>
 		    <a href="https://github.com/shawn9272" target="_blank" style="text-decoration: none; color: inherit;"><b>김인성</b></a><br/>
-		    <sub>Full-stack</sub><br/>
-        &nbsp;
+		    <sub>풀스택</sub>
+      </td>
+      <!-- 팀원 4: 김재민 -->
+      <td align="center" width="160">
+		    <img src="https://github.com/leasenose.png" width="120" style="border-radius: 50%;"/><br/>
+		    <a href="https://github.com/leasenose" target="_blank" style="text-decoration: none; color: inherit;"><b>김재민</b></a><br/>
+		    <sub>백엔드 · 서버</sub>
       </td>
     </tr>
   </table>

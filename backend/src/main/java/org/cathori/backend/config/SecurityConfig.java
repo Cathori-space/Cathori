@@ -1,19 +1,24 @@
 package org.cathori.backend.config;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.cathori.backend.common.exception.ErrorResponse;
 import org.cathori.backend.security.JwtFilter;
+import org.cathori.backend.user.UserErrorCode;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableWebSecurity
@@ -56,7 +61,7 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -71,6 +76,7 @@ public class SecurityConfig {
                             "/api/public/notices/search",
                             "/api/public/notices/{noticeId}"
                     ).denyAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/auth/logout/refresh").permitAll();
                     auth.requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/reissue",
@@ -85,8 +91,16 @@ public class SecurityConfig {
                 })
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(ex -> ex
-                    .authenticationEntryPoint((request, response, authException) ->
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                    .authenticationEntryPoint((request, response, authException) -> {
+                        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+                        if (authorization == null || !authorization.startsWith("Bearer ")) {
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                            return;
+                        }
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                        objectMapper.writeValue(response.getOutputStream(), ErrorResponse.from(UserErrorCode.SESSION_INVALID));
+                    })
                 );
 
         return http.build();

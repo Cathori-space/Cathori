@@ -6,11 +6,11 @@
 
 <h3>관심 공지를 편하게, 놓치지 않고 알람으로</h3> <p>대학교 학생을 위한 공지 개인화 알림 서비스</p> <br/>
 
-<a href="#">🚀 서비스 바로가기 (Play Store 심사 중)</a> | <a href="https://github.com/tomass22/Cathori/wiki">📚 팀 Wiki</a>
+<a href="https://apps.apple.com/kr/app/cathori/id6803380142">🍎 App Store</a> | <a href="https://play.google.com/store/apps/details?id=site.cathori.cathoriapp&hl=ko">🤖 Google Play</a> | <a href="https://github.com/Cathori-space/Cathori/wiki">📚 팀 Wiki</a>
 
 <br/>
 
-<img src="https://img.shields.io/badge/status-1차MVP완료-FABE00?style=flat-square"/> <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white"/>
+<img src="https://img.shields.io/badge/release-v1.0.1%20배포%20완료-3DDC84?style=flat-square"/> <img src="https://img.shields.io/badge/next-v1.0.2%20기획%20중-FABE00?style=flat-square"/> <img src="https://img.shields.io/badge/platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white"/> <img src="https://img.shields.io/badge/platform-iOS-000000?style=flat-square&logo=apple&logoColor=white"/>
 
 ---
 
@@ -170,78 +170,29 @@ graph LR
 ```
 
 
-### 💡 기획, 시나리오, 아키텍처, ERD, ADR(아키텍처 결정 기록)은 [Wiki](https://github.com/tomass22/Cathori/wiki)에서 자세히 확인할 수 있습니다.
+---
+
+## 📚 팀 Wiki — 기획부터 운영까지, 프로젝트의 모든 결정을 기록합니다
+
+> 저희 팀은 모두가 같은 이해도로 개발하는 것을 목표로, 구현 전에 시나리오와 명세를 먼저 정리하고 그 과정을 [**팀 Wiki**](https://github.com/Cathori-space/Cathori/wiki)에 110여 개 문서로 남기고 있습니다.
+
+|**분류**|**담긴 내용**|
+|---|---|
+|💡 **기획 · PRD**|문제 정의서, 서비스 워크플로우, 예산안 변천, 기능별 PRD|
+|🔍 **리서치**|크롤링 기술 리서치, 유사 서비스 벤치마킹|
+|📋 **설계 문서**|핵심 사용자 시나리오, 화면별 유스케이스, 핵심 기능 흐름, ERD|
+|⚖️ **ADR**|메시지 큐 · 배치 · 알림 · 인프라 등 기술 의사결정 기록 (단계별 S1~S3)|
+|🖥 **운영 · API 명세**|서버 운영 명세, API 명세|
+|🎓 **학습 자료**|팀 공통 이해를 위한 기술 학습 정리|
+|📅 **회의록**|주간 회의 진행 사항과 결정 사항|
+
+<p align="center"><a href="https://github.com/Cathori-space/Cathori/wiki"><b>👉 팀 Wiki 바로가기</b></a></p>
 
 ---
 
-## 🏛 시스템 아키텍처 (1차 MVP 기준)
+<!-- ## 🏛 시스템 아키텍처 (1차 MVP 기준) — 업데이트 예정 -->
 
-<img width="811" height="516" alt="image" src="https://github.com/user-attachments/assets/ac1187ea-c16f-49ce-bc58-bca4db96ca6e" />
-
-## 🗂 프로젝트 구조
-
-<details>
-<summary><h3>프로젝트 설계 구조</h3></summary>
-
-```
-cathori/
-├── frontend/                    # React Native + Expo
-│   └── src/
-│       ├── app/                 # Expo Router 스크린
-│       │   ├── (tabs)/          # 하단 탭 (홈, 검색, 마이)
-│       │   ├── notice/[id].tsx  # 공지 상세
-│       │   └── auth/            # 로그인/회원가입
-│       ├── features/            # 도메인 모듈
-│       │   ├── notices/         # 공지 도메인
-│       │   ├── search/          # 검색 도메인
-│       │   └── auth/            # 인증 도메인
-│       ├── shared/              # 공용 컴포넌트/훅/유틸
-│       ├── services/            # Axios 인스턴스
-│       ├── store/               # Zustand 스토어
-│       └── constants/           # 디자인 토큰
-│
-├── backend/                     # Spring Boot
-│   └── src/main/java/com/cathori/
-│       ├── auth/                # 인증 (회원가입, 로그인, JWT)
-│       ├── notice/              # 공지 도메인
-│       ├── crawler/             # 크롤러 (Jsoup + Scheduler)
-│       ├── summary/             # AI 요약 (Gemini)
-│       ├── keyword/             # 키워드 관리
-│       ├── bookmark/            # 즐겨찾기
-│       ├── notification/        # FCM 푸시 (포트만 정의)
-│       └── common/              # 공용 (예외, 설정, 보안)
-│
-├── docs/                        # 문서 (ADR, ERD, API 명세)
-└── docker-compose.yml           # 로컬 개발 환경
-```
-
-</details>
-
-<details>
-<summary><h3>주요 엔티티</h3></summary>
-
-```
-users
-  └─ id, email, student_id, department, created_at
-
-keywords
-  └─ id, user_id (FK), keyword, category
-
-notices
-  └─ id, source_url, title, content, category,
-     ai_summary, deadline_at, published_at, crawled_at
-
-bookmarks
-  └─ id, user_id (FK), notice_id (FK), created_at
-
-user_push_tokens
-  └─ id, user_id (FK), fcm_token, platform, updated_at
-
-notification_logs
-  └─ id, user_id (FK), notice_id (FK), sent_at, clicked_at
-```
-	
-</details>
+<!-- ## 🗂 프로젝트 구조 — 업데이트 예정 -->
 
 ---
 
@@ -315,14 +266,14 @@ notification_logs
 		    <img src="https://github.com/tomass22.png" width="120" style="border-radius: 50%;"/><br/>
 		    <a href="https://github.com/tomass22" target="_blank" style="text-decoration: none; color: inherit;"><b>이정훈</b></a><br/>
 		    <sub>Team Lead</sub><br/>
-		    기획 · 앱
+		    기획 · Full-stack
 	    </td>
       <!-- 팀원 2: 이기백 -->
       <td align="center" width="160">
 		    <img src="https://github.com/NiceLeeMan.png" width="120" style="border-radius: 50%;"/><br/>
 		    <a href="https://github.com/NiceLeeMan" target="_blank" style="text-decoration: none; color: inherit;"><b>이기백</b></a><br/>
-		    <sub>Backend Lead</sub><br/>
-        서버
+		    <sub>Full-stack</sub><br/>
+        &nbsp;
       </td>
       <!-- 팀원 3: 김재민 -->
       <td align="center" width="160">
@@ -330,6 +281,13 @@ notification_logs
 		    <a href="https://github.com/leasenose" target="_blank" style="text-decoration: none; color: inherit;"><b>김재민</b></a><br/>
 		    <sub>Backend</sub><br/>
         서버
+      </td>
+      <!-- 팀원 4: 김인성 -->
+      <td align="center" width="160">
+		    <img src="https://github.com/shawn9272.png" width="120" style="border-radius: 50%;"/><br/>
+		    <a href="https://github.com/shawn9272" target="_blank" style="text-decoration: none; color: inherit;"><b>김인성</b></a><br/>
+		    <sub>Full-stack</sub><br/>
+        &nbsp;
       </td>
     </tr>
   </table>
@@ -348,7 +306,7 @@ notification_logs
 - **과목**: 종합설계프로젝트 (캡스톤 디자인)
 - **진행 기간**: 2026.03 ~
 - **타겟 사용자**: OO대학교 학부생
-- **첫 출시 플랫폼**: Android (Google Play Store, 심사 중)
+- **출시 플랫폼**: Android (Google Play) · iOS (App Store) — v1.0.1 배포 완료, v1.0.2 기획 중
 
 ---
 

@@ -9,7 +9,7 @@ import org.hibernate.annotations.ColumnDefault;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_device_token", columnNames = "device_token"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {

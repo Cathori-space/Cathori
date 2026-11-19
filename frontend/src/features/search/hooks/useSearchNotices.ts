@@ -10,6 +10,8 @@
  * - 컴포넌트 언마운트 시 진행 중 요청 자동 취소
  */
 
+import { useAuthStore } from '@/src/store/useAuthStore';
+import { fetchPublicSearchNotices } from '@/src/services/publicNotices';
 import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { NOTICE_PAGE_SIZE } from '@/src/constants/api';
@@ -18,16 +20,18 @@ import { fetchSearchNotices } from '@/src/services/notices';
 export function useSearchNotices(q: string) {
   const trimmed = q.trim();
 
+  const status = useAuthStore((s) => s.status);
+  const canRead = status === 'guest' || status === 'authenticated';
   return useInfiniteQuery({
     queryKey: ['search', trimmed],
-    enabled: trimmed.length > 0,
+    enabled: canRead && trimmed.length > 0 && trimmed.length <= 100,
     initialPageParam: 1,
-    queryFn: ({ pageParam }) =>
-      fetchSearchNotices({
+    queryFn: ({ pageParam, signal }) =>
+      (status === 'guest' ? fetchPublicSearchNotices : fetchSearchNotices)({
         q: trimmed,
         page: pageParam,
         size: NOTICE_PAGE_SIZE,
-      }),
+      }, signal),
     getNextPageParam: (lastPage) =>
       lastPage.hasNext ? lastPage.page + 1 : undefined,
   });

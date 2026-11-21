@@ -34,10 +34,6 @@ public interface AlertHistoryJpaRepository extends JpaRepository<AlertHistory, L
 
     Optional<AlertHistory> findByIdAndUserId(Long id, Long userId);
 
-    List<AlertHistory> findAllByIdInAndUserId(List<Long> ids, Long userId);
-
-    Optional<AlertHistory> findByUserIdAndNoticeId(Long userId, Long noticeId);
-
     boolean existsByUserIdAndAlarmStatusAndIsReadFalse(Long userId, String alarmStatus);
 
     void deleteByUserId(Long userId);

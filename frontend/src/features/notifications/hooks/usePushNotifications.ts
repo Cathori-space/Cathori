@@ -17,7 +17,6 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { getDevicePushToken, requestNotificationPermission } from '@/src/services/notification';
-import { markNotificationReadByNoticeId } from '@/src/services/notifications';
 import { registerDeviceToken } from '@/src/services/pushToken';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
@@ -40,7 +39,7 @@ export function usePushNotifications() {
   const handledNotificationIdsRef = useRef(new Set<string>());
 
   const handleNotificationResponse = useCallback(
-    async (response: Notifications.NotificationResponse) => {
+    (response: Notifications.NotificationResponse) => {
       const notificationId = response.notification.request.identifier;
       if (handledNotificationIdsRef.current.has(notificationId)) return;
 
@@ -48,14 +47,8 @@ export function usePushNotifications() {
       if (noticeId == null) return;
       handledNotificationIdsRef.current.add(notificationId);
 
-      try {
-        await markNotificationReadByNoticeId(noticeId);
-      } catch {
-        // 저장 실패 시 서버의 미읽음 상태를 유지하되 공지 상세 이동은 허용한다.
-      } finally {
-        void queryClient.invalidateQueries({ queryKey: ['notifications'] });
-        router.push(`/notice/${noticeId}` as Href);
-      }
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      router.push(`/notice/${noticeId}` as Href);
     },
     [queryClient, router],
   );
@@ -115,7 +108,7 @@ export function usePushNotifications() {
     if (!accessToken) return;
 
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      void handleNotificationResponse(response);
+      handleNotificationResponse(response);
     });
     return () => sub.remove();
   }, [accessToken, handleNotificationResponse]);
@@ -128,7 +121,7 @@ export function usePushNotifications() {
     Notifications.getLastNotificationResponseAsync()
       .then(async (response) => {
         if (!cancelled && response) {
-          await handleNotificationResponse(response);
+          handleNotificationResponse(response);
           await Notifications.clearLastNotificationResponseAsync();
         }
       })

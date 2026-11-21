@@ -19,7 +19,6 @@ import {
   fetchUnreadNotificationStatus,
   fetchNotifications,
   markNotificationRead,
-  markNotificationsRead,
 } from '@/src/services/notifications';
 import type { NotificationPage } from '@/src/types/notifications';
 
@@ -63,17 +62,16 @@ function removeNotificationFromPages(
   };
 }
 
-function markNotificationsReadInPages(
+function markNotificationReadInPages(
   data: InfiniteData<NotificationPage>,
-  alertHistoryIds: number[],
+  alertHistoryId: number,
 ): InfiniteData<NotificationPage> {
-  const readIds = new Set(alertHistoryIds);
   return {
     ...data,
     pages: data.pages.map((page) => ({
       ...page,
       alerts: page.alerts.map((notification) =>
-        readIds.has(notification.alertHistoryId)
+        notification.alertHistoryId === alertHistoryId
           ? { ...notification, isRead: true }
           : notification,
       ),
@@ -126,7 +124,7 @@ export function useMarkNotificationRead() {
         if (!data) return;
         queryClient.setQueryData<InfiniteData<NotificationPage>>(
           queryKey,
-          markNotificationsReadInPages(data, [alertHistoryId]),
+          markNotificationReadInPages(data, alertHistoryId),
         );
       });
 
@@ -143,44 +141,6 @@ export function useMarkNotificationRead() {
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    },
-  });
-}
-
-export function useMarkNotificationsRead() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: markNotificationsRead,
-    retry: 1,
-
-    onSuccess: (readAlertHistoryIds) => {
-      const notificationQueries = queryClient
-        .getQueriesData<unknown>({ queryKey: ['notifications'] })
-        .filter(
-          (query): query is [readonly unknown[], InfiniteData<NotificationPage>] =>
-            isNotificationInfiniteData(query[1]),
-        );
-
-      notificationQueries.forEach(([queryKey, data]) => {
-        queryClient.setQueryData<InfiniteData<NotificationPage>>(
-          queryKey,
-          markNotificationsReadInPages(data, readAlertHistoryIds),
-        );
-      });
-    },
-
-    onError: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['notifications'],
-        exact: true,
-      });
-    },
-
-    onSettled: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['notifications', 'hasUnread'],
-      });
     },
   });
 }

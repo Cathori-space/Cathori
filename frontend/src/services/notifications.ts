@@ -8,17 +8,12 @@
  *    → { hasUnread } (읽지 않은 알림 존재 여부)
  *  - PATCH  /api/notifications/{alertHistoryId}/read
  *    → 204 No Content
- *  - PATCH  /api/notifications/read
- *    → { readAlertHistoryIds } (현재 사용자의 여러 알림 읽음 처리)
- *  - PATCH  /api/notifications/notices/{noticeId}/read
- *    → 204 No Content (푸시로 선택한 알림 읽음 처리)
  *  - DELETE /api/notifications/{alertHistoryId}
  *    → 204 No Content
  */
 
 import { fetchNotificationsMock } from '@/src/mocks/notifications';
 import type {
-  MarkNotificationsReadResponse,
   NotificationPage,
   UnreadNotificationStatus,
 } from '@/src/types/notifications';
@@ -77,30 +72,6 @@ export async function fetchUnreadNotificationStatus(): Promise<UnreadNotificatio
  */
 export async function markNotificationRead(alertHistoryId: number): Promise<void> {
   await apiClient.patch(`/api/notifications/${alertHistoryId}/read`);
-}
-
-/**
- * 인증 사용자의 여러 알림 읽음 처리
- * PATCH /api/notifications/read
- */
-export async function markNotificationsRead(
-  alertHistoryIds: number[],
-): Promise<number[]> {
-  const { data } = await apiClient.patch<MarkNotificationsReadResponse>(
-    '/api/notifications/read',
-    { alertHistoryIds },
-  );
-  return data.readAlertHistoryIds;
-}
-
-/**
- * 인증 사용자가 푸시로 선택한 공지의 알림 읽음 처리
- * PATCH /api/notifications/notices/{noticeId}/read
- */
-export async function markNotificationReadByNoticeId(
-  noticeId: number,
-): Promise<void> {
-  await apiClient.patch(`/api/notifications/notices/${noticeId}/read`);
 }
 
 /**

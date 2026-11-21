@@ -39,8 +39,3 @@ export interface NotificationPage {
 export interface UnreadNotificationStatus {
   hasUnread: boolean;
 }
-
-/** 여러 알림 읽음 처리 응답 */
-export interface MarkNotificationsReadResponse {
-  readAlertHistoryIds: number[];
-}

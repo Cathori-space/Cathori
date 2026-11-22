@@ -35,7 +35,7 @@ installSessionInterceptors(apiClient);
 async function expireSession(id: number) {
   if (!isCurrentSession(id)) return;
   try {
-    await useAuthStore.getState().clearAuth();
+    await useAuthStore.getState().clearAuth('expired');
   } finally {
     if (useAuthStore.getState().status === 'unauthenticated') router.replace('/login');
   }

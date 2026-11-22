@@ -21,9 +21,12 @@ import {
   FlatList,
   RefreshControl,
   StyleSheet,
+  Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
+import { requireMembership } from '@/src/features/auth/requireMembership';
 import { CATEGORY_TABS } from '@/src/constants/categories';
 import { Colors } from '@/src/constants/colors';
 import {
@@ -71,7 +74,7 @@ function FeedHeaderComponent() {
   }, [selectedTag, tagNames, toggleTag]);
 
   const handleAddPress = () => {
-    router.push('/settings/keywords' as never);
+    if (requireMembership()) router.push('/settings/keywords' as never);
   };
 
   return (
@@ -89,7 +92,7 @@ function FeedHeaderComponent() {
       <TagChipList
         tags={tagNames}
         selectedTag={selectedTag}
-        onSelect={toggleTag}
+        onSelect={(tag) => { if (requireMembership()) toggleTag(tag); }}
         onAddPress={handleAddPress}
       />
     </View>
@@ -117,6 +120,7 @@ export default function HomeScreen() {
   const {
     data,
     isLoading,
+    isError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -176,6 +180,11 @@ export default function HomeScreen() {
     isLoading ? (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    ) : isError ? (
+      <View style={styles.loadingContainer}>
+        <Text>공지를 불러오지 못했습니다.</Text>
+        <TouchableOpacity onPress={() => refetch()}><Text>다시 시도</Text></TouchableOpacity>
       </View>
     ) : (
       <EmptyState message="조건에 맞는 공지가 없습니다." />

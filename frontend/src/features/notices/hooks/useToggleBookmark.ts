@@ -17,11 +17,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 
+import { requireMembership } from '@/src/features/auth/requireMembership';
+import { requireMember, useAuthStore } from '@/src/store/useAuthStore';
+import { assertCurrentSession, isCurrentSession } from '@/src/services/session';
 import { toggleBookmark } from '@/src/services/notices';
 import type { Notice, PageResponse } from '@/src/types/api';
 
 /** 낙관적 업데이트 롤백용 컨텍스트 */
 interface ToggleBookmarkContext {
+  sessionId: number;
   /** 낙관적 업데이트 전 스냅샷 (목록 캐시) */
   previousNoticesQueries: {
     queryKey: readonly unknown[];
@@ -66,17 +70,25 @@ function removeNoticeFromPages(
 }
 
 export function useToggleBookmark() {
+  const hookSessionId = useAuthStore((s) => s.sessionId);
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (noticeId: string) => toggleBookmark(noticeId),
+  const mutation = useMutation({
+    mutationFn: (noticeId: string) => {
+      assertCurrentSession(hookSessionId);
+      requireMember();
+      return toggleBookmark(noticeId);
+    },
 
     onMutate: async (noticeId): Promise<ToggleBookmarkContext> => {
+      assertCurrentSession(hookSessionId);
+      const sessionId = requireMember();
       // 진행 중인 관련 쿼리 취소 (충돌 방지)
       await queryClient.cancelQueries({ queryKey: ['notices'] });
       await queryClient.cancelQueries({ queryKey: ['bookmarkedNotices'] });
       await queryClient.cancelQueries({ queryKey: ['notice', noticeId] });
 
+      assertCurrentSession(sessionId);
       // ── 목록 캐시 스냅샷 + 낙관적 업데이트 ──
       const noticesQueries = queryClient.getQueriesData<InfiniteData<PageResponse<Notice>>>({
         queryKey: ['notices'],
@@ -129,11 +141,11 @@ export function useToggleBookmark() {
         });
       }
 
-      return { previousNoticesQueries, previousBookmarkedQueries, previousDetail };
+      return { sessionId, previousNoticesQueries, previousBookmarkedQueries, previousDetail };
     },
 
     onError: (_error, noticeId, context) => {
-      if (!context) return;
+      if (!context || !isCurrentSession(context.sessionId)) return;
 
       // 목록 캐시 롤백
       context.previousNoticesQueries.forEach(({ queryKey, data }) => {
@@ -151,7 +163,8 @@ export function useToggleBookmark() {
       }
     },
 
-    onSuccess: (data, noticeId) => {
+    onSuccess: (data, noticeId, context) => {
+      if (!context || !isCurrentSession(context.sessionId)) return;
       const noticesQueries = queryClient.getQueriesData<InfiniteData<PageResponse<Notice>>>({
         queryKey: ['notices'],
       });
@@ -186,7 +199,8 @@ export function useToggleBookmark() {
       }
     },
 
-    onSettled: () => {
+    onSettled: (_data, _error, _id, context) => {
+      if (!context || !isCurrentSession(context.sessionId)) return;
       // 서버 상태와 동기화 — 성공/실패 불문
       // 상세 조회 API는 조회수를 증가시키므로 북마크 토글 후에는 재호출하지 않는다.
       queryClient.invalidateQueries({ queryKey: ['notices'] });
@@ -194,4 +208,14 @@ export function useToggleBookmark() {
       queryClient.invalidateQueries({ queryKey: ['bookmarkedNotices'] });
     },
   });
+  return {
+    ...mutation,
+    mutate: (...args: Parameters<typeof mutation.mutate>) => {
+      if (requireMembership()) mutation.mutate(...args);
+    },
+    mutateAsync: (...args: Parameters<typeof mutation.mutateAsync>) => {
+      if (!requireMembership()) return Promise.reject(new Error('회원 전용 기능입니다.'));
+      return mutation.mutateAsync(...args);
+    },
+  };
 }

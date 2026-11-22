@@ -20,6 +20,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { requireMembership } from '@/src/features/auth/requireMembership';
 import { Colors } from '@/src/constants/colors';
 import { useHasNotifications } from '@/src/features/notifications';
 
@@ -47,7 +48,7 @@ function MainHeaderComponent({ showBookmark = true }: MainHeaderProps) {
           {showBookmark && (
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/bookmark' as Href)}
+              onPress={() => { if (requireMembership()) router.push('/bookmark' as Href); }}
               hitSlop={8}
               activeOpacity={0.7}
             >
@@ -58,7 +59,7 @@ function MainHeaderComponent({ showBookmark = true }: MainHeaderProps) {
           {/* 알림 아이콘 + dot — 탭 시 알림 리스트로 이동 */}
           <TouchableOpacity
             style={[styles.iconButton, styles.bellSection]}
-            onPress={() => router.push('/notification' as Href)}
+            onPress={() => { if (requireMembership()) router.push('/notification' as Href); }}
             hitSlop={8}
             activeOpacity={0.7}
           >

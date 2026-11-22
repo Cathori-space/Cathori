@@ -41,6 +41,7 @@ import {
 import { useToggleBookmark } from '@/src/features/notices';
 import { EmptyState, MainHeader } from '@/src/shared/components';
 import { useDebounce } from '@/src/shared/hooks';
+import { useAuthStore } from '@/src/store/useAuthStore';
 import { useSearchHistoryStore } from '@/src/store/useSearchHistoryStore';
 import type { SearchNoticeListItem } from '@/src/types/api';
 
@@ -53,7 +54,9 @@ export default function SearchScreen() {
   const debouncedQuery = useDebounce(query, 300);
 
   // 검색 기록 스토어 — 영속화는 AsyncStorage가 담당
-  const history = useSearchHistoryStore((s) => s.history);
+  const isMember = useAuthStore((s) => s.status === 'authenticated');
+  const storedHistory = useSearchHistoryStore((s) => s.history);
+  const history = isMember ? storedHistory : [];
   const addEntry = useSearchHistoryStore((s) => s.addEntry);
   const removeEntry = useSearchHistoryStore((s) => s.removeEntry);
   const clearAll = useSearchHistoryStore((s) => s.clearAll);
@@ -79,14 +82,14 @@ export default function SearchScreen() {
   // 엔터/제출 시점에만 히스토리 추가 (디바운스 키 입력으로는 추가 안 함 — 노이즈 방지)
   const handleSubmit = (text: string) => {
       const t = text.trim();
-      if (t) addEntry(t);
+      if (t && isMember) addEntry(t);
   };
 
   // 히스토리 행 탭 → 입력값을 해당 키워드로 채워 검색 트리거 + 최상단으로 이동
   // addEntry 내부 dedup 로직이 기존 항목을 제거하고 최상단에 재삽입함
   const handleSelectHistory = (keyword: string) => {
     setQuery(keyword);
-    addEntry(keyword);
+    if (isMember) addEntry(keyword);
   };
 
   const handleEndReached = () => {
@@ -118,7 +121,7 @@ export default function SearchScreen() {
   });
 
   const trimmed = debouncedQuery.trim();
-  const isSearching = trimmed.length > 0;
+  const isSearching = trimmed.length > 0 && trimmed.length <= 100;
 
   return (
     <View style={styles.screen}>
@@ -133,6 +136,7 @@ export default function SearchScreen() {
         />
       </View>
 
+      {debouncedQuery.trim().length > 100 && <Text style={styles.errorText}>검색어는 100자 이내로 입력해주세요.</Text>}
       {/* ─── 쿼리 비어있음 ─────────────────────────── */}
       {!isSearching &&
         (history.length > 0 ? (

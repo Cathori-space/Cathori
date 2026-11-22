@@ -18,7 +18,8 @@ import { queryClient } from '@/src/lib/queryClient';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useMembershipPromptStore } from '@/src/store/useMembershipPromptStore';
 import { mapPublicNotice } from '@/src/services/publicNotices';
-import type { Notice, PageResponse } from '@/src/types/api';
+import * as noticeService from '@/src/services/notices';
+import type { BookmarkToggleResponse, Notice, PageResponse } from '@/src/types/api';
 import { cleanup, deferred, flush, member, publicNotice, rejectStatus, renderHook, response, transport } from './helpers';
 
 beforeEach(cleanup);
@@ -120,6 +121,89 @@ describe('회원 전용 조회와 낙관적 변경', () => {
     await act(async () => { await h.current.mutateAsync('213'); });
     expect(queryClient.getQueryData<Notice>(['notice', '213'])?.isBookmarked).toBe(true);
     expect(queryClient.getQueryData<InfiniteData<PageResponse<Notice>>>(['notices', null, null])?.pages[0].content[0].isBookmarked).toBe(true);
+  });
+  it.each(['성공', '실패'] as const)('A의 지연된 북마크 %s 응답이 B의 상세·목록·북마크 캐시를 변경하지 않는다', async (outcome) => {
+    await authenticate();
+    const sessionA = useAuthStore.getState().sessionId;
+    const detailKey = ['notice', '213'] as const;
+    const noticesKey = ['notices', null, null] as const;
+    const bookmarksKey = ['bookmarkedNotices'] as const;
+    const searchKey = ['search', '장학'] as const;
+    const pageData = (content: Notice[]): InfiniteData<PageResponse<Notice>> => ({
+      pages: [{ content, page: 1, size: 20, hasNext: false }], pageParams: [1],
+    });
+    const noticeA = { ...mapPublicNotice(publicNotice), title: 'A의 캐시', isBookmarked: true };
+    queryClient.setQueryData(detailKey, noticeA);
+    queryClient.setQueryData(noticesKey, pageData([noticeA]));
+    queryClient.setQueryData(bookmarksKey, pageData([noticeA]));
+
+    const gate = deferred<BookmarkToggleResponse>();
+    let requestSession: number | undefined;
+    let settled = false;
+    // Axios의 세션 취소가 훅의 성공 처리·롤백 검증을 대신하지 않도록 서비스 경계에서 지연한다.
+    const toggle = jest.spyOn(noticeService, 'toggleBookmark').mockImplementationOnce(() => {
+      requestSession = useAuthStore.getState().sessionId;
+      return gate.promise;
+    });
+    try {
+      const h = await renderHook(useToggleBookmark);
+      let pending!: Promise<unknown>;
+      await act(async () => {
+        pending = h.current.mutateAsync('213').then(
+          (data) => { settled = true; return { data }; },
+          (error: unknown) => { settled = true; return { error }; },
+        );
+      });
+      expect(toggle).toHaveBeenCalledTimes(1);
+      expect(toggle).toHaveBeenCalledWith('213');
+      expect(requestSession).toBe(sessionA);
+      expect(settled).toBe(false);
+      expect(queryClient.getQueryData<Notice>(detailKey)).toEqual({ ...noticeA, isBookmarked: false });
+      expect(queryClient.getQueryData(noticesKey)).toEqual(pageData([{ ...noticeA, isBookmarked: false }]));
+      expect(queryClient.getQueryData(bookmarksKey)).toEqual(pageData([]));
+
+      await act(async () => {
+        await useAuthStore.getState().clearAuth();
+        await useAuthStore.getState().setAuth({
+          ...member, userId: 2, email: 'member-b@catholic.ac.kr',
+          accessToken: 'access-b', refreshToken: 'refresh-b', tags: [],
+        });
+      });
+      expect(useAuthStore.getState()).toMatchObject({ status: 'authenticated', user: { userId: 2 } });
+      expect(useAuthStore.getState().sessionId).not.toBe(sessionA);
+      for (const key of [detailKey, noticesKey, bookmarksKey]) {
+        expect(queryClient.getQueryData(key)).toBeUndefined();
+      }
+
+      const noticeB = { ...noticeA, title: 'B의 독립 캐시', isBookmarked: outcome === '성공' };
+      const otherNoticeB = { ...noticeB, id: '214', isBookmarked: true };
+      const cacheB = [
+        [detailKey, noticeB],
+        [noticesKey, pageData([noticeB, otherNoticeB])],
+        [bookmarksKey, pageData(noticeB.isBookmarked ? [noticeB, otherNoticeB] : [otherNoticeB])],
+        [searchKey, pageData([noticeB])],
+      ] as const;
+      for (const [key, data] of cacheB) queryClient.setQueryData(key, data);
+      const snapshotsB = cacheB.map(([key]) => ({ key, data: queryClient.getQueryData(key) }));
+      expect(settled).toBe(false);
+
+      const resultA = { noticeId: '213', isBookmarked: false };
+      const errorA = new Error('A의 북마크 요청 실패');
+      await act(async () => {
+        if (outcome === '성공') gate.resolve(resultA);
+        else gate.reject(errorA);
+        expect(await pending).toEqual(outcome === '성공' ? { data: resultA } : { error: errorA });
+      });
+      expect(settled).toBe(true);
+      for (const { key, data } of snapshotsB) {
+        expect(queryClient.getQueryData(key)).toBe(data);
+        expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false);
+      }
+      expect(toggle).toHaveBeenCalledTimes(1);
+      expect(transport).not.toHaveBeenCalled();
+    } finally {
+      toggle.mockRestore();
+    }
   });
   it('회원 태그 추가·삭제는 기존 개인화 상태에 반영한다', async () => {
     await authenticate();

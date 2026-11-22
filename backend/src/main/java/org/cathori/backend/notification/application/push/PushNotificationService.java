@@ -3,7 +3,6 @@ package org.cathori.backend.notification.application.push;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -106,7 +105,10 @@ public class PushNotificationService {
     }
 
     private List<UserToken> loadPendingRecipients(Long noticeId) {
-        List<Long> recipientIds = alertHistoryRepository.findPendingUserIdsByNoticeId(noticeId);
+        return loadRecipients(alertHistoryRepository.findPendingUserIdsByNoticeId(noticeId));
+    }
+
+    private List<UserToken> loadRecipients(List<Long> recipientIds) {
         if (recipientIds.isEmpty()) return List.of();
 
         Map<Long, String> deviceTokensByUserId = userRepository.findDeviceTokensByIds(recipientIds);
@@ -121,10 +123,9 @@ public class PushNotificationService {
             log.warn("학과 공지인데 sourceId가 없어 발송 대상에서 제외 noticeId={}", notice.getId());
             return List.of();
         }
-        return userRepository.findUsersWithTagMatchingTitle(notice.getTitle())
+        return userRepository.findPushEligibleUsersWithTagMatchingTitle(notice.getTitle())
                 .stream()
                 .filter(user -> matchesNoticeScope(user, notice))
-                .filter(user -> user.getDeviceToken() != null)
                 .map(user -> new UserToken(user.getId(), user.getDeviceToken()))
                 .toList();
     }
@@ -158,14 +159,7 @@ public class PushNotificationService {
         Notice notice = noticeRepository.findById(noticeId).orElse(null);
         if (notice == null) return;
 
-        List<UserToken> recipients = failedHistories.stream()
-                .map(history -> {
-                    User user = userRepository.findById(history.getUserId()).orElse(null);
-                    if (user == null || user.getDeviceToken() == null) return null;
-                    return new UserToken(history.getUserId(), user.getDeviceToken());
-                })
-                .filter(Objects::nonNull)
-                .toList();
+        List<UserToken> recipients = loadRecipients(failedHistories.stream().map(AlertHistory::getUserId).toList());
 
         if (recipients.isEmpty()) return;
 

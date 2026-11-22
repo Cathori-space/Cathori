@@ -2,7 +2,6 @@ package org.cathori.backend.security;
 
 import org.cathori.backend.user.domain.User;
 import org.cathori.backend.user.domain.UserRepository;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -17,10 +16,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    public CustomUserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Long userId = Long.parseLong(username);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userId));
-        return new CustomUserDetails(user.getId(), user.getEmail(), user.getPassword());
+        return new CustomUserDetails(user.getId(), user.getSessionVersion(), user.getEmail(), user.getPassword());
     }
 }

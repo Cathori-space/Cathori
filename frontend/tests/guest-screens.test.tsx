@@ -133,9 +133,24 @@ describe('공개 공지 화면', () => {
     transport.mockImplementation(async (config) => response(config, { content: [publicNotice], page: 0, size: 20, hasNext: false }));
     const tree = await render(<><HomeScreen /><MembershipPrompt /></>);
     expect(textOf(tree)).toContain('장학금 공지');
+    expect(textOf(tree)).toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
+    await pressText(tree, '로그인');
+    expect(router.push).toHaveBeenCalledWith('/login');
+    expect(useAuthStore.getState().status).toBe('guest');
     await pressText(tree, '+태그');
     expect(useMembershipPromptStore.getState().visible).toBe(true);
     expect(transport.mock.calls.every(([c]) => c.url === '/api/public/notices')).toBe(true);
+
+    await act(async () => { await useAuthStore.getState().setAuth(member); });
+    await flush();
+    expect(textOf(tree)).not.toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
+
+    await act(async () => { await useAuthStore.getState().clearAuth(); });
+    await flush();
+    expect(textOf(tree)).not.toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
+    await guest();
+    await flush();
+    expect(textOf(tree)).toContain('가입하면 내 학과 공지도 함께 볼 수 있어요');
   });
   it('게스트 검색 화면에서 공개 검색 결과를 표시하고 기록은 저장하지 않는다', async () => {
     await guest();

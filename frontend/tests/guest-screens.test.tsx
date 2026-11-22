@@ -128,7 +128,7 @@ describe('기존 회원 로그아웃', () => {
 });
 
 describe('공개 공지 화면', () => {
-  it('게스트 홈에 공개 공지가 표시되고 기존 태그 버튼은 가입 안내만 연다', async () => {
+  it('게스트 홈에 공개 공지가 표시되고 관심 키워드 추가 버튼은 가입 안내만 연다', async () => {
     await guest();
     transport.mockImplementation(async (config) => response(config, { content: [publicNotice], page: 0, size: 20, hasNext: false }));
     const tree = await render(<><HomeScreen /><MembershipPrompt /></>);
